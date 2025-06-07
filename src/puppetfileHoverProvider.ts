@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
-import { PuppetForgeService } from './puppetForgeService';
+import { PuppetForgeService, ForgeModule } from './puppetForgeService';
 
 /**
  * Provides hover information for Puppetfile modules
@@ -129,7 +129,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
 
             // Actions
-            markdown.appendMarkdown(`[View on Puppet Forge](https://forge.puppet.com/${module.name.replace('/', '-')})`);
+            const forgeUrl = this.getForgeModuleUrl(module, forgeModule);
+            markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
 
             return markdown;
 
@@ -176,7 +177,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         if (module.source === 'forge') {
             markdown.appendMarkdown(`*Loading additional information...*\n\n`);
-            markdown.appendMarkdown(`[View on Puppet Forge](https://forge.puppet.com/${module.name.replace('/', '-')})`);
+            const forgeUrl = this.getForgeModuleUrl(module);
+            markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
         } else if (module.gitUrl) {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
             if (module.gitTag) {
@@ -188,4 +190,24 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         return markdown;
     }
+
+    private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null): string {
+        if (forgeData?.owner?.username && forgeData.name) {
+            return `https://forge.puppet.com/modules/${forgeData.owner.username}/${forgeData.name}`;
+        }
+
+        if (module.name.includes('/')) {
+            return `https://forge.puppet.com/modules/${module.name}`;
+        }
+
+        const dashIndex = module.name.indexOf('-');
+        if (dashIndex !== -1) {
+            const owner = module.name.substring(0, dashIndex);
+            const modName = module.name.substring(dashIndex + 1);
+            return `https://forge.puppet.com/modules/${owner}/${modName}`;
+        }
+
+        return `https://forge.puppet.com/modules/${module.name}`;
+    }
 }
+

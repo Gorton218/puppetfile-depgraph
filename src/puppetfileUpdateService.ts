@@ -239,7 +239,7 @@ export class PuppetfileUpdateService {
         if (upToDate.length > 0) {
             summary += `✨ Already up-to-date (${upToDate.length}):\n`;
             for (const result of upToDate) {
-                summary += `  • ${result.moduleName}: ${result.currentVersion || 'latest'}\n`;
+                summary += `  • ${result.moduleName}: ${result.currentVersion ?? 'latest'}\n`;
             }
             summary += '\n';
         }
