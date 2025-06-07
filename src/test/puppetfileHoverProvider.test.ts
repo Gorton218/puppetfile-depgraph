@@ -139,4 +139,48 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             PuppetForgeService.getModuleReleases = originalGetReleases;
         }
     });
+
+    test('getModuleInfo should show clickable version links for updates', async () => {
+        const provider = new PuppetfileHoverProvider();
+
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
+
+        const mockForgeModule: ForgeModule = {
+            name: 'puppetlabs/stdlib',
+            slug: 'puppetlabs-stdlib',
+            owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+            current_release: { version: '1.0.0', created_at: '2023-01-01', metadata: { dependencies: [] } },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
+
+        const mockUpdateInfo = { latestVersion: '1.2.0', hasUpdate: true };
+
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => [
+            { version: '1.1.0', created_at: '2023-01-10', updated_at: '2023-01-11', downloads: 10, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } },
+            { version: '1.2.0', created_at: '2023-02-10', updated_at: '2023-02-11', downloads: 20, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } },
+        ];
+
+        try {
+            const mockModule = { name: 'puppetlabs/stdlib', version: '1.0.0', source: 'forge' as const, line: 10 };
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
+            const markdownText = result.value;
+
+            const link1 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify({ line: 10, version: '1.1.0' }))}`;
+            const link2 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify({ line: 10, version: '1.2.0' }))}`;
+
+            assert.ok(markdownText.includes('**Available Versions:**'), 'Should show available versions');
+            assert.ok(markdownText.includes(link1), 'Should include link for 1.1.0');
+            assert.ok(markdownText.includes(link2), 'Should include link for 1.2.0');
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
+    });
 });

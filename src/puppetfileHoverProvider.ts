@@ -228,6 +228,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
         }
 
+        // Append the version to the base URL when provided so the link
+        // navigates directly to that release on the Forge
         return version ? `${base}/${version}` : base;
     }
 }
