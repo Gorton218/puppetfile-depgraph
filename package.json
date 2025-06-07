@@ -50,6 +50,11 @@
           "when": "resourceFilename == Puppetfile",
           "command": "puppetfile-depgraph.showDependencyTree",
           "group": "navigation"
+        },
+        {
+          "when": "resourceFilename == Puppetfile",
+          "command": "puppetfile-depgraph.clearForgeCache",
+          "group": "navigation"
         }
       ]
     }
@@ -60,7 +65,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test"
+    "test": "node ./scripts/runTests.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.100.0",

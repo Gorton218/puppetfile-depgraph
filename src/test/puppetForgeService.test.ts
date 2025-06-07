@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { PuppetForgeService } from '../puppetForgeService';
+import pkg from '../../package.json';
 
 suite('PuppetForgeService Test Suite', () => {
     
@@ -40,8 +41,9 @@ suite('PuppetForgeService Test Suite', () => {
 
     test('clearCache should empty internal caches', () => {
         const svc: any = PuppetForgeService;
-        svc.moduleCache.set('foo', { data: null, timestamp: Date.now() });
-        svc.releaseCache.set('foo', { data: [], timestamp: Date.now() });
+        const key = `foo@${pkg.version}`;
+        svc.moduleCache.set(key, null);
+        svc.releaseCache.set(key, []);
         PuppetForgeService.clearCache();
         assert.strictEqual(svc.moduleCache.size, 0);
         assert.strictEqual(svc.releaseCache.size, 0);
