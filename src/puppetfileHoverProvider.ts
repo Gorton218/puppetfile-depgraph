@@ -32,18 +32,48 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             return null;
         }
 
-        // Check if the cursor is over the module name
+        // Check if the cursor is over the module name or version
         const moduleNameMatch = line.match(/mod\s*['"]([^'"]+)['"]/);
         if (!moduleNameMatch) {
             return null;
         }
 
-        const moduleNameStart = line.indexOf(moduleNameMatch[1]);
-        const moduleNameEnd = moduleNameStart + moduleNameMatch[1].length;
         const cursorChar = position.character;
+        let isOverTarget = false;
 
         // Check if cursor is within the module name
-        if (cursorChar < moduleNameStart || cursorChar > moduleNameEnd) {
+        const moduleNameStart = line.indexOf(moduleNameMatch[1]);
+        const moduleNameEnd = moduleNameStart + moduleNameMatch[1].length;
+        if (cursorChar >= moduleNameStart && cursorChar <= moduleNameEnd) {
+            isOverTarget = true;
+        }
+
+        // If not over module name, check if cursor is over version
+        if (!isOverTarget) {
+            // Check for different version patterns
+            const versionPatterns = [
+                // Forge module version: mod 'name', 'version'
+                /mod\s*['"][^'"]+['"],\s*['"]([^'"]+)['"]/,
+                // Git module tag: :tag => 'version'
+                /:tag\s*=>\s*['"]([^'"]+)['"]/,
+                // Git module ref: :ref => 'version'
+                /:ref\s*=>\s*['"]([^'"]+)['"]/
+            ];
+
+            for (const pattern of versionPatterns) {
+                const versionMatch = line.match(pattern);
+                if (versionMatch) {
+                    const versionStart = line.indexOf(versionMatch[1], line.indexOf(versionMatch[0]));
+                    const versionEnd = versionStart + versionMatch[1].length;
+                    if (cursorChar >= versionStart && cursorChar <= versionEnd) {
+                        isOverTarget = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!isOverTarget) {
             return null;
         }
 
