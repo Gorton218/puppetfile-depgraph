@@ -262,8 +262,12 @@ export class DependencyTreeService {
         // Check for conflicts (multiple versions of the same module)
         for (const [moduleName, versions] of versionMap.entries()) {
             if (versions.size > 1) {
-                const versionList = Array.from(versions).sort().join(', ');
-                conflicts.push(`${moduleName}: Multiple versions found (${versionList})`);
+                const versionList = Array.from(versions)
+                    .sort((a, b) => a.localeCompare(b))
+                    .join(', ');
+                conflicts.push(
+                    `${moduleName}: Multiple versions found (${versionList})`
+                );
             }
         }
 
