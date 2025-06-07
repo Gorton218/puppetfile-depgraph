@@ -89,8 +89,9 @@ export class PuppetfileUpdateService {
      */
     private static async checkAndPrepareUpdate(module: PuppetModule, safeOnly: boolean): Promise<UpdateResult> {
         try {
+            const apiModuleName = module.name.replace('-', '/');
             const updateInfo = await PuppetForgeService.checkForUpdate(
-                module.name, 
+                apiModuleName, 
                 module.version, 
                 safeOnly
             );

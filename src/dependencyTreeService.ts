@@ -86,7 +86,8 @@ export class DependencyTreeService {
         // Only fetch dependencies for Forge modules
         if (module.source === 'forge') {
             try {
-                const forgeModule = await PuppetForgeService.getModule(module.name);
+                const apiModuleName = module.name.replace('-', '/');
+                const forgeModule = await PuppetForgeService.getModule(apiModuleName);
                 if (forgeModule?.current_release?.metadata?.dependencies) {
                     for (const dep of forgeModule.current_release.metadata.dependencies) {
                         const childModule: PuppetModule = {

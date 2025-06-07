@@ -87,14 +87,15 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
 
         try {
-            // Fetch from Puppet Forge
-            const forgeModule = await PuppetForgeService.getModule(module.name);
+            // Fetch from Puppet Forge - convert module name to API format
+            const apiModuleName = module.name.replace('-', '/');
+            const forgeModule = await PuppetForgeService.getModule(apiModuleName);
             if (!forgeModule) {
                 return this.getBasicModuleInfo(module);
             }
 
             // Check for updates
-            const updateInfo = await PuppetForgeService.checkForUpdate(module.name, module.version);
+            const updateInfo = await PuppetForgeService.checkForUpdate(apiModuleName, module.version);
 
             const markdown = new vscode.MarkdownString();
             markdown.isTrusted = true;
@@ -129,7 +130,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
 
             // Actions
-            markdown.appendMarkdown(`[View on Puppet Forge](https://forge.puppet.com/${module.name.replace('/', '-')})`);
+            markdown.appendMarkdown(`[View on Puppet Forge](https://forge.puppet.com/${module.name.replace('-', '/')})`);
 
             return markdown;
 
@@ -176,7 +177,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         if (module.source === 'forge') {
             markdown.appendMarkdown(`*Loading additional information...*\n\n`);
-            markdown.appendMarkdown(`[View on Puppet Forge](https://forge.puppet.com/${module.name.replace('/', '-')})`);
+            markdown.appendMarkdown(`[View on Puppet Forge](https://forge.puppet.com/${module.name.replace('-', '/')})`);
         } else if (module.gitUrl) {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
             if (module.gitTag) {

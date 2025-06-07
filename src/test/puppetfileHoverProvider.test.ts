@@ -118,4 +118,54 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             PuppetForgeService.checkForUpdate = originalCheckForUpdate;
         }
     });
+    
+    test('getBasicModuleInfo should generate correct Puppet Forge URL', () => {
+        const provider = new PuppetfileHoverProvider();
+        
+        // Use type assertion to access private method for testing
+        const getBasicModuleInfo = (provider as any).getBasicModuleInfo;
+        
+        const mockModule = {
+            name: 'puppetlabs-mysql',
+            version: '15.0.0',
+            source: 'forge' as const,
+            line: 1
+        };
+        
+        const result = getBasicModuleInfo.call(provider, mockModule);
+        const markdownContent = result.value;
+        
+        // Check that the URL is correctly formatted with forward slash
+        assert.ok(markdownContent.includes('https://forge.puppet.com/puppetlabs/mysql'), 
+                  'Should generate correct Puppet Forge URL with forward slash');
+        assert.ok(!markdownContent.includes('https://forge.puppet.com/puppetlabs-mysql'), 
+                  'Should not generate incorrect URL with dash');
+    });
+
+    test('getBasicModuleInfo should handle different module name formats', () => {
+        const provider = new PuppetfileHoverProvider();
+        
+        // Use type assertion to access private method for testing
+        const getBasicModuleInfo = (provider as any).getBasicModuleInfo;
+        
+        const testCases = [
+            { input: 'puppetlabs-stdlib', expected: 'puppetlabs/stdlib' },
+            { input: 'example-module-name', expected: 'example/module-name' },
+            { input: 'single', expected: 'single' },
+        ];
+        
+        testCases.forEach(testCase => {
+            const mockModule = {
+                name: testCase.input,
+                source: 'forge' as const,
+                line: 1
+            };
+            
+            const result = getBasicModuleInfo.call(provider, mockModule);
+            const markdownContent = result.value;
+            
+            assert.ok(markdownContent.includes(`https://forge.puppet.com/${testCase.expected}`), 
+                      `Should generate correct URL for module ${testCase.input}`);
+        });
+    });
 });
