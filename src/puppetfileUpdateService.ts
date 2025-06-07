@@ -214,6 +214,39 @@ export class PuppetfileUpdateService {
     }
 
     /**
+     * Update a single module line to a specific version
+     * @param lineNumber 1-based line number in the active editor
+     * @param newVersion The version to set
+     */
+    public static async updateModuleVersionAtLine(lineNumber: number, newVersion: string): Promise<void> {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return;
+        }
+
+        const document = editor.document;
+        const lines = document.getText().split('\n');
+        const lineIndex = lineNumber - 1;
+        if (lineIndex < 0 || lineIndex >= lines.length) {
+            return;
+        }
+
+        const originalLine = lines[lineIndex];
+        const updatedLine = this.updateVersionInLine(originalLine, newVersion);
+        if (updatedLine === originalLine) {
+            return;
+        }
+
+        const range = new vscode.Range(
+            new vscode.Position(lineIndex, 0),
+            new vscode.Position(lineIndex, originalLine.length)
+        );
+        await editor.edit(edit => {
+            edit.replace(range, updatedLine);
+        });
+    }
+
+    /**
      * Generate a summary of update results
      * @param results Array of update results
      * @returns Summary string

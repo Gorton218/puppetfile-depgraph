@@ -2,6 +2,12 @@
 
 All notable changes to the "puppetfile-depgraph" extension will be documented in this file.
 
+## [0.0.2] - 2025-06-08
+### Added
+- Hover window now lists all newer versions with clickable links to update the Puppetfile.
+### Fixed
+- Dependency information and Forge links in the hover window now reference the current module version.
+
 ## [0.0.1] - 2025-06-07
 
 ### Added

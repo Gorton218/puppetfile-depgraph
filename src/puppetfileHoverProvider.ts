@@ -96,6 +96,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             // Check for updates
             const updateInfo = await PuppetForgeService.checkForUpdate(module.name, module.version);
 
+            const allReleases = await PuppetForgeService.getModuleReleases(module.name);
+
             const markdown = new vscode.MarkdownString();
             markdown.isTrusted = true;
 
@@ -118,18 +120,35 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 }
             }
 
-            // Dependencies
-            if (forgeModule.current_release?.metadata?.dependencies && 
-                forgeModule.current_release.metadata.dependencies.length > 0) {
+            // Show upgrade options
+            if (module.version) {
+                const newer = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
+                if (newer.length > 0) {
+                    markdown.appendMarkdown(`**Available Versions:**\n`);
+                    for (const rel of newer) {
+                        const args = encodeURIComponent(JSON.stringify({ line: module.line, version: rel.version }));
+                        markdown.appendMarkdown(`- [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${args})\n`);
+                    }
+                    markdown.appendMarkdown('\n');
+                }
+            }
+
+            // Dependencies for current version
+            let dependencies = forgeModule.current_release?.metadata?.dependencies;
+            if (module.version) {
+                const release = allReleases.find(r => r.version === module.version);
+                dependencies = release?.metadata?.dependencies;
+            }
+            if (dependencies && dependencies.length > 0) {
                 markdown.appendMarkdown(`**Dependencies:**\n`);
-                for (const dep of forgeModule.current_release.metadata.dependencies) {
+                for (const dep of dependencies) {
                     markdown.appendMarkdown(`- \`${dep.name}\` ${dep.version_requirement}\n`);
                 }
                 markdown.appendMarkdown('\n');
             }
 
             // Actions
-            const forgeUrl = this.getForgeModuleUrl(module, forgeModule);
+            const forgeUrl = this.getForgeModuleUrl(module, forgeModule, module.version);
             markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
 
             return markdown;
@@ -177,7 +196,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         if (module.source === 'forge') {
             markdown.appendMarkdown(`*Loading additional information...*\n\n`);
-            const forgeUrl = this.getForgeModuleUrl(module);
+            const forgeUrl = this.getForgeModuleUrl(module, undefined, module.version);
             markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
         } else if (module.gitUrl) {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
@@ -191,23 +210,25 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         return markdown;
     }
 
-    private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null): string {
+    private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null, version?: string): string {
+        let base: string;
+
         if (forgeData?.owner?.username && forgeData.name) {
-            return `https://forge.puppet.com/modules/${forgeData.owner.username}/${forgeData.name}`;
+            base = `https://forge.puppet.com/modules/${forgeData.owner.username}/${forgeData.name}`;
+        } else if (module.name.includes('/')) {
+            base = `https://forge.puppet.com/modules/${module.name}`;
+        } else {
+            const dashIndex = module.name.indexOf('-');
+            if (dashIndex !== -1) {
+                const owner = module.name.substring(0, dashIndex);
+                const modName = module.name.substring(dashIndex + 1);
+                base = `https://forge.puppet.com/modules/${owner}/${modName}`;
+            } else {
+                base = `https://forge.puppet.com/modules/${module.name}`;
+            }
         }
 
-        if (module.name.includes('/')) {
-            return `https://forge.puppet.com/modules/${module.name}`;
-        }
-
-        const dashIndex = module.name.indexOf('-');
-        if (dashIndex !== -1) {
-            const owner = module.name.substring(0, dashIndex);
-            const modName = module.name.substring(dashIndex + 1);
-            return `https://forge.puppet.com/modules/${owner}/${modName}`;
-        }
-
-        return `https://forge.puppet.com/modules/${module.name}`;
+        return version ? `${base}/${version}` : base;
     }
 }
 

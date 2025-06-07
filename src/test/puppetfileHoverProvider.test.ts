@@ -57,6 +57,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         // Mock the PuppetForgeService.getModule method
         const originalGetModule = PuppetForgeService.getModule;
         const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
         
         const mockForgeModule: ForgeModule = {
             name: 'puppetlabs/stdlib',
@@ -88,6 +89,25 @@ suite('PuppetfileHoverProvider Test Suite', () => {
 
         PuppetForgeService.getModule = async () => mockForgeModule;
         PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => [
+            {
+                version: '8.5.0',
+                created_at: '2023-01-01',
+                updated_at: '2023-01-02',
+                downloads: 100,
+                file_size: 1,
+                file_md5: '',
+                file_uri: '',
+                metadata: {
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/concat',
+                            version_requirement: '>= 1.0.0'
+                        }
+                    ]
+                }
+            }
+        ];
 
         try {
             const mockModule = {
@@ -116,6 +136,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             // Restore original methods
             PuppetForgeService.getModule = originalGetModule;
             PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
         }
     });
 });

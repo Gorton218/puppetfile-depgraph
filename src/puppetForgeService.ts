@@ -150,6 +150,16 @@ export class PuppetForgeService {
     }
 
     /**
+     * Get information for a specific release version
+     * @param moduleName Module name
+     * @param version Version to lookup
+     */
+    public static async getReleaseForVersion(moduleName: string, version: string): Promise<ForgeVersion | null> {
+        const releases = await this.getModuleReleases(moduleName);
+        return releases.find(r => r.version === version) ?? null;
+    }
+
+    /**
      * Get the latest version of a module
      * @param moduleName The full module name (e.g., "puppetlabs/stdlib")
      * @returns Promise with the latest version string

@@ -174,8 +174,15 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showInformationMessage('Puppet Forge cache cleared.');
         });
 
+        const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (args: { line: number; version: string }) => {
+                if (!args) {
+                        return;
+                }
+                await PuppetfileUpdateService.updateModuleVersionAtLine(args.line, args.version);
+        });
+
         // Add all commands to subscriptions
-        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache);
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, updateModuleVersion);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
