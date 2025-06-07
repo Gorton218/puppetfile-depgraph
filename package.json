@@ -1,0 +1,74 @@
+{
+  "name": "puppetfile-depgraph",
+  "displayName": "Puppetfile Dependency Manager",
+  "description": "A VS Code extension for managing Puppet module dependencies with visual dependency analysis and safe update recommendations",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:puppetfile"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "puppetfile",
+        "aliases": ["Puppetfile"],
+        "filenames": ["Puppetfile"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "puppetfile-depgraph.updateAllToSafe",
+        "title": "Update all dependencies to safe versions",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.updateAllToLatest",
+        "title": "Update all dependencies to latest versions",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.showDependencyTree",
+        "title": "Show dependency tree",
+        "category": "Puppetfile"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceFilename == Puppetfile",
+          "command": "puppetfile-depgraph.showDependencyTree",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.100.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2"
+  },
+  "dependencies": {
+    "axios": "^1.7.9"
+  }
+}
