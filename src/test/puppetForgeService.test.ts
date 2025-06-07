@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { PuppetForgeService } from '../puppetForgeService';
+import pkg from '../../package.json';
 
 suite('PuppetForgeService Test Suite', () => {
     
@@ -36,6 +37,16 @@ suite('PuppetForgeService Test Suite', () => {
         assert.strictEqual(PuppetForgeService.isSafeVersion('1.0.0-pre'), false);
         assert.strictEqual(PuppetForgeService.isSafeVersion('2.0.0-dev'), false);
         assert.strictEqual(PuppetForgeService.isSafeVersion('1.0.0-snapshot'), false);
+    });
+
+    test('clearCache should empty internal caches', () => {
+        const svc: any = PuppetForgeService;
+        const key = `foo@${pkg.version}`;
+        svc.moduleCache.set(key, null);
+        svc.releaseCache.set(key, []);
+        PuppetForgeService.clearCache();
+        assert.strictEqual(svc.moduleCache.size, 0);
+        assert.strictEqual(svc.releaseCache.size, 0);
     });
 
     // Note: These tests require network access and may be slow
