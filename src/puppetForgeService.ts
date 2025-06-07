@@ -1,5 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import pkg from '../package.json';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 /**
  * Represents version information from Puppet Forge
@@ -56,6 +57,24 @@ export class PuppetForgeService {
     private static moduleCache: Map<string, ForgeModule | null> = new Map();
     private static releaseCache: Map<string, ForgeVersion[]> = new Map();
 
+    private static getAxiosOptions(url: string): AxiosRequestConfig {
+        const options: AxiosRequestConfig = {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'VSCode-Puppetfile-DepGraph/1.0.0'
+            }
+        };
+
+        const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+        if (proxyUrl) {
+            const agent = new HttpsProxyAgent(proxyUrl);
+            options.httpAgent = agent;
+            options.httpsAgent = agent;
+            options.proxy = false;
+        }
+        return options;
+    }
+
     private static cacheKey(name: string): string {
         return `${name}@${this.EXT_VERSION}`;
     }
@@ -82,12 +101,7 @@ export class PuppetForgeService {
         try {
             const response = await axios.get(
                 `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}`,
-                {
-                    timeout: 10000,
-                    headers: {
-                        'User-Agent': 'VSCode-Puppetfile-DepGraph/1.0.0'
-                    }
-                }
+                this.getAxiosOptions(`${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}`)
             );
             this.moduleCache.set(key, response.data);
             return response.data;
@@ -115,10 +129,7 @@ export class PuppetForgeService {
             const response = await axios.get(
                 `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}/releases`,
                 {
-                    timeout: 10000,
-                    headers: {
-                        'User-Agent': 'VSCode-Puppetfile-DepGraph/1.0.0'
-                    },
+                    ...this.getAxiosOptions(`${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}/releases`),
                     params: {
                         limit: 100,
                         sort_by: 'version',
