@@ -192,7 +192,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     }
 
     private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null): string {
-        if (forgeData && forgeData.owner && forgeData.name) {
+        if (forgeData?.owner?.username && forgeData.name) {
             return `https://forge.puppet.com/modules/${forgeData.owner.username}/${forgeData.name}`;
         }
 

@@ -65,7 +65,7 @@ export class PuppetForgeService {
             }
         };
 
-        const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+        const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
         if (proxyUrl) {
             const agent = new HttpsProxyAgent(proxyUrl);
             options.httpAgent = agent;
@@ -137,7 +137,7 @@ export class PuppetForgeService {
                     }
                 }
             );
-            const result = response.data.results || [];
+            const result = response.data.results ?? [];
             this.releaseCache.set(key, result);
             return result;
         } catch (error) {
@@ -157,7 +157,7 @@ export class PuppetForgeService {
     public static async getLatestVersion(moduleName: string): Promise<string | null> {
         try {
             const module = await this.getModule(moduleName);
-            return module?.current_release?.version || null;
+            return module?.current_release?.version ?? null;
         } catch (error) {
             console.error(`Error fetching latest version for ${moduleName}:`, error);
             return null;
@@ -203,8 +203,8 @@ export class PuppetForgeService {
         
         const maxLength = Math.max(parts1.length, parts2.length);
           for (let i = 0; i < maxLength; i++) {
-            const part1 = parts1[i] || 0;
-            const part2 = parts2[i] || 0;
+            const part1 = parts1[i] ?? 0;
+            const part2 = parts2[i] ?? 0;
             
             if (part1 < part2) {
                 return -1;
