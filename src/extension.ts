@@ -5,6 +5,7 @@ import { PuppetfileParser, PuppetModule } from './puppetfileParser';
 import { PuppetfileUpdateService } from './puppetfileUpdateService';
 import { DependencyTreeService } from './dependencyTreeService';
 import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
+import { PuppetForgeService } from './puppetForgeService';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -93,8 +94,8 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-	const showDependencyTree = vscode.commands.registerCommand('puppetfile-depgraph.showDependencyTree', async () => {
-		const parseResult = PuppetfileParser.parseActiveEditor();
+        const showDependencyTree = vscode.commands.registerCommand('puppetfile-depgraph.showDependencyTree', async () => {
+                const parseResult = PuppetfileParser.parseActiveEditor();
 		if (parseResult.errors.length > 0) {
 			vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
 			return;
@@ -165,11 +166,16 @@ export function activate(context: vscode.ExtensionContext) {
 			} catch (error) {
 				vscode.window.showErrorMessage(`Failed to build dependency tree: ${error instanceof Error ? error.message : 'Unknown error'}`);
 			}
-		});
-	});
+                });
+        });
 
-	// Add all commands to subscriptions
-	context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree);
+        const clearForgeCache = vscode.commands.registerCommand('puppetfile-depgraph.clearForgeCache', () => {
+                PuppetForgeService.clearCache();
+                vscode.window.showInformationMessage('Puppet Forge cache cleared.');
+        });
+
+        // Add all commands to subscriptions
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(

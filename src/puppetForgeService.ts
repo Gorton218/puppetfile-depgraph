@@ -51,12 +51,29 @@ export class PuppetForgeService {
     private static readonly BASE_URL = 'https://forgeapi.puppet.com';
     private static readonly API_VERSION = 'v3';
 
+    private static readonly CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+    private static moduleCache: Map<string, { data: ForgeModule | null; timestamp: number }> = new Map();
+    private static releaseCache: Map<string, { data: ForgeVersion[]; timestamp: number }> = new Map();
+
+    /**
+     * Clear all cached Forge responses
+     */
+    public static clearCache(): void {
+        this.moduleCache.clear();
+        this.releaseCache.clear();
+    }
+
     /**
      * Get module information from Puppet Forge
      * @param moduleName The full module name (e.g., "puppetlabs/stdlib")
      * @returns Promise with module information
      */
     public static async getModule(moduleName: string): Promise<ForgeModule | null> {
+        const cached = this.moduleCache.get(moduleName);
+        if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL_MS) {
+            return cached.data;
+        }
+
         try {
             const response = await axios.get(
                 `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}`,
@@ -67,9 +84,11 @@ export class PuppetForgeService {
                     }
                 }
             );
+            this.moduleCache.set(moduleName, { data: response.data, timestamp: Date.now() });
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
+                this.moduleCache.set(moduleName, { data: null, timestamp: Date.now() });
                 return null; // Module not found
             }
             throw new Error(`Failed to fetch module ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -82,6 +101,11 @@ export class PuppetForgeService {
      * @returns Promise with array of releases
      */
     public static async getModuleReleases(moduleName: string): Promise<ForgeVersion[]> {
+        const cached = this.releaseCache.get(moduleName);
+        if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL_MS) {
+            return cached.data;
+        }
+
         try {
             const response = await axios.get(
                 `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}/releases`,
@@ -97,9 +121,12 @@ export class PuppetForgeService {
                     }
                 }
             );
-            return response.data.results || [];
+            const result = response.data.results || [];
+            this.releaseCache.set(moduleName, { data: result, timestamp: Date.now() });
+            return result;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 404) {
+                this.releaseCache.set(moduleName, { data: [], timestamp: Date.now() });
                 return []; // Module not found
             }
             throw new Error(`Failed to fetch releases for ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`);

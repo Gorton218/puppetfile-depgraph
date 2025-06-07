@@ -146,6 +146,7 @@ Run tests with: `npm test`
 - Uses the official Puppet Forge API v3
 - Respects rate limits and implements proper error handling
 - Caches responses for improved performance
+- Cache can be cleared via the **Clear Puppet Forge cache** command
 - Falls back gracefully when API is unavailable
 
 ### Network Requirements

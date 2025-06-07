@@ -38,6 +38,15 @@ suite('PuppetForgeService Test Suite', () => {
         assert.strictEqual(PuppetForgeService.isSafeVersion('1.0.0-snapshot'), false);
     });
 
+    test('clearCache should empty internal caches', () => {
+        const svc: any = PuppetForgeService;
+        svc.moduleCache.set('foo', { data: null, timestamp: Date.now() });
+        svc.releaseCache.set('foo', { data: [], timestamp: Date.now() });
+        PuppetForgeService.clearCache();
+        assert.strictEqual(svc.moduleCache.size, 0);
+        assert.strictEqual(svc.releaseCache.size, 0);
+    });
+
     // Note: These tests require network access and may be slow
     // In a real-world scenario, you might want to mock these API calls
     test('getModule should handle non-existent modules gracefully', async function() {

@@ -37,6 +37,11 @@
         "command": "puppetfile-depgraph.showDependencyTree",
         "title": "Show dependency tree",
         "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.clearForgeCache",
+        "title": "Clear Puppet Forge cache",
+        "category": "Puppetfile"
       }
     ],
     "menus": {
