@@ -171,19 +171,12 @@ export function activate(context: vscode.ExtensionContext) {
 	// Add all commands to subscriptions
 	context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree);
 
-	// Register hover provider for Puppetfile
+	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
-		{ language: 'puppetfile' },
-		new PuppetfileHoverProvider()
-	);
-	context.subscriptions.push(hoverProvider);
-
-	// Also register for files named "Puppetfile" regardless of language
-	const hoverProviderForFilename = vscode.languages.registerHoverProvider(
 		{ pattern: '**/Puppetfile' },
 		new PuppetfileHoverProvider()
 	);
-	context.subscriptions.push(hoverProviderForFilename);
+	context.subscriptions.push(hoverProvider);
 }
 
 // This method is called when your extension is deactivated
