@@ -118,21 +118,6 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 }
             }
 
-            // Owner info
-            if (forgeModule.owner) {
-                markdown.appendMarkdown(`**Owner:** ${forgeModule.owner.username}\n\n`);
-            }
-
-            // Download stats
-            markdown.appendMarkdown(`**Downloads:** ${forgeModule.downloads.toLocaleString()}\n\n`);
-
-            // Feedback score
-            if (forgeModule.feedback_score !== undefined) {
-                const score = forgeModule.feedback_score;
-                const stars = '⭐'.repeat(Math.round(score));
-                markdown.appendMarkdown(`**Quality Score:** ${score.toFixed(1)}/5.0 ${stars}\n\n`);
-            }
-
             // Dependencies
             if (forgeModule.current_release?.metadata?.dependencies && 
                 forgeModule.current_release.metadata.dependencies.length > 0) {

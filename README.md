@@ -23,7 +23,7 @@ A comprehensive VS Code extension for managing Puppet module dependencies with v
 - Support for both Forge and Git-based modules
 
 ### 💡 **Rich Hover Tooltips**
-- Module information from Puppet Forge (downloads, quality score, owner)
+- Module information from Puppet Forge
 - Version comparison (current vs. latest available)
 - Dependency information
 - Direct links to Puppet Forge pages
@@ -76,8 +76,6 @@ Access these commands via:
 
 Simply hover over any module name in your Puppetfile to see:
 - Current and latest version information
-- Module quality metrics
-- Download statistics
 - Direct dependencies
 - Links to Puppet Forge or Git repositories
 
