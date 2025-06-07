@@ -24,7 +24,7 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Support for both Forge and Git-based modules
 
 - **Rich Hover Tooltips**:
-  - Module information from Puppet Forge (downloads, quality score, owner)
+  - Module information from Puppet Forge
   - Version comparison (current vs. latest available)
   - Dependency information
   - Direct links to Puppet Forge pages
