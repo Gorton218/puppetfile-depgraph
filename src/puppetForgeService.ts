@@ -57,7 +57,7 @@ export class PuppetForgeService {
     private static moduleCache: Map<string, ForgeModule | null> = new Map();
     private static releaseCache: Map<string, ForgeVersion[]> = new Map();
 
-    private static getAxiosOptions(url: string): AxiosRequestConfig {
+    private static getAxiosOptions(): AxiosRequestConfig {
         const options: AxiosRequestConfig = {
             timeout: 10000,
             headers: {
@@ -101,7 +101,7 @@ export class PuppetForgeService {
         try {
             const response = await axios.get(
                 `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}`,
-                this.getAxiosOptions(`${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}`)
+                this.getAxiosOptions()
             );
             this.moduleCache.set(key, response.data);
             return response.data;
@@ -129,7 +129,7 @@ export class PuppetForgeService {
             const response = await axios.get(
                 `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}/releases`,
                 {
-                    ...this.getAxiosOptions(`${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}/releases`),
+                    ...this.getAxiosOptions(),
                     params: {
                         limit: 100,
                         sort_by: 'version',
