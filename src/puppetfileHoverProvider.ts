@@ -137,8 +137,12 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             let dependencies = forgeModule.current_release?.metadata?.dependencies;
             if (module.version) {
                 const release = allReleases.find(r => r.version === module.version);
-                dependencies = release?.metadata?.dependencies;
+                if (release?.metadata?.dependencies) {
+                    dependencies = release.metadata.dependencies;
+                }
+                // If no dependencies found for specific version, fall back to current_release
             }
+
             if (dependencies && dependencies.length > 0) {
                 markdown.appendMarkdown(`**Dependencies:**\n`);
                 for (const dep of dependencies) {
@@ -230,7 +234,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         // Append the version to the base URL when provided so the link
         // navigates directly to that release on the Forge
-        return version ? `${base}/${version}` : base;
+        // Also, there is a bug with the Foreman Webstite so it is 
+        // impossible to get to the main page of a specific version 
+        // as it will redirect to the latest version
+        // Try this example: https://forge.puppet.com/modules/puppetlabs/apache/12.0.3/readme
+        // Therefore the `/dependencies` endpoint is used as a workaround 
+        // to get the dependencies of a specific version
+        return version ? `${base}/${version}/dependencies` : `${base}/dependencies`;
     }
 }
 

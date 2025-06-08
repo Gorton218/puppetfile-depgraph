@@ -183,4 +183,149 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             PuppetForgeService.getModuleReleases = originalGetReleases;
         }
     });
+
+    test('getModuleInfo should show dependencies from current_release when specific version has no dependencies', async () => {
+        const provider = new PuppetfileHoverProvider();
+
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
+
+        const mockForgeModule: ForgeModule = {
+            name: 'puppetlabs/stdlib',
+            slug: 'puppetlabs-stdlib',
+            owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+            current_release: { 
+                version: '8.5.0', 
+                created_at: '2023-01-01', 
+                metadata: { 
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/concat',
+                            version_requirement: '>= 1.0.0'
+                        }
+                    ] 
+                } 
+            },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
+
+        const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
+
+        // Mock releases without dependencies metadata
+        const mockReleases = [
+            { 
+                version: '8.5.0', 
+                created_at: '2023-01-01', 
+                updated_at: '2023-01-02', 
+                downloads: 10, 
+                file_size: 1, 
+                file_md5: '', 
+                file_uri: '', 
+                metadata: {} // No dependencies in this release
+            }
+        ];
+
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+        try {
+            const mockModule = { name: 'puppetlabs/stdlib', version: '8.5.0', source: 'forge' as const };
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
+            const markdownText = result.value;
+
+            // Should show dependencies from current_release since specific version has no dependencies
+            assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies field should be present');
+            assert.ok(markdownText.includes('puppetlabs/concat'), 'Specific dependency should be shown');
+            assert.ok(markdownText.includes('>= 1.0.0'), 'Version requirement should be shown');
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
+    });
+
+    test('getModuleInfo should show dependencies when they exist', async () => {
+        const provider = new PuppetfileHoverProvider();
+
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
+
+        const mockForgeModule: ForgeModule = {
+            name: 'puppetlabs/apache',
+            slug: 'puppetlabs-apache',
+            owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+            current_release: { 
+                version: '8.5.0', 
+                created_at: '2023-01-01', 
+                metadata: { 
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/stdlib',
+                            version_requirement: '>= 4.13.1 < 9.0.0'
+                        },
+                        {
+                            name: 'puppetlabs/concat',
+                            version_requirement: '>= 1.1.1 < 8.0.0'
+                        }
+                    ] 
+                } 
+            },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
+
+        const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
+
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => [
+            {
+                version: '8.5.0',
+                created_at: '2023-01-01',
+                updated_at: '2023-01-02',
+                downloads: 100,
+                file_size: 1,
+                file_md5: '',
+                file_uri: '',
+                metadata: {
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/stdlib',
+                            version_requirement: '>= 4.13.1 < 9.0.0'
+                        },
+                        {
+                            name: 'puppetlabs/concat',
+                            version_requirement: '>= 1.1.1 < 8.0.0'
+                        }
+                    ]
+                }
+            }
+        ];
+
+        try {
+            const mockModule = { name: 'puppetlabs/apache', version: '8.5.0', source: 'forge' as const };
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
+            const markdownText = result.value;
+
+            // Debug output
+            console.log('Generated markdown:', markdownText);
+
+            // Should show dependencies
+            assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies section should be present');
+            assert.ok(markdownText.includes('puppetlabs/stdlib'), 'stdlib dependency should be shown');
+            assert.ok(markdownText.includes('puppetlabs/concat'), 'concat dependency should be shown');
+            assert.ok(markdownText.includes('>= 4.13.1 < 9.0.0'), 'stdlib version requirement should be shown');
+            assert.ok(markdownText.includes('>= 1.1.1 < 8.0.0'), 'concat version requirement should be shown');
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
+    });
 });

@@ -171,8 +171,13 @@ export function activate(context: vscode.ExtensionContext) {
 
         const clearForgeCache = vscode.commands.registerCommand('puppetfile-depgraph.clearForgeCache', () => {
                 PuppetForgeService.clearCache();
-                vscode.window.showInformationMessage('Puppet Forge cache cleared.');
+                vscode.window.showInformationMessage('Puppet Forge cache cleared successfully!');
         });
+
+      	const clearCache = vscode.commands.registerCommand('puppetfile-depgraph.clearCache', () => {
+		PuppetForgeService.clearCache();
+		vscode.window.showInformationMessage('Puppet Forge cache cleared successfully!');
+	});
 
         const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (args: { line: number; version: string }) => {
                 if (!args) {
