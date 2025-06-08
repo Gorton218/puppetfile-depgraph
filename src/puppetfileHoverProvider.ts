@@ -133,14 +133,24 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 }
             }
 
-            // Dependencies for current version
-            let dependencies = forgeModule.current_release?.metadata?.dependencies;
+            // Dependencies for current version specified in Puppetfile
+            let dependencies: Array<{name: string; version_requirement: string}> | undefined;
+            
             if (module.version) {
+                // Get dependencies from the specific version
                 const release = allReleases.find(r => r.version === module.version);
-                if (release?.metadata?.dependencies) {
+                if (release && release.metadata) {
                     dependencies = release.metadata.dependencies;
                 }
-                // If no dependencies found for specific version, fall back to current_release
+                
+                // Only fall back to current_release if the specific version wasn't found in releases
+                // Do NOT fall back if the version exists but has no dependencies
+                if (!release) {
+                    dependencies = forgeModule.current_release?.metadata?.dependencies;
+                }
+            } else {
+                // No version specified, use latest (current_release)
+                dependencies = forgeModule.current_release?.metadata?.dependencies;
             }
 
             if (dependencies && dependencies.length > 0) {
