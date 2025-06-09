@@ -3,8 +3,13 @@ forge 'https://forgeapi.puppet.com'
 
 # Forge modules with versions
 mod 'puppetlabs-stdlib', '9.4.1'
-mod 'puppetlabs-apache', '2.11.0'
-mod 'puppetlabs-mysql', '15.0.0'
+mod 'puppetlabs-apache', '5.7.0'
+mod 'puppetlabs-mysql', '16.2.0'
+# mod 'puppetlabs-mongodb', '0.17.0' # Example of commit
+
+mod 'puppet/foreman'
+    :git => 'https://github.com/theforeman/puppet-foreman.git',
+    :ref => '24.2-stable'
 
 # Forge module without version
 mod 'puppetlabs-nginx'
