@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 export interface PuppetModule {
     name: string;
     version?: string;
+    versionRequirement?: string;
     source: 'forge' | 'git';
     gitUrl?: string;
     gitRef?: string;

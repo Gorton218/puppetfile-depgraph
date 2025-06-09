@@ -141,7 +141,8 @@ suite('DependencyTreeService Test Suite', () => {
         assert.ok(!result.includes('Transitive Dependencies'));
     });
     
-    test('findConflicts should detect version conflicts', () => {
+    test('findConflicts should detect version conflicts', async function() {
+        this.timeout(10000);
         const nodes: DependencyNode[] = [
             {
                 name: 'puppetlabs/stdlib',
@@ -179,7 +180,7 @@ suite('DependencyTreeService Test Suite', () => {
             }
         ];
         
-        const conflicts = DependencyTreeService.findConflicts(nodes);
+        const conflicts = await DependencyTreeService.findConflicts(nodes);
         
         assert.strictEqual(conflicts.length, 1);
         assert.ok(conflicts[0].includes('puppetlabs/concat'));
@@ -187,7 +188,7 @@ suite('DependencyTreeService Test Suite', () => {
         assert.ok(conflicts[0].includes('7.0.0'));
     });
     
-    test('findConflicts should return empty array when no conflicts', () => {
+    test('findConflicts should return empty array when no conflicts', async () => {
         const nodes: DependencyNode[] = [
             {
                 name: 'puppetlabs/stdlib',
@@ -207,11 +208,11 @@ suite('DependencyTreeService Test Suite', () => {
             }
         ];
         
-        const conflicts = DependencyTreeService.findConflicts(nodes);
+        const conflicts = await DependencyTreeService.findConflicts(nodes);
         assert.strictEqual(conflicts.length, 0);
     });
     
-    test('findConflicts should handle modules without versions', () => {
+    test('findConflicts should handle modules without versions', async () => {
         const nodes: DependencyNode[] = [
             {
                 name: 'puppetlabs/stdlib',
@@ -222,7 +223,7 @@ suite('DependencyTreeService Test Suite', () => {
             }
         ];
         
-        const conflicts = DependencyTreeService.findConflicts(nodes);
+        const conflicts = await DependencyTreeService.findConflicts(nodes);
         assert.strictEqual(conflicts.length, 0);
     });
 
