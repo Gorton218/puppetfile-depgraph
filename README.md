@@ -129,7 +129,7 @@ The extension works out of the box with no configuration required. It automatica
 2. Install dependencies: `npm install`
 3. Compile: `npm run compile`
 4. Run tests: `npm test`
-5. Package: `vsce package`
+5. Package: `npm run package`
 
 ### Testing
 
