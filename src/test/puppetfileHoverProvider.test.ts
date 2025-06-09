@@ -161,8 +161,9 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         PuppetForgeService.getModule = async () => mockForgeModule;
         PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
         PuppetForgeService.getModuleReleases = async () => [
-            { version: '1.1.0', created_at: '2023-01-10', updated_at: '2023-01-11', downloads: 10, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } },
             { version: '1.2.0', created_at: '2023-02-10', updated_at: '2023-02-11', downloads: 20, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } },
+            { version: '1.1.0', created_at: '2023-01-10', updated_at: '2023-01-11', downloads: 10, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } },
+            { version: '1.0.0', created_at: '2023-01-01', updated_at: '2023-01-02', downloads: 5, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } },
         ];
 
         try {
@@ -174,9 +175,11 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const link1 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify({ line: 10, version: '1.1.0' }))}`;
             const link2 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify({ line: 10, version: '1.2.0' }))}`;
 
-            assert.ok(markdownText.includes('**Available Versions:**'), 'Should show available versions');
+            assert.ok(markdownText.includes('**Available Updates:**'), 'Should show available updates');
             assert.ok(markdownText.includes(link1), 'Should include link for 1.1.0');
             assert.ok(markdownText.includes(link2), 'Should include link for 1.2.0');
+            assert.ok(!markdownText.includes('**`1.0.0`**'), 'Current version should not appear in updates list');
+            assert.ok(!markdownText.includes(' • '), 'Versions should not be separated by bullets');
         } finally {
             PuppetForgeService.getModule = originalGetModule;
             PuppetForgeService.checkForUpdate = originalCheckForUpdate;
@@ -497,6 +500,79 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             assert.ok(!markdownText.includes('>= 9.0.0 < 10.0.0'), 'latest stdlib version requirement should NOT be shown');
             assert.ok(!markdownText.includes('>= 5.0.0 < 6.0.0'), 'latest systemd version requirement should NOT be shown');
 
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
+    });
+
+    test('getModuleInfo should display versions in rows of 5', async () => {
+        const provider = new PuppetfileHoverProvider();
+
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
+
+        const mockForgeModule: ForgeModule = {
+            name: 'test/module',
+            slug: 'test-module',
+            owner: { username: 'test', slug: 'test' },
+            current_release: { version: '7.0.0', created_at: '2023-07-01', metadata: { dependencies: [] } },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
+
+        const mockUpdateInfo = { latestVersion: '7.0.0', hasUpdate: true };
+
+        // Create many versions to test row splitting
+        const mockReleases: any[] = [];
+        for (let i = 7; i >= 1; i--) {
+            for (let j = 0; j < 3; j++) {
+                mockReleases.push({
+                    version: `${i}.${j}.0`,
+                    created_at: `2023-0${i}-01`,
+                    updated_at: `2023-0${i}-02`,
+                    downloads: 10 * i,
+                    file_size: 1,
+                    file_md5: '',
+                    file_uri: '',
+                    metadata: { dependencies: [] }
+                });
+            }
+        }
+
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+        try {
+            const mockModule = { name: 'test/module', version: '3.0.0', source: 'forge' as const, line: 10 };
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
+            const markdownText = result.value;
+
+            // Check that updates are displayed (only newer versions than 3.0.0)
+            assert.ok(markdownText.includes('**Available Updates:**'), 'Should show available updates');
+            
+            // Check that current version (3.0.0) is not shown in updates
+            assert.ok(!markdownText.includes('**`3.0.0`**'), 'Current version should not appear in updates');
+            
+            // Check that versions are not separated by bullets
+            assert.ok(!markdownText.includes(' • '), 'Versions should not be separated by bullets');
+            
+            // Check that multiple rows exist (should have newlines between rows)
+            const versionSection = markdownText.substring(
+                markdownText.indexOf('**Available Updates:**'),
+                markdownText.indexOf('**Dependencies:**') || markdownText.indexOf('[View on Puppet Forge]')
+            );
+            const lines = versionSection.split('\n').filter((line: string) => line.includes('`'));
+            assert.ok(lines.length > 1, 'Should have multiple rows of versions');
+            
+            // Check that first row has 5 versions max
+            const firstRow = lines[0];
+            const versionCount = (firstRow.match(/`[^`]+`/g) || []).length;
+            assert.ok(versionCount <= 5, 'First row should have max 5 versions');
         } finally {
             PuppetForgeService.getModule = originalGetModule;
             PuppetForgeService.checkForUpdate = originalCheckForUpdate;

@@ -120,14 +120,46 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 }
             }
 
-            // Show upgrade options
+            // Show only newer versions if a version is specified
             if (module.version) {
-                const newer = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
-                if (newer.length > 0) {
+                const newerVersions = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
+                if (newerVersions.length > 0) {
+                    markdown.appendMarkdown(`**Available Updates:**\n`);
+                    
+                    // Group versions into rows of 5
+                    const versionsPerRow = 5;
+                    for (let i = 0; i < newerVersions.length; i += versionsPerRow) {
+                        const rowVersions = newerVersions.slice(i, i + versionsPerRow);
+                        
+                        // Create clickable version links without dots
+                        const versionLinks = rowVersions.map(rel => {
+                            const args = JSON.stringify({ line: module.line, version: rel.version });
+                            const encodedArgs = encodeURIComponent(args);
+                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodedArgs} "Update to version ${rel.version}")`;
+                        });
+                        
+                        markdown.appendMarkdown(versionLinks.join('  ') + '\n');
+                    }
+                    markdown.appendMarkdown('\n');
+                }
+            } else {
+                // No version specified, show all versions
+                if (allReleases.length > 0) {
                     markdown.appendMarkdown(`**Available Versions:**\n`);
-                    for (const rel of newer) {
-                        const args = encodeURIComponent(JSON.stringify({ line: module.line, version: rel.version }));
-                        markdown.appendMarkdown(`- [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${args})\n`);
+                    
+                    // Group versions into rows of 5
+                    const versionsPerRow = 5;
+                    for (let i = 0; i < allReleases.length; i += versionsPerRow) {
+                        const rowVersions = allReleases.slice(i, i + versionsPerRow);
+                        
+                        // Create clickable version links without dots
+                        const versionLinks = rowVersions.map(rel => {
+                            const args = JSON.stringify({ line: module.line, version: rel.version });
+                            const encodedArgs = encodeURIComponent(args);
+                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodedArgs} "Update to version ${rel.version}")`;
+                        });
+                        
+                        markdown.appendMarkdown(versionLinks.join('  ') + '\n');
                     }
                     markdown.appendMarkdown('\n');
                 }
