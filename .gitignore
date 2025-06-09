@@ -60,3 +60,16 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Claude AI development files
+claude-temp/
+.claude/
+claude-notes.*
+claude-debug.*
+claude-test.*
+claude-scratch.*
+
+# Development workspace temporary files
+dev-temp/
+workspace-temp/
+scratch/

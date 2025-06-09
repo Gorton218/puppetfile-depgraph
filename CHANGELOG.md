@@ -2,6 +2,52 @@
 
 All notable changes to the "puppetfile-depgraph" extension will be documented in this file.
 
+## [Unreleased]
+### Added
+- **Cache All Modules**: New context menu command "Cache info for all modules"
+  - Pre-caches information for all Puppet Forge modules in the Puppetfile
+  - Progress bar with cancellation support
+  - Processes modules in batches to respect API rate limits
+  - Significantly improves hover performance after caching
+  - Graceful error handling for individual module failures
+
+### Fixed
+- **Line Number Bug**: Fixed issue where clicking version links always updated line 1
+  - Hover provider now correctly preserves the actual line number from cursor position
+  - Version update commands now target the correct module line
+- **Extra Newline Bug**: Fixed issue where updating module versions added unwanted newlines
+  - Now uses VS Code's document API for proper line boundary handling
+  - Eliminates formatting issues during version updates
+- **Clickable Version Links**: Fixed non-functional version links in hover menu
+  - Updated command URI format to work with VS Code's markdown rendering
+  - Added proper command argument handling and user feedback
+  - Enhanced error handling with informative success/failure messages
+
+### Enhanced
+- **Improved Hover Menu**: Better version display and interaction
+  - Versions now displayed in rows of up to 5 for better readability
+  - Only shows newer versions when a specific version is pinned
+  - Removed bullet separators between versions for cleaner appearance
+  - Added descriptive tooltips for version links
+- **Two-Level Caching**: Restructured caching system for better performance
+  - Cache structure: MODULE_NAME -> MODULE_VERSION -> VERSION_DATA
+  - Uses Puppet Forge releases API for comprehensive version information
+  - More efficient cache utilization and lookup
+- **Enhanced Command Registration**: Improved command handling and validation
+  - Better argument parsing for command URIs
+  - Comprehensive error handling with user-friendly messages
+  - Added logging for debugging command execution
+
+### Technical Improvements
+- **Testing**: Expanded test suite to 48 tests
+  - Added tests for line number preservation
+  - Enhanced hover provider test coverage
+  - Command registration validation
+- **Code Quality**: Improved error handling and user experience
+  - Better progress reporting and cancellation support
+  - More robust API integration with proper timeout handling
+  - Enhanced documentation and code comments
+
 ## [0.0.2] - 2025-06-08
 ### Added
 - Hover window now lists all newer versions with clickable links to update the Puppetfile.
