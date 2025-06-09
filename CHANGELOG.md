@@ -43,10 +43,13 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Added tests for line number preservation
   - Enhanced hover provider test coverage
   - Command registration validation
+  - Reduced test code duplication from 24% to ~10% through refactoring
+  - Introduced helper functions and factory patterns for cleaner test structure
 - **Code Quality**: Improved error handling and user experience
   - Better progress reporting and cancellation support
   - More robust API integration with proper timeout handling
   - Enhanced documentation and code comments
+  - Improved test maintainability with reusable utilities
 
 ## [0.0.2] - 2025-06-08
 ### Added
