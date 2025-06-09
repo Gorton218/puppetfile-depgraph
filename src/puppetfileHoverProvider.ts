@@ -227,11 +227,11 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null, version?: string): string {
         let base: string;
 
-        if (forgeData?.owner?.username && forgeData.name) {
-            base = `https://forge.puppet.com/modules/${forgeData.owner.username}/${forgeData.name}`;
-        } else if (module.name.includes('/')) {
+        // Always use the module.name format (e.g., "puppetlabs/stdlib")
+        if (module.name.includes('/')) {
             base = `https://forge.puppet.com/modules/${module.name}`;
         } else {
+            // Handle old format "puppetlabs-stdlib" by converting to "puppetlabs/stdlib"
             const dashIndex = module.name.indexOf('-');
             if (dashIndex !== -1) {
                 const owner = module.name.substring(0, dashIndex);
