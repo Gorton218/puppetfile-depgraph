@@ -171,6 +171,79 @@ suite('VersionParser Test Suite', () => {
       assert.strictEqual(range.min?.inclusive, true);
       assert.strictEqual(range.max, undefined);
     });
+
+    // Test cases for the exact version intersection bug fix
+    test('should reject exact version that violates upper bound', () => {
+      const requirements: VersionRequirement[] = [
+        { operator: '>=', version: '4.13.1' },
+        { operator: '<', version: '7.0.0' },
+        { operator: '=', version: '9.4.1' }
+      ];
+      
+      const range = VersionParser.intersect(requirements);
+      assert.strictEqual(range, null, 'Should return null when exact version violates upper bound');
+    });
+    
+    test('should reject exact version that violates lower bound', () => {
+      const requirements: VersionRequirement[] = [
+        { operator: '>=', version: '4.13.1' },
+        { operator: '<', version: '7.0.0' },
+        { operator: '=', version: '3.0.0' }
+      ];
+      
+      const range = VersionParser.intersect(requirements);
+      assert.strictEqual(range, null, 'Should return null when exact version violates lower bound');
+    });
+    
+    test('should accept exact version within bounds', () => {
+      const requirements: VersionRequirement[] = [
+        { operator: '>=', version: '4.13.1' },
+        { operator: '<', version: '7.0.0' },
+        { operator: '=', version: '5.0.0' }
+      ];
+      
+      const range = VersionParser.intersect(requirements);
+      assert.ok(range, 'Should return valid range when exact version is within bounds');
+      assert.strictEqual(range.min?.version, '5.0.0');
+      assert.strictEqual(range.max?.version, '5.0.0');
+      assert.strictEqual(range.min?.inclusive, true);
+      assert.strictEqual(range.max?.inclusive, true);
+    });
+    
+    test('should accept exact version at inclusive lower boundary', () => {
+      const requirements: VersionRequirement[] = [
+        { operator: '>=', version: '4.13.1' },
+        { operator: '<', version: '7.0.0' },
+        { operator: '=', version: '4.13.1' }
+      ];
+      
+      const range = VersionParser.intersect(requirements);
+      assert.ok(range, 'Should accept exact version at inclusive lower boundary');
+      assert.strictEqual(range.min?.version, '4.13.1');
+      assert.strictEqual(range.max?.version, '4.13.1');
+    });
+    
+    test('should reject exact version at exclusive upper boundary', () => {
+      const requirements: VersionRequirement[] = [
+        { operator: '>=', version: '4.13.1' },
+        { operator: '<', version: '7.0.0' },
+        { operator: '=', version: '7.0.0' }
+      ];
+      
+      const range = VersionParser.intersect(requirements);
+      assert.strictEqual(range, null, 'Should reject exact version at exclusive upper boundary');
+    });
+    
+    test('should reject exact version at exclusive lower boundary', () => {
+      const requirements: VersionRequirement[] = [
+        { operator: '>', version: '4.13.1' },
+        { operator: '<', version: '7.0.0' },
+        { operator: '=', version: '4.13.1' }
+      ];
+      
+      const range = VersionParser.intersect(requirements);
+      assert.strictEqual(range, null, 'Should reject exact version at exclusive lower boundary');
+    });
   });
   
   suite('findSatisfyingVersions()', () => {

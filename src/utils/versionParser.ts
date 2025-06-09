@@ -120,7 +120,21 @@ export class VersionParser {
           }
           break;
         case '=':
-          // Exact version must be within range
+          // Exact version must be within existing range constraints
+          // First check if the exact version violates existing constraints
+          if (range.min) {
+            const minCmp = this.compareVersions(req.version, range.min.version);
+            if (minCmp < 0 || (minCmp === 0 && !range.min.inclusive)) {
+              return null; // Exact version violates minimum constraint
+            }
+          }
+          if (range.max) {
+            const maxCmp = this.compareVersions(req.version, range.max.version);
+            if (maxCmp > 0 || (maxCmp === 0 && !range.max.inclusive)) {
+              return null; // Exact version violates maximum constraint
+            }
+          }
+          // If we get here, the exact version is valid - set it as the only acceptable version
           range.min = { version: req.version, inclusive: true };
           range.max = { version: req.version, inclusive: true };
           break;

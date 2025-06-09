@@ -17,11 +17,13 @@ suite('DependencyTreeService Test Suite', () => {
                         source: 'forge',
                         children: [],
                         depth: 1,
-                        isDirectDependency: false
+                        isDirectDependency: false,
+                        displayVersion: '7.0.0'
                     }
                 ],
                 depth: 0,
-                isDirectDependency: true
+                isDirectDependency: true,
+                displayVersion: '8.5.0'
             },
             {
                 name: 'puppetlabs/firewall',
@@ -29,7 +31,8 @@ suite('DependencyTreeService Test Suite', () => {
                 source: 'forge',
                 children: [],
                 depth: 0,
-                isDirectDependency: true
+                isDirectDependency: true,
+                displayVersion: '3.4.0'
             }
         ];
         
@@ -52,7 +55,8 @@ suite('DependencyTreeService Test Suite', () => {
                 source: 'forge',
                 children: [],
                 depth: 0,
-                isDirectDependency: true
+                isDirectDependency: true,
+                displayVersion: undefined
             }
         ];
         
@@ -70,7 +74,8 @@ suite('DependencyTreeService Test Suite', () => {
                 children: [],
                 depth: 0,
                 isDirectDependency: true,
-                gitUrl: 'https://github.com/user/module.git'
+                gitUrl: 'https://github.com/user/module.git',
+                displayVersion: 'master'
             }
         ];
         
@@ -142,6 +147,9 @@ suite('DependencyTreeService Test Suite', () => {
     });
     
     test('findConflicts should detect version conflicts', () => {
+        // Reset the dependency graph to ensure clean state
+        DependencyTreeService.resetDependencyGraph();
+        
         // Note: The new implementation only reports real conflicts when 
         // no version can satisfy all requirements. Since the tree nodes 
         // don't include version requirements, and the dependency graph 
@@ -192,6 +200,9 @@ suite('DependencyTreeService Test Suite', () => {
     });
     
     test('findConflicts should return empty array when no conflicts', () => {
+        // Reset the dependency graph to ensure clean state
+        DependencyTreeService.resetDependencyGraph();
+        
         const nodes: DependencyNode[] = [
             {
                 name: 'puppetlabs/stdlib',
@@ -216,6 +227,9 @@ suite('DependencyTreeService Test Suite', () => {
     });
     
     test('findConflicts should handle modules without versions', () => {
+        // Reset the dependency graph to ensure clean state
+        DependencyTreeService.resetDependencyGraph();
+        
         const nodes: DependencyNode[] = [
             {
                 name: 'puppetlabs/stdlib',

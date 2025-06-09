@@ -139,7 +139,7 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
     
     // Should report a conflict for concat module
     assert.ok(conflicts.length > 0, 'Should report conflicts when no version satisfies all requirements');
-    assert.ok(conflicts.some(c => c.includes('No version of puppetlabs/concat satisfies all requirements')));
+    assert.ok(conflicts.some(c => c.includes('No version of puppetlabs-concat satisfies all requirements')));
   });
   
   test('should handle exact version constraints from Puppetfile', async () => {
@@ -183,7 +183,7 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
     
     // Should report conflict because Puppetfile requires exact version 8.6.0 but mymodule needs >= 9.0.0
     assert.ok(conflicts.length > 0, 'Should report conflict between exact version and requirement');
-    assert.ok(conflicts.some(c => c.includes('puppetlabs/stdlib')));
+    assert.ok(conflicts.some(c => c.includes('puppetlabs-stdlib')));
   });
   
   test('should provide suggested fixes for conflicts', async () => {

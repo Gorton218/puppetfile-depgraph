@@ -19,6 +19,8 @@ export interface DependencyNode {
     gitTag?: string;
     versionRequirement?: string; // The original version requirement string
     conflict?: DependencyConflict; // Conflict information if any
+    displayVersion?: string; // What to display (version for direct deps, constraint for transitive)
+    isConstraintViolated?: boolean; // Whether the current Puppetfile version violates this constraint
 }
 
 /**
@@ -29,6 +31,8 @@ export class DependencyTreeService {
     private static visitedModules = new Set<string>();
     private static dependencyGraph: DependencyGraph = {};
     private static currentPath: string[] = [];
+    private static directDependencies = new Map<string, string>();
+
 
     /**
      * Build a dependency tree from parsed Puppetfile modules
@@ -39,20 +43,25 @@ export class DependencyTreeService {
         this.visitedModules.clear();
         this.dependencyGraph = {};
         this.currentPath = [];
+        this.directDependencies.clear();
         const rootNodes: DependencyNode[] = [];
 
-        // First pass: build the tree and collect requirements
+        // Store direct dependencies for reference
         for (const module of modules) {
-            // For direct dependencies, add them to the dependency graph with their version constraints
             if (module.version && module.source === 'forge') {
-                this.addRequirement(module.name, {
+                const normalizedName = this.normalizeModuleName(module.name);
+                this.directDependencies.set(normalizedName, module.version);
+                this.addRequirement(normalizedName, {
                     constraint: `= ${module.version}`,
                     imposedBy: 'Puppetfile',
                     path: [module.name],
                     isDirectDependency: true
                 });
             }
-            
+        }
+
+        // First pass: build the tree and collect requirements
+        for (const module of modules) {
             const node = await this.buildNodeTree(module, 0, true);
             if (node) {
                 rootNodes.push(node);
@@ -113,7 +122,8 @@ export class DependencyTreeService {
 
         // Collect requirement information
         if (imposedBy && versionRequirement) {
-            this.addRequirement(module.name, {
+            const normalizedName = this.normalizeModuleName(module.name);
+            this.addRequirement(normalizedName, {
                 constraint: versionRequirement,
                 imposedBy,
                 path: [...this.currentPath],
@@ -121,9 +131,14 @@ export class DependencyTreeService {
             });
         }
 
+        // Determine how to display this dependency
+        const resolvedVersion = this.getResolvedVersion(this.normalizeModuleName(module.name));
+        const displayVersion = this.determineDisplayVersion(module, versionRequirement, resolvedVersion, isDirectDependency);
+        const isConstraintViolated = this.checkConstraintViolation(resolvedVersion, versionRequirement);
+        
         const node: DependencyNode = {
             name: module.name,
-            version: module.version,
+            version: module.version || resolvedVersion,
             source: module.source,
             children: [],
             depth,
@@ -132,7 +147,9 @@ export class DependencyTreeService {
             gitRef: module.gitRef,
             gitTag: module.gitTag,
             versionRequirement,
-            conflict: circularConflict || undefined
+            conflict: circularConflict || undefined,
+            displayVersion,
+            isConstraintViolated
         };
 
         // Only fetch dependencies for Forge modules
@@ -141,9 +158,12 @@ export class DependencyTreeService {
                 const forgeModule = await PuppetForgeService.getModule(module.name);
                 if (forgeModule?.current_release?.metadata?.dependencies) {
                     for (const dep of forgeModule.current_release.metadata.dependencies) {
+                        const normalizedDepName = this.normalizeModuleName(dep.name);
+                        
+                        // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
                         const childModule: PuppetModule = {
-                            name: dep.name,
-                            version: this.extractVersionFromRequirement(dep.version_requirement),
+                            name: normalizedDepName,
+                            version: undefined, // Will be set in buildNodeTree based on context
                             source: 'forge',
                             line: -1 // Not from a file line
                         };
@@ -207,11 +227,17 @@ export class DependencyTreeService {
      */
     private static generateNodeText(node: DependencyNode, prefix: string, isLast: boolean): string {
         const connector = isLast ? '└── ' : '├── ';
-        const versionText = node.version ? ` (${node.version})` : '';
+        // Use displayVersion for better UX, showing constraints for transitive deps
+        const versionText = node.displayVersion ? ` (${node.displayVersion})` : '';
         const sourceText = node.source === 'git' ? ' [git]' : ' [forge]';
         
-        // Add conflict indicator if present
-        const conflictText = node.conflict ? ' ❌' : '';
+        // Add conflict indicators
+        let conflictText = '';
+        if (node.conflict) {
+            conflictText += ' ❌';
+        } else if (node.isConstraintViolated) {
+            conflictText += ' ⚠️';
+        }
         
         let result = `${prefix}${connector}${node.name}${versionText}${sourceText}${conflictText}\n`;
 
@@ -228,6 +254,10 @@ export class DependencyTreeService {
                     result += `${detailPrefix}  💡 ${fix.reason}\n`;
                 }
             }
+        } else if (node.isConstraintViolated && node.versionRequirement && node.version) {
+            // Show constraint violation details
+            const detailPrefix = prefix + (isLast ? '    ' : '│   ');
+            result += `${detailPrefix}Constraint violation: requires ${node.versionRequirement}, but Puppetfile has ${node.version}\n`;
         }
 
         // Add children
@@ -310,6 +340,22 @@ export class DependencyTreeService {
     }
 
     /**
+     * Normalize module names to ensure consistency between Puppetfile format and Forge API format
+     * Converts both "puppetlabs/stdlib" and "puppetlabs-stdlib" to "puppetlabs-stdlib"
+     */
+    private static normalizeModuleName(moduleName: string): string {
+        return moduleName.replace('/', '-');
+    }
+
+    /**
+     * Get the resolved version for a module (from Puppetfile direct dependencies)
+     */
+    private static getResolvedVersion(moduleName: string): string | undefined {
+        return this.directDependencies.get(moduleName);
+    }
+
+
+    /**
      * Add a requirement to the dependency graph
      */
     private static addRequirement(moduleName: string, requirement: Requirement): void {
@@ -329,8 +375,12 @@ export class DependencyTreeService {
             if (info.requirements.length === 0) {continue;}
 
             try {
-                // Get available versions from Forge
-                const forgeModule = await PuppetForgeService.getModule(moduleName);
+                // Get available versions from Forge - use original name format for API call
+                // Convert back to slash format for API if it looks like an org/module pair
+                const apiModuleName = moduleName.includes('-') && moduleName.split('-').length === 2 
+                    ? moduleName.replace('-', '/') 
+                    : moduleName;
+                const forgeModule = await PuppetForgeService.getModule(apiModuleName);
                 const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
 
                 // Analyze for conflicts
@@ -355,7 +405,8 @@ export class DependencyTreeService {
      */
     private static annotateNodesWithConflicts(nodes: DependencyNode[]): void {
         const annotate = (node: DependencyNode) => {
-            const info = this.dependencyGraph[node.name];
+            const normalizedName = this.normalizeModuleName(node.name);
+            const info = this.dependencyGraph[normalizedName];
             if (info?.conflict) {
                 node.conflict = info.conflict;
             }
@@ -379,6 +430,8 @@ export class DependencyTreeService {
         const conflicts: string[] = [];
 
         // Use the dependency graph to report real conflicts
+        // Note: This method should typically be called after buildDependencyTree()
+        // If called independently, the dependency graph may be empty or stale
         for (const [moduleName, info] of Object.entries(this.dependencyGraph)) {
             if (info.conflict) {
                 conflicts.push(info.conflict.details);
@@ -393,5 +446,65 @@ export class DependencyTreeService {
         }
 
         return conflicts;
+    }
+
+    /**
+     * Determine how to display the version for a dependency node
+     */
+    private static determineDisplayVersion(
+        module: PuppetModule, 
+        versionRequirement?: string, 
+        resolvedVersion?: string,
+        isDirectDependency: boolean = false
+    ): string | undefined {
+        // For direct dependencies, always show the actual version
+        if (isDirectDependency && module.version) {
+            return module.version;
+        }
+        
+        // For Git dependencies, show ref/tag info
+        if (module.source === 'git') {
+            if (module.gitTag) { return `tag: ${module.gitTag}`; }
+            if (module.gitRef) { return `ref: ${module.gitRef}`; }
+            return 'git';
+        }
+        
+        // For transitive dependencies, show constraint requirement
+        if (versionRequirement && !isDirectDependency) {
+            if (resolvedVersion) {
+                // Show both constraint and resolved version with conflict indicator
+                return `requires ${versionRequirement}, resolved: ${resolvedVersion}`;
+            } else {
+                return `requires ${versionRequirement}`;
+            }
+        }
+        
+        // Fall back to resolved version or extracted version
+        return resolvedVersion || (versionRequirement ? this.extractVersionFromRequirement(versionRequirement) : undefined);
+    }
+
+    /**
+     * Check if a resolved version violates a constraint requirement
+     */
+    private static checkConstraintViolation(resolvedVersion?: string, versionRequirement?: string): boolean {
+        if (!resolvedVersion || !versionRequirement) {
+            return false;
+        }
+        
+        try {
+            const requirements = VersionParser.parse(versionRequirement);
+            return !VersionParser.satisfiesAll(resolvedVersion, requirements);
+        } catch (error) {
+            // If we can't parse, assume no violation
+            return false;
+        }
+    }
+
+    /**
+     * Reset the dependency graph (useful for testing)
+     */
+    public static resetDependencyGraph(): void {
+        this.dependencyGraph = {};
+        this.directDependencies.clear();
     }
 }
