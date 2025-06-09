@@ -40,6 +40,11 @@ jobs:
     - name: Run tests
       run: npm test
 
+    - name: Test VSIX packaging
+      run: |
+        npm install -g @vscode/vsce
+        vsce package
+
     - name: Upload test results
       uses: actions/upload-artifact@v4
       if: failure()
@@ -49,3 +54,10 @@ jobs:
           test-results.xml
           coverage/
         retention-days: 30
+
+    - name: Upload VSIX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vsix-test-build
+        path: '*.vsix'
+        retention-days: 7

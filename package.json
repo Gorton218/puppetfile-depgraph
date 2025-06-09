@@ -3,6 +3,26 @@
   "displayName": "Puppetfile Dependency Manager",
   "description": "A VS Code extension for managing Puppet module dependencies with visual dependency analysis and safe update recommendations",
   "version": "0.0.2",
+  "publisher": "puppetfile-depgraph",
+  "author": {
+    "name": "Puppetfile Dependency Manager Team"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/puppetfile-depgraph.git"
+  },
+  "bugs": {
+    "url": "https://github.com/username/puppetfile-depgraph/issues"
+  },
+  "homepage": "https://github.com/username/puppetfile-depgraph#readme",
+  "keywords": [
+    "puppet",
+    "puppetfile",
+    "dependency",
+    "module",
+    "forge",
+    "devops"
+  ],
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -84,7 +104,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./scripts/runTests.js"
+    "test": "node ./scripts/runTests.js",
+    "package": "vsce package",
+    "release": "npm run test && npm run package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -94,6 +116,7 @@
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.0.0",
     "eslint": "^9.25.1",
     "typescript": "^5.8.3"
   },
