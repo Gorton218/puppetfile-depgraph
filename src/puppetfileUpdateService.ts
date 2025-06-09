@@ -147,7 +147,6 @@ export class PuppetfileUpdateService {
         }
 
         const document = editor.document;
-        const lines = document.getText().split('\n');
 
         // Sort updates by line number in descending order to avoid line number shifts
         const sortedUpdates = updates
@@ -163,16 +162,14 @@ export class PuppetfileUpdateService {
 
         for (const update of sortedUpdates) {
             const lineIndex = update.line - 1; // Convert to 0-based index
-            if (lineIndex >= 0 && lineIndex < lines.length) {
-                const originalLine = lines[lineIndex];
+            if (lineIndex >= 0 && lineIndex < document.lineCount) {
+                // Use VS Code's document API to get the line text and range
+                const lineTextRange = document.lineAt(lineIndex);
+                const originalLine = lineTextRange.text;
                 const updatedLine = this.updateVersionInLine(originalLine, update.newVersion!);
                 
                 if (updatedLine !== originalLine) {
-                    const range = new vscode.Range(
-                        new vscode.Position(lineIndex, 0),
-                        new vscode.Position(lineIndex, originalLine.length)
-                    );
-                    workspaceEdit.replace(document.uri, range, updatedLine);
+                    workspaceEdit.replace(document.uri, lineTextRange.range, updatedLine);
                 }
             }
         }
@@ -225,24 +222,23 @@ export class PuppetfileUpdateService {
         }
 
         const document = editor.document;
-        const lines = document.getText().split('\n');
         const lineIndex = lineNumber - 1;
-        if (lineIndex < 0 || lineIndex >= lines.length) {
+        if (lineIndex < 0 || lineIndex >= document.lineCount) {
             return;
         }
 
-        const originalLine = lines[lineIndex];
+        // Use VS Code's document API to get the line text
+        const lineTextRange = document.lineAt(lineIndex);
+        const originalLine = lineTextRange.text;
         const updatedLine = this.updateVersionInLine(originalLine, newVersion);
+        
         if (updatedLine === originalLine) {
             return;
         }
 
-        const range = new vscode.Range(
-            new vscode.Position(lineIndex, 0),
-            new vscode.Position(lineIndex, originalLine.length)
-        );
+        // Use the line's range, which correctly handles the line boundaries
         await editor.edit(edit => {
-            edit.replace(range, updatedLine);
+            edit.replace(lineTextRange.range, updatedLine);
         });
     }
 
