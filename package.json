@@ -51,6 +51,11 @@
         "command": "puppetfile-depgraph.updateModuleVersion",
         "title": "Update module to specific version",
         "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.cacheAllModules",
+        "title": "Cache info for all modules",
+        "category": "Puppetfile"
       }
     ],
     "menus": {
@@ -63,6 +68,11 @@
         {
           "when": "resourceFilename == Puppetfile",
           "command": "puppetfile-depgraph.clearForgeCache",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceFilename == Puppetfile",
+          "command": "puppetfile-depgraph.cacheAllModules",
           "group": "navigation"
         }
       ]

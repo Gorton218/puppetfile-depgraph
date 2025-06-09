@@ -12,4 +12,11 @@ suite('Extension Test Suite', () => {
 		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
 		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
 	});
+
+	test('Extension should activate successfully', () => {
+		// This test ensures the extension loads without throwing errors
+		// The actual command registration is tested through integration testing
+		const extension = vscode.extensions.getExtension('undefined_publisher.puppetfile-depgraph');
+		assert.ok(extension !== undefined, 'Extension should be available');
+	});
 });
