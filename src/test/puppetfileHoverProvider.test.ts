@@ -75,21 +75,28 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         assert.ok(typeof provider.provideHover === 'function');
     });
 
-    // Data-driven tests for isPuppetfile functionality
-    const isPuppetfileTestCases = [
-        { name: 'detect Puppetfile by filename', fileName: '/path/to/Puppetfile', languageId: 'plaintext', expected: true },
-        { name: 'detect Puppetfile by language', fileName: '/path/to/somefile', languageId: 'puppetfile', expected: true },
-        { name: 'reject non-Puppetfile files', fileName: '/path/to/somefile.txt', languageId: 'plaintext', expected: false }
-    ];
+    test('isPuppetfile should detect Puppetfile by filename', () => {
+        const provider = createProvider();
+        const isPuppetfile = (provider as any).isPuppetfile;
+        const mockDocument = createMockDocument('/path/to/Puppetfile', 'plaintext');
+        
+        assert.strictEqual(isPuppetfile.call(provider, mockDocument), true);
+    });
 
-    isPuppetfileTestCases.forEach(({ name, fileName, languageId, expected }) => {
-        test(`isPuppetfile should ${name}`, () => {
-            const provider = createProvider();
-            const isPuppetfile = (provider as any).isPuppetfile;
-            const mockDocument = createMockDocument(fileName, languageId);
-            
-            assert.strictEqual(isPuppetfile.call(provider, mockDocument), expected);
-        });
+    test('isPuppetfile should detect Puppetfile by language', () => {
+        const provider = createProvider();
+        const isPuppetfile = (provider as any).isPuppetfile;
+        const mockDocument = createMockDocument('/path/to/somefile', 'puppetfile');
+        
+        assert.strictEqual(isPuppetfile.call(provider, mockDocument), true);
+    });
+
+    test('isPuppetfile should reject non-Puppetfile files', () => {
+        const provider = createProvider();
+        const isPuppetfile = (provider as any).isPuppetfile;
+        const mockDocument = createMockDocument('/path/to/somefile.txt', 'plaintext');
+        
+        assert.strictEqual(isPuppetfile.call(provider, mockDocument), false);
     });
 
     test('getModuleInfo should not include Owner, Downloads, or Quality Score fields', async () => {
@@ -216,60 +223,159 @@ suite('PuppetfileHoverProvider Test Suite', () => {
     });
 
     test('getModuleInfo should fallback to current_release when version not found in releases', async () => {
-        await withServiceMocks(async () => {
-            const provider = createProvider();
-            const deps = [{ name: 'puppetlabs/concat', version_requirement: '>= 1.0.0' }];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/stdlib', '8.5.0', deps);
-            const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: true };
-            
-            // Mock releases that don't include the version we're looking for
-            const mockReleases = [createMockRelease('8.5.0', [])];
+        const provider = new PuppetfileHoverProvider();
 
-            PuppetForgeService.getModule = async () => mockForgeModule;
-            PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
-            PuppetForgeService.getModuleReleases = async () => mockReleases;
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
 
+        const mockForgeModule: ForgeModule = {
+            name: 'puppetlabs/stdlib',
+            slug: 'puppetlabs-stdlib',
+            owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+            current_release: { 
+                version: '8.5.0', 
+                created_at: '2023-01-01', 
+                metadata: { 
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/concat',
+                            version_requirement: '>= 1.0.0'
+                        }
+                    ] 
+                } 
+            },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
+
+        const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: true };
+
+        // Mock releases that don't include the version we're looking for
+        const mockReleases = [
+            { 
+                version: '8.5.0', 
+                created_at: '2023-01-01', 
+                updated_at: '2023-01-02', 
+                downloads: 10, 
+                file_size: 1, 
+                file_md5: '', 
+                file_uri: '', 
+                metadata: { dependencies: [] }
+            }
+        ];
+
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+        try {
             // Using a version that's not in the releases list
             const mockModule = { name: 'puppetlabs/stdlib', version: '7.0.0', source: 'forge' as const };
-            const result = await callGetModuleInfo(provider, mockModule);
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
             const markdownText = result.value;
 
             // Should show dependencies from current_release as fallback
             assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies field should be present');
             assert.ok(markdownText.includes('puppetlabs/concat'), 'Fallback dependency should be shown');
             assert.ok(markdownText.includes('>= 1.0.0'), 'Version requirement should be shown');
-        });
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
     });
 
     test('getModuleInfo should show dependencies for specific version when different from latest', async () => {
-        await withServiceMocks(async () => {
-            const provider = createProvider();
-            
-            // Mock module where current_release (latest) has different dependencies than older version
-            const latestDeps = [
-                { name: 'puppetlabs/stdlib', version_requirement: '>= 9.0.0 < 10.0.0' },
-                { name: 'puppetlabs/systemd', version_requirement: '>= 5.0.0 < 6.0.0' }
-            ];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/apache', '11.1.0', latestDeps);
-            const mockUpdateInfo = { latestVersion: '11.1.0', hasUpdate: true };
+        const provider = new PuppetfileHoverProvider();
 
-            // Mock releases with different dependencies for older version
-            const olderDeps = [
-                { name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0 < 9.0.0' },
-                { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
-            ];
-            const mockReleases = [
-                createMockRelease('11.1.0', latestDeps),
-                createMockRelease('10.0.0', olderDeps)
-            ];
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
 
-            PuppetForgeService.getModule = async () => mockForgeModule;
-            PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
-            PuppetForgeService.getModuleReleases = async () => mockReleases;
+        // Mock module where current_release (latest) has different dependencies than older version
+        const mockForgeModule: ForgeModule = {
+            name: 'puppetlabs/apache',
+            slug: 'puppetlabs-apache',
+            owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+            current_release: { 
+                version: '11.1.0', 
+                created_at: '2023-06-01', 
+                metadata: { 
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/stdlib',
+                            version_requirement: '>= 9.0.0 < 10.0.0'
+                        },
+                        {
+                            name: 'puppetlabs/systemd',
+                            version_requirement: '>= 5.0.0 < 6.0.0'
+                        }
+                    ] 
+                } 
+            },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
 
+        const mockUpdateInfo = { latestVersion: '11.1.0', hasUpdate: true };
+
+        // Mock releases with different dependencies for older version
+        const mockReleases = [
+            {
+                version: '11.1.0',
+                created_at: '2023-06-01',
+                updated_at: '2023-06-02',
+                downloads: 100,
+                file_size: 1,
+                file_md5: '',
+                file_uri: '',
+                metadata: {
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/stdlib',
+                            version_requirement: '>= 9.0.0 < 10.0.0'
+                        },
+                        {
+                            name: 'puppetlabs/systemd',
+                            version_requirement: '>= 5.0.0 < 6.0.0'
+                        }
+                    ]
+                }
+            },
+            {
+                version: '10.0.0',
+                created_at: '2023-01-01',
+                updated_at: '2023-01-02',
+                downloads: 50,
+                file_size: 1,
+                file_md5: '',
+                file_uri: '',
+                metadata: {
+                    dependencies: [
+                        {
+                            name: 'puppetlabs/stdlib',
+                            version_requirement: '>= 8.0.0 < 9.0.0'
+                        },
+                        {
+                            name: 'puppetlabs/concat',
+                            version_requirement: '>= 6.0.0 < 7.0.0'
+                        }
+                    ]
+                }
+            }
+        ];
+
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+        try {
             // Test with older version that has different dependencies
             const mockModule = { name: 'puppetlabs/apache', version: '10.0.0', source: 'forge' as const };
-            const result = await callGetModuleInfo(provider, mockModule);
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
             const markdownText = result.value;
 
             // Should show dependencies from version 10.0.0, NOT from latest (11.1.0)
@@ -283,29 +389,57 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             assert.ok(!markdownText.includes('puppetlabs/systemd'), 'systemd dependency from latest should NOT be shown');
             assert.ok(!markdownText.includes('>= 9.0.0 < 10.0.0'), 'latest stdlib version requirement should NOT be shown');
             assert.ok(!markdownText.includes('>= 5.0.0 < 6.0.0'), 'latest systemd version requirement should NOT be shown');
-        });
+
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
     });
 
     test('getModuleInfo should display versions in rows of 5', async () => {
-        await withServiceMocks(async () => {
-            const provider = createProvider();
-            const mockForgeModule = createBasicForgeModule('test/module', '7.0.0');
-            const mockUpdateInfo = { latestVersion: '7.0.0', hasUpdate: true };
+        const provider = new PuppetfileHoverProvider();
 
-            // Create many versions to test row splitting
-            const mockReleases: any[] = [];
-            for (let i = 7; i >= 1; i--) {
-                for (let j = 0; j < 3; j++) {
-                    mockReleases.push(createMockRelease(`${i}.${j}.0`));
-                }
+        const originalGetModule = PuppetForgeService.getModule;
+        const originalCheckForUpdate = PuppetForgeService.checkForUpdate;
+        const originalGetReleases = PuppetForgeService.getModuleReleases;
+
+        const mockForgeModule: ForgeModule = {
+            name: 'test/module',
+            slug: 'test-module',
+            owner: { username: 'test', slug: 'test' },
+            current_release: { version: '7.0.0', created_at: '2023-07-01', metadata: { dependencies: [] } },
+            downloads: 123,
+            feedback_score: 4.5,
+        };
+
+        const mockUpdateInfo = { latestVersion: '7.0.0', hasUpdate: true };
+
+        // Create many versions to test row splitting
+        const mockReleases: any[] = [];
+        for (let i = 7; i >= 1; i--) {
+            for (let j = 0; j < 3; j++) {
+                mockReleases.push({
+                    version: `${i}.${j}.0`,
+                    created_at: `2023-0${i}-01`,
+                    updated_at: `2023-0${i}-02`,
+                    downloads: 10 * i,
+                    file_size: 1,
+                    file_md5: '',
+                    file_uri: '',
+                    metadata: { dependencies: [] }
+                });
             }
+        }
 
-            PuppetForgeService.getModule = async () => mockForgeModule;
-            PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
-            PuppetForgeService.getModuleReleases = async () => mockReleases;
+        PuppetForgeService.getModule = async () => mockForgeModule;
+        PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+        PuppetForgeService.getModuleReleases = async () => mockReleases;
 
+        try {
             const mockModule = { name: 'test/module', version: '3.0.0', source: 'forge' as const, line: 10 };
-            const result = await callGetModuleInfo(provider, mockModule);
+            const getModuleInfo = (provider as any).getModuleInfo;
+            const result = await getModuleInfo.call(provider, mockModule);
             const markdownText = result.value;
 
             // Check that updates are displayed (only newer versions than 3.0.0)
@@ -329,7 +463,11 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const firstRow = lines[0];
             const versionCount = (firstRow.match(/`[^`]+`/g) || []).length;
             assert.ok(versionCount <= 5, 'First row should have max 5 versions');
-        });
+        } finally {
+            PuppetForgeService.getModule = originalGetModule;
+            PuppetForgeService.checkForUpdate = originalCheckForUpdate;
+            PuppetForgeService.getModuleReleases = originalGetReleases;
+        }
     });
 
     test('parseModuleFromLine should preserve correct line number', () => {
