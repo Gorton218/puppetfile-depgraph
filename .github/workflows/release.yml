@@ -32,13 +32,16 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
 
+    - name: Set output file name
+      run: echo "VSIX_FILE=$(npm pkg get name | tr -d '\"')-$(npm pkg get version | tr -d '\"').vsix" >> $GITHUB_ENV
+
     - name: Package extension
-      run: npx vsce package -o puppetfile-depgraph.vsix
+      run: npx vsce package --out $VSIX_FILE
 
     - name: Upload release asset
       uses: softprops/action-gh-release@v1
       with:
-        files: puppetfile-depgraph.vsix
+        files: ${{ env.VSIX_FILE }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
