@@ -75,7 +75,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     private parseModuleFromLine(line: string, lineNumber: number): PuppetModule | null {
         try {
             const parseResult = PuppetfileParser.parseContent(line);
-            return parseResult.modules.length > 0 ? parseResult.modules[0] : null;
+            if (parseResult.modules.length > 0) {
+                const module = parseResult.modules[0];
+                // Override the line number since parseContent treats single line as line 1
+                module.line = lineNumber;
+                return module;
+            }
+            return null;
         } catch (error) {
             return null;
         }
@@ -96,8 +102,11 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             // Check for updates
             const updateInfo = await PuppetForgeService.checkForUpdate(module.name, module.version);
 
+            const allReleases = await PuppetForgeService.getModuleReleases(module.name);
+
             const markdown = new vscode.MarkdownString();
             markdown.isTrusted = true;
+            markdown.supportThemeIcons = true;
 
             // Module header
             markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
@@ -118,18 +127,81 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 }
             }
 
-            // Dependencies
-            if (forgeModule.current_release?.metadata?.dependencies && 
-                forgeModule.current_release.metadata.dependencies.length > 0) {
+            // Show only newer versions if a version is specified
+            if (module.version) {
+                const newerVersions = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
+                if (newerVersions.length > 0) {
+                    markdown.appendMarkdown(`**Available Updates:**\n`);
+                    
+                    // Group versions into rows of 5
+                    const versionsPerRow = 5;
+                    for (let i = 0; i < newerVersions.length; i += versionsPerRow) {
+                        const rowVersions = newerVersions.slice(i, i + versionsPerRow);
+                        
+                        // Create clickable version links without dots
+                        const versionLinks = rowVersions.map(rel => {
+                            // Try a simpler command format that VS Code can handle
+                            const args = JSON.stringify([{ line: module.line, version: rel.version }]);
+                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                        });
+                        
+                        markdown.appendMarkdown(versionLinks.join('  ') + '\n');
+                    }
+                    markdown.appendMarkdown('\n');
+                }
+            } else {
+                // No version specified, show all versions
+                if (allReleases.length > 0) {
+                    markdown.appendMarkdown(`**Available Versions:**\n`);
+                    
+                    // Group versions into rows of 5
+                    const versionsPerRow = 5;
+                    for (let i = 0; i < allReleases.length; i += versionsPerRow) {
+                        const rowVersions = allReleases.slice(i, i + versionsPerRow);
+                        
+                        // Create clickable version links without dots
+                        const versionLinks = rowVersions.map(rel => {
+                            // Try a simpler command format that VS Code can handle
+                            const args = JSON.stringify([{ line: module.line, version: rel.version }]);
+                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                        });
+                        
+                        markdown.appendMarkdown(versionLinks.join('  ') + '\n');
+                    }
+                    markdown.appendMarkdown('\n');
+                }
+            }
+
+            // Dependencies for current version specified in Puppetfile
+            let dependencies: Array<{name: string; version_requirement: string}> | undefined;
+            
+            if (module.version) {
+                // Get dependencies from the specific version
+                const release = allReleases.find(r => r.version === module.version);
+                if (release && release.metadata) {
+                    dependencies = release.metadata.dependencies;
+                }
+                
+                // Only fall back to current_release if the specific version wasn't found in releases
+                // Do NOT fall back if the version exists but has no dependencies
+                if (!release) {
+                    dependencies = forgeModule.current_release?.metadata?.dependencies;
+                }
+            } else {
+                // No version specified, use latest (current_release)
+                dependencies = forgeModule.current_release?.metadata?.dependencies;
+            }
+
+            if (dependencies && dependencies.length > 0) {
                 markdown.appendMarkdown(`**Dependencies:**\n`);
-                for (const dep of forgeModule.current_release.metadata.dependencies) {
+                for (const dep of dependencies) {
                     markdown.appendMarkdown(`- \`${dep.name}\` ${dep.version_requirement}\n`);
                 }
                 markdown.appendMarkdown('\n');
             }
 
             // Actions
-            const forgeUrl = this.getForgeModuleUrl(module, forgeModule);
+            const forgeUrl = this.getForgeModuleUrl(module, forgeModule, module.version);
             markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
 
             return markdown;
@@ -177,7 +249,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         if (module.source === 'forge') {
             markdown.appendMarkdown(`*Loading additional information...*\n\n`);
-            const forgeUrl = this.getForgeModuleUrl(module);
+            const forgeUrl = this.getForgeModuleUrl(module, undefined, module.version);
             markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
         } else if (module.gitUrl) {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
@@ -191,23 +263,33 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         return markdown;
     }
 
-    private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null): string {
-        if (forgeData?.owner?.username && forgeData.name) {
-            return `https://forge.puppet.com/modules/${forgeData.owner.username}/${forgeData.name}`;
-        }
+    private getForgeModuleUrl(module: PuppetModule, forgeData?: ForgeModule | null, version?: string): string {
+        let base: string;
 
+        // Always use the module.name format (e.g., "puppetlabs/stdlib")
         if (module.name.includes('/')) {
-            return `https://forge.puppet.com/modules/${module.name}`;
+            base = `https://forge.puppet.com/modules/${module.name}`;
+        } else {
+            // Handle old format "puppetlabs-stdlib" by converting to "puppetlabs/stdlib"
+            const dashIndex = module.name.indexOf('-');
+            if (dashIndex !== -1) {
+                const owner = module.name.substring(0, dashIndex);
+                const modName = module.name.substring(dashIndex + 1);
+                base = `https://forge.puppet.com/modules/${owner}/${modName}`;
+            } else {
+                base = `https://forge.puppet.com/modules/${module.name}`;
+            }
         }
 
-        const dashIndex = module.name.indexOf('-');
-        if (dashIndex !== -1) {
-            const owner = module.name.substring(0, dashIndex);
-            const modName = module.name.substring(dashIndex + 1);
-            return `https://forge.puppet.com/modules/${owner}/${modName}`;
-        }
-
-        return `https://forge.puppet.com/modules/${module.name}`;
+        // Append the version to the base URL when provided so the link
+        // navigates directly to that release on the Forge
+        // Also, there is a bug with the Foreman Webstite so it is 
+        // impossible to get to the main page of a specific version 
+        // as it will redirect to the latest version
+        // Try this example: https://forge.puppet.com/modules/puppetlabs/apache/12.0.3/readme
+        // Therefore the `/dependencies` endpoint is used as a workaround 
+        // to get the dependencies of a specific version
+        return version ? `${base}/${version}/dependencies` : `${base}/dependencies`;
     }
 }
 

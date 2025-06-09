@@ -147,7 +147,6 @@ export class PuppetfileUpdateService {
         }
 
         const document = editor.document;
-        const lines = document.getText().split('\n');
 
         // Sort updates by line number in descending order to avoid line number shifts
         const sortedUpdates = updates
@@ -163,16 +162,14 @@ export class PuppetfileUpdateService {
 
         for (const update of sortedUpdates) {
             const lineIndex = update.line - 1; // Convert to 0-based index
-            if (lineIndex >= 0 && lineIndex < lines.length) {
-                const originalLine = lines[lineIndex];
+            if (lineIndex >= 0 && lineIndex < document.lineCount) {
+                // Use VS Code's document API to get the line text and range
+                const lineTextRange = document.lineAt(lineIndex);
+                const originalLine = lineTextRange.text;
                 const updatedLine = this.updateVersionInLine(originalLine, update.newVersion!);
                 
                 if (updatedLine !== originalLine) {
-                    const range = new vscode.Range(
-                        new vscode.Position(lineIndex, 0),
-                        new vscode.Position(lineIndex, originalLine.length)
-                    );
-                    workspaceEdit.replace(document.uri, range, updatedLine);
+                    workspaceEdit.replace(document.uri, lineTextRange.range, updatedLine);
                 }
             }
         }
@@ -211,6 +208,38 @@ export class PuppetfileUpdateService {
         }
 
         return line;
+    }
+
+    /**
+     * Update a single module line to a specific version
+     * @param lineNumber 1-based line number in the active editor
+     * @param newVersion The version to set
+     */
+    public static async updateModuleVersionAtLine(lineNumber: number, newVersion: string): Promise<void> {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return;
+        }
+
+        const document = editor.document;
+        const lineIndex = lineNumber - 1;
+        if (lineIndex < 0 || lineIndex >= document.lineCount) {
+            return;
+        }
+
+        // Use VS Code's document API to get the line text
+        const lineTextRange = document.lineAt(lineIndex);
+        const originalLine = lineTextRange.text;
+        const updatedLine = this.updateVersionInLine(originalLine, newVersion);
+        
+        if (updatedLine === originalLine) {
+            return;
+        }
+
+        // Use the line's range, which correctly handles the line boundaries
+        await editor.edit(edit => {
+            edit.replace(lineTextRange.range, updatedLine);
+        });
     }
 
     /**

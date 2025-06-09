@@ -53,15 +53,14 @@ export class PuppetForgeService {
     private static readonly BASE_URL = 'https://forgeapi.puppet.com';
     private static readonly API_VERSION = 'v3';
 
-    private static readonly EXT_VERSION: string = pkg.version;
-    private static moduleCache: Map<string, ForgeModule | null> = new Map();
-    private static releaseCache: Map<string, ForgeVersion[]> = new Map();
+    // Two-level cache: module name -> (version -> version data)
+    private static moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
 
     private static getAxiosOptions(): AxiosRequestConfig {
         const options: AxiosRequestConfig = {
             timeout: 10000,
             headers: {
-                'User-Agent': 'VSCode-Puppetfile-DepGraph/1.0.0'
+                'User-Agent': `VSCode-Puppetfile-DepGraph/${pkg.version}`
             }
         };
 
@@ -75,16 +74,11 @@ export class PuppetForgeService {
         return options;
     }
 
-    private static cacheKey(name: string): string {
-        return `${name}@${this.EXT_VERSION}`;
-    }
-
     /**
      * Clear all cached Forge responses
      */
     public static clearCache(): void {
-        this.moduleCache.clear();
-        this.releaseCache.clear();
+        this.moduleVersionCache.clear();
     }
 
     /**
@@ -93,24 +87,39 @@ export class PuppetForgeService {
      * @returns Promise with module information
      */
     public static async getModule(moduleName: string): Promise<ForgeModule | null> {
-        const key = this.cacheKey(moduleName);
-        if (this.moduleCache.has(key)) {
-            return this.moduleCache.get(key) ?? null;
-        }
-
         try {
-            const response = await axios.get(
-                `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}`,
-                this.getAxiosOptions()
-            );
-            this.moduleCache.set(key, response.data);
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                this.moduleCache.set(key, null);
-                return null; // Module not found
+            // Get all releases to build module info
+            const releases = await this.getModuleReleases(moduleName);
+            if (releases.length === 0) {
+                return null;
             }
-            throw new Error(`Failed to fetch module ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+            // The first release is the latest (API returns sorted by version desc)
+            const latestRelease = releases[0];
+            
+            // Construct a ForgeModule object from release data
+            // Note: This is a simplified version - some fields may be missing
+            const moduleSlug = moduleName.replace('/', '-');
+            const [owner, name] = moduleName.split('/');
+            
+            return {
+                name: moduleName,
+                slug: moduleSlug,
+                owner: {
+                    username: owner,
+                    slug: owner
+                },
+                current_release: {
+                    version: latestRelease.version,
+                    created_at: latestRelease.created_at,
+                    metadata: latestRelease.metadata
+                },
+                releases: releases,
+                downloads: 0, // Not available from releases API
+                feedback_score: 0 // Not available from releases API
+            };
+        } catch (error) {
+            return null; // Return null for any error when fetching module
         }
     }
 
@@ -120,33 +129,76 @@ export class PuppetForgeService {
      * @returns Promise with array of releases
      */
     public static async getModuleReleases(moduleName: string): Promise<ForgeVersion[]> {
-        const key = this.cacheKey(moduleName);
-        if (this.releaseCache.has(key)) {
-            return this.releaseCache.get(key) ?? [];
+        // Check if we already have cached versions for this module
+        const moduleCache = this.moduleVersionCache.get(moduleName);
+        if (moduleCache && moduleCache.size > 0) {
+            // Return all cached versions as an array, sorted by version descending
+            return Array.from(moduleCache.values()).sort((a, b) => 
+                this.compareVersions(b.version, a.version)
+            );
         }
 
         try {
+            // Use the releases API endpoint that accepts module parameter
             const response = await axios.get(
-                `${this.BASE_URL}/${this.API_VERSION}/modules/${moduleName}/releases`,
+                `${this.BASE_URL}/${this.API_VERSION}/releases`,
                 {
                     ...this.getAxiosOptions(),
                     params: {
+                        module: moduleName.replace('/', '-'), // API expects puppetlabs-stdlib format
                         limit: 100,
                         sort_by: 'version',
                         order: 'desc'
                     }
                 }
             );
-            const result = response.data.results ?? [];
-            this.releaseCache.set(key, result);
-            return result;
+            
+            const releases: ForgeVersion[] = response.data.results ?? [];
+            
+            // Populate the two-level cache
+            if (releases.length > 0) {
+                const versionMap = new Map<string, ForgeVersion>();
+                for (const release of releases) {
+                    versionMap.set(release.version, release);
+                }
+                this.moduleVersionCache.set(moduleName, versionMap);
+            }
+            
+            return releases;
         } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
-                this.releaseCache.set(key, []);
-                return []; // Module not found
+            if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400)) {
+                return []; // Module not found or invalid module name
             }
             throw new Error(`Failed to fetch releases for ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
+
+    /**
+     * Get information for a specific release version
+     * @param moduleName Module name
+     * @param version Version to lookup
+     */
+    public static async getReleaseForVersion(moduleName: string, version: string): Promise<ForgeVersion | null> {
+        // Check two-level cache first
+        const moduleCache = this.moduleVersionCache.get(moduleName);
+        if (moduleCache) {
+            const cachedVersion = moduleCache.get(version);
+            if (cachedVersion) {
+                return cachedVersion;
+            }
+        }
+
+        // Fetch all releases (this will populate the cache)
+        const releases = await this.getModuleReleases(moduleName);
+        
+        // Now check the cache again (it should be populated)
+        const updatedModuleCache = this.moduleVersionCache.get(moduleName);
+        if (updatedModuleCache) {
+            return updatedModuleCache.get(version) ?? null;
+        }
+        
+        // Fallback: search in releases array
+        return releases.find(r => r.version === version) ?? null;
     }
 
     /**
@@ -198,13 +250,24 @@ export class PuppetForgeService {
      * @returns Negative if version1 < version2, 0 if equal, positive if version1 > version2
      */
     public static compareVersions(version1: string, version2: string): number {
-        const parts1 = version1.split('.').map(part => parseInt(part.split('-')[0], 10));
-        const parts2 = version2.split('.').map(part => parseInt(part.split('-')[0], 10));
+        // Split version into main version and pre-release parts
+        const parseVersion = (version: string) => {
+            const [mainVersion, preRelease] = version.split('-', 2);
+            const parts = mainVersion.split('.').map(part => {
+                const num = parseInt(part, 10);
+                return isNaN(num) ? 0 : num;
+            });
+            return { parts, preRelease: preRelease || '' };
+        };
+
+        const v1 = parseVersion(version1);
+        const v2 = parseVersion(version2);
         
-        const maxLength = Math.max(parts1.length, parts2.length);
-          for (let i = 0; i < maxLength; i++) {
-            const part1 = parts1[i] ?? 0;
-            const part2 = parts2[i] ?? 0;
+        // Compare main version parts
+        const maxLength = Math.max(v1.parts.length, v2.parts.length);
+        for (let i = 0; i < maxLength; i++) {
+            const part1 = v1.parts[i] ?? 0;
+            const part2 = v2.parts[i] ?? 0;
             
             if (part1 < part2) {
                 return -1;
@@ -214,7 +277,17 @@ export class PuppetForgeService {
             }
         }
         
-        return 0;
+        // Main versions are equal, compare pre-release
+        // No pre-release is greater than any pre-release (1.0.0 > 1.0.0-beta)
+        if (!v1.preRelease && v2.preRelease) {
+            return 1;
+        }
+        if (v1.preRelease && !v2.preRelease) {
+            return -1;
+        }
+        
+        // Both have pre-release or both don't
+        return v1.preRelease.localeCompare(v2.preRelease);
     }
 
     /**

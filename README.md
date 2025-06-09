@@ -27,6 +27,7 @@ A comprehensive VS Code extension for managing Puppet module dependencies with v
 - Version comparison (current vs. latest available)
 - Dependency information
 - Direct links to Puppet Forge pages
+- Clickable list of newer versions for quick updates
 - Git repository information for Git-based modules
 
 ### 🎯 **Context Menu Integration**
