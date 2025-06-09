@@ -35,8 +35,14 @@ jobs:
     - name: Set output file name
       run: echo "VSIX_FILE=$(npm pkg get name | tr -d '\"')-$(npm pkg get version | tr -d '\"').vsix" >> $GITHUB_ENV
 
+    - name: Set prerelease flag
+      run: |
+        if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+          echo "VSCE_FLAGS=--pre-release" >> "$GITHUB_ENV"
+        fi
+
     - name: Package extension
-      run: npx vsce package --out $VSIX_FILE
+      run: npx vsce package $VSCE_FLAGS --out $VSIX_FILE
 
     - name: Upload release asset
       uses: softprops/action-gh-release@v1
