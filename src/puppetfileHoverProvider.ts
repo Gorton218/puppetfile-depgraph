@@ -75,7 +75,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     private parseModuleFromLine(line: string, lineNumber: number): PuppetModule | null {
         try {
             const parseResult = PuppetfileParser.parseContent(line);
-            return parseResult.modules.length > 0 ? parseResult.modules[0] : null;
+            if (parseResult.modules.length > 0) {
+                const module = parseResult.modules[0];
+                // Override the line number since parseContent treats single line as line 1
+                module.line = lineNumber;
+                return module;
+            }
+            return null;
         } catch (error) {
             return null;
         }
@@ -100,6 +106,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
             const markdown = new vscode.MarkdownString();
             markdown.isTrusted = true;
+            markdown.supportThemeIcons = true;
 
             // Module header
             markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
@@ -133,9 +140,9 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                         
                         // Create clickable version links without dots
                         const versionLinks = rowVersions.map(rel => {
-                            const args = JSON.stringify({ line: module.line, version: rel.version });
-                            const encodedArgs = encodeURIComponent(args);
-                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodedArgs} "Update to version ${rel.version}")`;
+                            // Try a simpler command format that VS Code can handle
+                            const args = JSON.stringify([{ line: module.line, version: rel.version }]);
+                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
                         });
                         
                         markdown.appendMarkdown(versionLinks.join('  ') + '\n');
@@ -154,9 +161,9 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                         
                         // Create clickable version links without dots
                         const versionLinks = rowVersions.map(rel => {
-                            const args = JSON.stringify({ line: module.line, version: rel.version });
-                            const encodedArgs = encodeURIComponent(args);
-                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodedArgs} "Update to version ${rel.version}")`;
+                            // Try a simpler command format that VS Code can handle
+                            const args = JSON.stringify([{ line: module.line, version: rel.version }]);
+                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
                         });
                         
                         markdown.appendMarkdown(versionLinks.join('  ') + '\n');

@@ -179,11 +179,33 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Puppet Forge cache cleared successfully!');
 	});
 
-        const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (args: { line: number; version: string }) => {
-                if (!args) {
-                        return;
+        const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (...args: any[]) => {
+                console.log('updateModuleVersion command called with args:', args);
+                
+                // Handle both direct object and array of objects
+                let commandArgs: { line: number; version: string } | null = null;
+                
+                if (args.length > 0) {
+                    if (Array.isArray(args[0]) && args[0].length > 0) {
+                        commandArgs = args[0][0];
+                    } else if (args[0] && typeof args[0] === 'object') {
+                        commandArgs = args[0];
+                    }
                 }
-                await PuppetfileUpdateService.updateModuleVersionAtLine(args.line, args.version);
+                
+                if (!commandArgs || typeof commandArgs.line !== 'number' || typeof commandArgs.version !== 'string') {
+                    console.error('Invalid arguments for updateModuleVersion command:', commandArgs);
+                    vscode.window.showErrorMessage('Invalid arguments for version update command');
+                    return;
+                }
+                
+                try {
+                    await PuppetfileUpdateService.updateModuleVersionAtLine(commandArgs.line, commandArgs.version);
+                    vscode.window.showInformationMessage(`Updated module to version ${commandArgs.version}`);
+                } catch (error) {
+                    console.error('Error updating module version:', error);
+                    vscode.window.showErrorMessage(`Failed to update module: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
         });
 
         // Add all commands to subscriptions

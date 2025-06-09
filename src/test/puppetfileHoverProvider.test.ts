@@ -172,12 +172,16 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const result = await getModuleInfo.call(provider, mockModule);
             const markdownText = result.value;
 
-            const link1 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify({ line: 10, version: '1.1.0' }))}`;
-            const link2 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify({ line: 10, version: '1.2.0' }))}`;
+            const link1 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify([{ line: 10, version: '1.1.0' }]))}`;
+            const link2 = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(JSON.stringify([{ line: 10, version: '1.2.0' }]))}`;
+            const tooltip1 = 'Update to 1.1.0';
+            const tooltip2 = 'Update to 1.2.0';
 
             assert.ok(markdownText.includes('**Available Updates:**'), 'Should show available updates');
             assert.ok(markdownText.includes(link1), 'Should include link for 1.1.0');
             assert.ok(markdownText.includes(link2), 'Should include link for 1.2.0');
+            assert.ok(markdownText.includes(tooltip1), 'Should include tooltip for 1.1.0');
+            assert.ok(markdownText.includes(tooltip2), 'Should include tooltip for 1.2.0');
             assert.ok(!markdownText.includes('**`1.0.0`**'), 'Current version should not appear in updates list');
             assert.ok(!markdownText.includes(' • '), 'Versions should not be separated by bullets');
         } finally {
@@ -578,5 +582,22 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             PuppetForgeService.checkForUpdate = originalCheckForUpdate;
             PuppetForgeService.getModuleReleases = originalGetReleases;
         }
+    });
+
+    test('parseModuleFromLine should preserve correct line number', () => {
+        const provider = new PuppetfileHoverProvider();
+        
+        // Access private method for testing
+        const parseModuleFromLine = (provider as any).parseModuleFromLine;
+        
+        const testLine = "mod 'puppetlabs/stdlib', '8.5.0'";
+        const expectedLineNumber = 42; // Test with line number other than 1
+        
+        const result = parseModuleFromLine.call(provider, testLine, expectedLineNumber);
+        
+        assert.ok(result, 'Should parse module successfully');
+        assert.strictEqual(result.name, 'puppetlabs/stdlib', 'Should parse module name correctly');
+        assert.strictEqual(result.version, '8.5.0', 'Should parse module version correctly');
+        assert.strictEqual(result.line, expectedLineNumber, 'Should preserve the correct line number');
     });
 });
