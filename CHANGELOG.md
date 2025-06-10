@@ -16,6 +16,13 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Dependency graph tracking with transitive dependency analysis
   - Suggested fixes for version conflicts with actionable recommendations
   - Visual conflict indicators (❌) in dependency tree view
+- **Git Module Metadata Support**: Added comprehensive Git repository metadata fetching
+  - Fetches metadata.json from Git repositories respecting ref/tag/branch
+  - Supports GitHub, GitLab, Bitbucket, and generic Git hosting
+  - Rich hover tooltips for Git modules with version, author, license, dependencies
+  - Dependency tree analysis for Git modules using their metadata.json
+  - Automatic fallback between main/master branches and error handling
+  - Caching for improved performance with network requests
 
 ### Fixed
 - **Line Number Bug**: Fixed issue where clicking version links always updated line 1
@@ -33,6 +40,16 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Correctly resolves transitive dependency versions based on parent constraints
   - Displays accurate version requirements for all dependency levels
   - Module name normalization handles both slash and hyphen formats
+- **Inline Comment Support**: Fixed parsing and version updates for lines with comments
+  - Parser now correctly strips inline comments before parsing module definitions
+  - Version update commands now work correctly on lines with trailing comments
+  - Preserves comment text and formatting when updating versions
+  - Supports both Forge and Git modules with inline comments
+- **Multi-line Git Module Parsing**: Fixed hover tooltips for multi-line Git module definitions
+  - Hover provider now correctly parses multi-line Git module syntax
+  - Properly extracts Git URL, ref, and tag from modules spanning multiple lines
+  - Shows correct Git metadata dependencies instead of falling back to Forge data
+  - Handles various Git module formatting styles (indented parameters)
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
@@ -40,17 +57,28 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Only shows newer versions when a specific version is pinned
   - Removed bullet separators between versions for cleaner appearance
   - Added descriptive tooltips for version links
-- **Two-Level Caching**: Restructured caching system for better performance
-  - Cache structure: MODULE_NAME -> MODULE_VERSION -> VERSION_DATA
+- **Enhanced Caching System**: Restructured and expanded caching for better performance
+  - Puppet Forge cache: MODULE_NAME -> MODULE_VERSION -> VERSION_DATA
+  - Git metadata cache: URL:REF -> METADATA with smart fallback handling
   - Uses Puppet Forge releases API for comprehensive version information
+  - Clear cache command now clears both Forge and Git metadata caches
   - More efficient cache utilization and lookup
 - **Enhanced Command Registration**: Improved command handling and validation
   - Better argument parsing for command URIs
   - Comprehensive error handling with user-friendly messages
   - Added logging for debugging command execution
+- **Consistent Dependency Formatting**: Standardized dependency display across module types
+  - Git modules now use same formatting as Forge modules (hyphen bullets, module names in backticks)
+  - Each dependency displayed on separate line for better readability
+  - Consistent spacing and formatting throughout hover tooltips
 
 ### Technical Improvements
-- **Testing**: Expanded test suite to 48 tests
+- **Testing**: Expanded test suite to 121 tests
+  - Added comprehensive tests for inline comment handling
+  - Added tests for version update functionality with comments
+  - Added comprehensive Git metadata service tests
+  - Enhanced dependency conflict detection test coverage
+  - Added integration tests for real-world scenarios
   - Added tests for line number preservation
   - Enhanced hover provider test coverage
   - Command registration validation

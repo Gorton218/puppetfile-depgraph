@@ -188,4 +188,62 @@ mod'puppetlabs-apache'`;
         
         assert.strictEqual(result.modules[1].name, 'puppetlabs-apache');
     });
+    
+    test('Handle inline comments', () => {
+        const content = `mod 'puppetlabs-stdlib', '9.4.1' # Latest stable version
+mod 'puppetlabs-apache', '2.11.0' # Apache module
+mod 'puppetlabs-mongodb', '0.17.0' # Example of commit
+mod 'puppetlabs-mysql' # No version specified`;
+        const result = PuppetfileParser.parseContent(content);
+        
+        assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
+        assert.strictEqual(result.modules.length, 4, 'Should parse four modules');
+        
+        // First module with inline comment
+        assert.strictEqual(result.modules[0].name, 'puppetlabs-stdlib');
+        assert.strictEqual(result.modules[0].version, '9.4.1');
+        assert.strictEqual(result.modules[0].source, 'forge');
+        
+        // Second module with inline comment
+        assert.strictEqual(result.modules[1].name, 'puppetlabs-apache');
+        assert.strictEqual(result.modules[1].version, '2.11.0');
+        assert.strictEqual(result.modules[1].source, 'forge');
+        
+        // Third module - the one from the bug report
+        assert.strictEqual(result.modules[2].name, 'puppetlabs-mongodb');
+        assert.strictEqual(result.modules[2].version, '0.17.0');
+        assert.strictEqual(result.modules[2].source, 'forge');
+        
+        // Fourth module without version but with comment
+        assert.strictEqual(result.modules[3].name, 'puppetlabs-mysql');
+        assert.strictEqual(result.modules[3].version, undefined);
+        assert.strictEqual(result.modules[3].source, 'forge');
+    });
+    
+    test('Handle git modules with inline comments', () => {
+        const content = `mod 'mymodule', :git => 'https://github.com/user/mymodule.git' # Default branch
+mod 'another', :git => 'https://github.com/user/another.git', :tag => 'v1.0.0' # Stable release
+mod 'third', :git => 'https://github.com/user/third.git', :ref => 'main' # Main branch`;
+        const result = PuppetfileParser.parseContent(content);
+        
+        assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
+        assert.strictEqual(result.modules.length, 3, 'Should parse three modules');
+        
+        // First git module with comment
+        assert.strictEqual(result.modules[0].name, 'mymodule');
+        assert.strictEqual(result.modules[0].source, 'git');
+        assert.strictEqual(result.modules[0].gitUrl, 'https://github.com/user/mymodule.git');
+        
+        // Second git module with tag and comment
+        assert.strictEqual(result.modules[1].name, 'another');
+        assert.strictEqual(result.modules[1].source, 'git');
+        assert.strictEqual(result.modules[1].gitUrl, 'https://github.com/user/another.git');
+        assert.strictEqual(result.modules[1].gitTag, 'v1.0.0');
+        
+        // Third git module with ref and comment
+        assert.strictEqual(result.modules[2].name, 'third');
+        assert.strictEqual(result.modules[2].source, 'git');
+        assert.strictEqual(result.modules[2].gitUrl, 'https://github.com/user/third.git');
+        assert.strictEqual(result.modules[2].gitRef, 'main');
+    });
 });

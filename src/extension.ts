@@ -6,6 +6,7 @@ import { PuppetfileUpdateService } from './puppetfileUpdateService';
 import { DependencyTreeService } from './dependencyTreeService';
 import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
 import { PuppetForgeService } from './puppetForgeService';
+import { GitMetadataService } from './gitMetadataService';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -176,7 +177,8 @@ export function activate(context: vscode.ExtensionContext) {
 
       	const clearCache = vscode.commands.registerCommand('puppetfile-depgraph.clearCache', () => {
 		PuppetForgeService.clearCache();
-		vscode.window.showInformationMessage('Puppet Forge cache cleared successfully!');
+		GitMetadataService.clearCache();
+		vscode.window.showInformationMessage('All caches cleared successfully! (Puppet Forge + Git metadata)');
 	});
 
         const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (...args: any[]) => {

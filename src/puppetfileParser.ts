@@ -84,22 +84,38 @@ export class PuppetfileParser {
     private static parseModuleLine(line: string, lineNumber: number): PuppetModule | null {
         // Remove leading/trailing whitespace
         line = line.trim();
-          // Skip non-module lines (forge, etc.)
+        
+        // Strip inline comments (but preserve # in strings)
+        // This regex looks for # that's not inside quotes
+        const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
+        if (commentMatch) {
+            line = commentMatch[1].trim();
+        }
+        
+        // Skip non-module lines (forge, etc.)
         if (!line.startsWith('mod ') && !line.startsWith('mod\'') && !line.startsWith('mod"')) {
             return null;
         }        // Basic regex patterns for different module declaration styles
         const patterns = [
-            // mod 'module_name', :git => 'url', :tag => 'tag'
+            // Multi-line Git modules: mod 'module_name', :git => 'url', :tag => 'tag' (with dotall flag)
+            /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"].*:tag\s*=>\s*['"]([^'"]+)['"]/s,
+            // Multi-line Git modules: mod 'module_name', :git => 'url', :ref => 'ref' (with dotall flag)
+            /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"].*:ref\s*=>\s*['"]([^'"]+)['"]/s,
+            // Multi-line Git modules: mod 'module_name', :git => 'url' (with dotall flag)
+            /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"]/s,
+            // Single-line Git modules: mod 'module_name', :git => 'url', :tag => 'tag'
             /^mod\s*['"]([^'"]+)['"],\s*:git\s*=>\s*['"]([^'"]+)['"],\s*:tag\s*=>\s*['"]([^'"]+)['"]$/,
-            // mod 'module_name', :git => 'url', :ref => 'ref'
+            // Single-line Git modules: mod 'module_name', :git => 'url', :ref => 'ref'
             /^mod\s*['"]([^'"]+)['"],\s*:git\s*=>\s*['"]([^'"]+)['"],\s*:ref\s*=>\s*['"]([^'"]+)['"]$/,
-            // mod 'module_name', :git => 'url'
+            // Single-line Git modules: mod 'module_name', :git => 'url'
             /^mod\s*['"]([^'"]+)['"],\s*:git\s*=>\s*['"]([^'"]+)['"]$/,
             // mod 'module_name', 'version' - with very flexible whitespace
             /^mod\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*$/,
-            // mod 'module_name'
+            // mod 'module_name' (only if it's truly a single line with no git params)
             /^mod\s*['"]([^'"]+)['"]$/
-        ];for (const pattern of patterns) {
+        ];
+        
+        for (const pattern of patterns) {
             const match = line.match(pattern);
             if (match) {
                 return this.createModuleFromMatch(match, lineNumber);
@@ -165,15 +181,15 @@ export class PuppetfileParser {
             line: lineNumber
         };
 
-        // Check for git source
-        const gitMatch = line.match(/:git\s*=>\s*['"]([^'"]+)['"]/);
+        // Check for git source (handle multi-line with dotall flag)
+        const gitMatch = line.match(/:git\s*=>\s*['"]([^'"]+)['"]/s);
         if (gitMatch) {
             module.source = 'git';
             module.gitUrl = gitMatch[1];
 
-            // Look for tag or ref
-            const tagMatch = line.match(/:tag\s*=>\s*['"]([^'"]+)['"]/);
-            const refMatch = line.match(/:ref\s*=>\s*['"]([^'"]+)['"]/);
+            // Look for tag or ref (handle multi-line)
+            const tagMatch = line.match(/:tag\s*=>\s*['"]([^'"]+)['"]/s);
+            const refMatch = line.match(/:ref\s*=>\s*['"]([^'"]+)['"]/s);
 
             if (tagMatch) {
                 module.gitTag = tagMatch[1];
