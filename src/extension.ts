@@ -146,8 +146,8 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 
 				// Check for conflicts
-                                const conflicts = await DependencyTreeService.findConflicts(dependencyTree);
-                                if (conflicts.length > 0) {
+				const conflicts = DependencyTreeService.findConflicts(dependencyTree);
+				if (conflicts.length > 0) {
 					content += `\n## ⚠️ Potential Conflicts\n\n`;
 					for (const conflict of conflicts) {
 						content += `- ${conflict}\n`;
