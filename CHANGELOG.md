@@ -45,6 +45,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Version update commands now work correctly on lines with trailing comments
   - Preserves comment text and formatting when updating versions
   - Supports both Forge and Git modules with inline comments
+- **Multi-line Git Module Parsing**: Fixed hover tooltips for multi-line Git module definitions
+  - Hover provider now correctly parses multi-line Git module syntax
+  - Properly extracts Git URL, ref, and tag from modules spanning multiple lines
+  - Shows correct Git metadata dependencies instead of falling back to Forge data
+  - Handles various Git module formatting styles (indented parameters)
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
@@ -62,6 +67,10 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Better argument parsing for command URIs
   - Comprehensive error handling with user-friendly messages
   - Added logging for debugging command execution
+- **Consistent Dependency Formatting**: Standardized dependency display across module types
+  - Git modules now use same formatting as Forge modules (hyphen bullets, module names in backticks)
+  - Each dependency displayed on separate line for better readability
+  - Consistent spacing and formatting throughout hover tooltips
 
 ### Technical Improvements
 - **Testing**: Expanded test suite to 121 tests

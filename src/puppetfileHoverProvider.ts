@@ -328,8 +328,9 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         if (metadata.dependencies && metadata.dependencies.length > 0) {
             markdown.appendMarkdown(`\n**Dependencies:**\n`);
             for (const dep of metadata.dependencies) {
-                markdown.appendMarkdown(`  • ${dep.name} ${dep.version_requirement}\n`);
+                markdown.appendMarkdown(`- \`${dep.name}\` ${dep.version_requirement}\n`);
             }
+            markdown.appendMarkdown('\n');
         }
 
         markdown.appendMarkdown(`\n**Source:** Git repository`);
