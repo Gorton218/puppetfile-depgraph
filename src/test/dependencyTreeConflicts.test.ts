@@ -50,7 +50,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '12.2.0' }]
+      releases: [{ 
+        version: '12.2.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/stdlib', version_requirement: '>= 4.0.0 < 9.0.0' }
+          ]
+        }
+      }]
     });
     
     // Setup mock data for mysql module that requires stdlib >= 8.0.0
@@ -64,7 +71,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '16.0.0' }]
+      releases: [{ 
+        version: '16.0.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0' }
+          ]
+        }
+      }]
     });
     
     const modules: PuppetModule[] = [
@@ -112,7 +126,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '1.0.0' }]
+      releases: [{ 
+        version: '1.0.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
+          ]
+        }
+      }]
     });
     
     // MySQL requires concat >= 7.0.0
@@ -126,7 +147,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '1.0.0' }]
+      releases: [{ 
+        version: '1.0.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }
+          ]
+        }
+      }]
     });
     
     const modules: PuppetModule[] = [
@@ -170,7 +198,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '1.0.0' }]
+      releases: [{ 
+        version: '1.0.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/stdlib', version_requirement: '>= 9.0.0' }
+          ]
+        }
+      }]
     });
     
     const modules: PuppetModule[] = [
@@ -214,7 +249,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '1.0.0' }]
+      releases: [{ 
+        version: '1.0.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
+          ]
+        }
+      }]
     });
     
     getModuleStub.withArgs('example/mysql').resolves({
@@ -227,7 +269,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
           ]
         }
       },
-      releases: [{ version: '1.0.0' }]
+      releases: [{ 
+        version: '1.0.0',
+        metadata: {
+          dependencies: [
+            { name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }
+          ]
+        }
+      }]
     });
     
     const modules: PuppetModule[] = [

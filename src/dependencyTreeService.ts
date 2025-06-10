@@ -156,8 +156,28 @@ export class DependencyTreeService {
         if (module.source === 'forge') {
             try {
                 const forgeModule = await PuppetForgeService.getModule(module.name);
-                if (forgeModule?.current_release?.metadata?.dependencies) {
-                    for (const dep of forgeModule.current_release.metadata.dependencies) {
+                let releaseToUse = forgeModule?.current_release;
+                
+                // Determine which release to use for fetching dependencies
+                if (module.version && forgeModule?.releases) {
+                    // For direct dependencies with a specific version, use that version's metadata
+                    const specificRelease = forgeModule.releases.find(r => r.version === module.version);
+                    if (specificRelease) {
+                        releaseToUse = specificRelease;
+                    }
+                } else if (versionRequirement && forgeModule?.releases) {
+                    // For transitive dependencies with version constraints, find the best matching release
+                    const resolvedVersion = this.findBestMatchingVersion(versionRequirement, forgeModule.releases.map(r => r.version));
+                    if (resolvedVersion) {
+                        const specificRelease = forgeModule.releases.find(r => r.version === resolvedVersion);
+                        if (specificRelease) {
+                            releaseToUse = specificRelease;
+                        }
+                    }
+                }
+                
+                if (releaseToUse?.metadata?.dependencies) {
+                    for (const dep of releaseToUse.metadata.dependencies) {
                         const normalizedDepName = this.normalizeModuleName(dep.name);
                         
                         // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
@@ -497,6 +517,43 @@ export class DependencyTreeService {
         } catch (error) {
             // If we can't parse, assume no violation
             return false;
+        }
+    }
+
+    /**
+     * Find the best matching version for a given constraint from available versions
+     * @param constraint Version constraint (e.g., ">= 2.2.1 < 7.0.0")
+     * @param availableVersions Array of available version strings
+     * @returns Best matching version or null if none match
+     */
+    private static findBestMatchingVersion(constraint: string, availableVersions: string[]): string | null {
+        try {
+            const requirements = VersionParser.parse(constraint);
+            const satisfyingVersions = availableVersions.filter(version => 
+                VersionParser.satisfiesAll(version, requirements)
+            );
+            
+            if (satisfyingVersions.length === 0) {
+                return null;
+            }
+            
+            // Sort versions and return the highest one that satisfies the constraint
+            return satisfyingVersions.sort((a, b) => {
+                const aParts = a.split('.').map(Number);
+                const bParts = b.split('.').map(Number);
+                
+                for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                    const aPart = aParts[i] || 0;
+                    const bPart = bParts[i] || 0;
+                    if (aPart !== bPart) {
+                        return bPart - aPart; // Descending order
+                    }
+                }
+                return 0;
+            })[0];
+        } catch (error) {
+            console.warn(`Could not parse constraint "${constraint}":`, error);
+            return null;
         }
     }
 
