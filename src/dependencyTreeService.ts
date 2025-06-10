@@ -1,5 +1,6 @@
 import { PuppetModule } from './puppetfileParser';
 import { PuppetForgeService, ForgeModule } from './puppetForgeService';
+import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
 import { DependencyGraph, Requirement, DependencyConflict } from './types/dependencyTypes';
 import { ConflictAnalyzer } from './services/conflictAnalyzer';
 import { VersionParser } from './utils/versionParser';
@@ -152,7 +153,7 @@ export class DependencyTreeService {
             isConstraintViolated
         };
 
-        // Only fetch dependencies for Forge modules
+        // Fetch dependencies based on module source
         if (module.source === 'forge') {
             try {
                 const forgeModule = await PuppetForgeService.getModule(module.name);
@@ -202,6 +203,39 @@ export class DependencyTreeService {
                 }
             } catch (error) {
                 console.warn(`Could not fetch dependencies for ${module.name}:`, error);
+            }
+        } else if (module.source === 'git' && module.gitUrl) {
+            // Fetch dependencies for Git modules
+            try {
+                const ref = module.gitTag || module.gitRef;
+                const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
+                
+                if (gitMetadata?.dependencies) {
+                    for (const dep of gitMetadata.dependencies) {
+                        const normalizedDepName = this.normalizeModuleName(dep.name);
+                        
+                        // Git module dependencies are typically Forge modules
+                        const childModule: PuppetModule = {
+                            name: normalizedDepName,
+                            version: undefined,
+                            source: 'forge', // Most dependencies are from Forge
+                            line: -1
+                        };
+
+                        const childNode = await this.buildNodeTree(
+                            childModule, 
+                            depth + 1, 
+                            false,
+                            module.name,
+                            dep.version_requirement
+                        );
+                        if (childNode) {
+                            node.children.push(childNode);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`Could not fetch Git metadata for ${module.name}:`, error);
             }
         }
 

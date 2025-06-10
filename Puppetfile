@@ -7,7 +7,7 @@ mod 'puppetlabs-apache', '5.7.0'
 mod 'puppetlabs-mysql', '16.2.0'
 mod 'puppetlabs-mongodb', '0.17.0' # Example of commit
 
-mod 'puppet/foreman'
+mod 'theforeman/puppet'
     :git => 'https://github.com/theforeman/puppet-foreman.git',
     :ref => '24.2-stable'
 

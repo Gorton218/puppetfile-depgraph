@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
 import { PuppetForgeService, ForgeModule } from './puppetForgeService';
+import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
 
 /**
  * Provides hover information for Puppetfile modules
@@ -26,8 +27,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         const line = document.lineAt(position).text;
         const lineNumber = position.line + 1;
 
-        // Try to parse the module from this line
-        const module = this.parseModuleFromLine(line, lineNumber);
+        // Try to parse the module from this line (including multi-line modules)
+        const module = this.parseModuleFromPosition(document, position);
         if (!module) {
             return null;
         }
@@ -72,25 +73,105 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                document.languageId === 'puppetfile';
     }
 
-    private parseModuleFromLine(line: string, lineNumber: number): PuppetModule | null {
+    private parseModuleFromPosition(document: vscode.TextDocument, position: vscode.Position): PuppetModule | null {
+        const line = document.lineAt(position).text;
+        
+        // Check if this line contains a module declaration
+        if (!line.trim().startsWith('mod ')) {
+            return null;
+        }
+        
+        // Extract the complete module definition (may span multiple lines)
+        const moduleText = this.extractCompleteModuleDefinition(document, position.line);
+        
         try {
-            const parseResult = PuppetfileParser.parseContent(line);
+            console.log(`🔍 [DEBUG] Parsing module definition: "${moduleText}"`);
+            
+            // For multi-line Git modules, parse directly instead of using parseContent
+            if (moduleText.includes('\n') && moduleText.includes(':git')) {
+                console.log(`🔍 [DEBUG] Using direct multi-line parsing for Git module`);
+                return this.parseGitModuleDirectly(moduleText, position.line + 1);
+            }
+            
+            const parseResult = PuppetfileParser.parseContent(moduleText);
             if (parseResult.modules.length > 0) {
                 const module = parseResult.modules[0];
-                // Override the line number since parseContent treats single line as line 1
-                module.line = lineNumber;
+                module.line = position.line + 1; // VS Code uses 0-based line numbers
+                console.log(`🔍 [DEBUG] Parsed module:`, module);
                 return module;
             }
+            console.log(`🔍 [DEBUG] No modules found in definition`);
             return null;
         } catch (error) {
+            console.log(`🔍 [DEBUG] Parse error:`, error);
             return null;
         }
     }
 
-    private async getModuleInfo(module: PuppetModule): Promise<vscode.MarkdownString | null> {
-        if (module.source === 'git') {
-            return this.getGitModuleInfo(module);
+    private extractCompleteModuleDefinition(document: vscode.TextDocument, startLine: number): string {
+        let moduleText = document.lineAt(startLine).text;
+        let currentLine = startLine + 1;
+        
+        // Check consecutive lines for Git module parameters
+        while (currentLine < document.lineCount) {
+            const lineText = document.lineAt(currentLine).text;
+            
+            // Check if this line starts with whitespace followed by :git, :ref, :tag, etc.
+            if (lineText.match(/^[\t\s]+:(git|ref|tag|branch)\s*=>/)) {
+                moduleText += '\n' + lineText;
+                currentLine++;
+            } else {
+                // Stop when we hit a line that doesn't match the pattern
+                break;
+            }
         }
+        
+        console.log(`🔍 [DEBUG] Extracted module definition from lines ${startLine + 1}-${currentLine}: "${moduleText}"`);
+        return moduleText;
+    }
+
+    private parseGitModuleDirectly(moduleText: string, lineNumber: number): PuppetModule | null {
+        // Extract module name
+        const nameMatch = moduleText.match(/mod\s*['"]([^'"]+)['"]/);
+        if (!nameMatch) {
+            return null;
+        }
+
+        const module: PuppetModule = {
+            name: nameMatch[1],
+            source: 'git',
+            line: lineNumber
+        };
+
+        // Extract git URL
+        const gitMatch = moduleText.match(/:git\s*=>\s*['"]([^'"]+)['"]/);
+        if (gitMatch) {
+            module.gitUrl = gitMatch[1];
+        }
+
+        // Extract ref or tag
+        const refMatch = moduleText.match(/:ref\s*=>\s*['"]([^'"]+)['"]/);
+        const tagMatch = moduleText.match(/:tag\s*=>\s*['"]([^'"]+)['"]/);
+
+        if (refMatch) {
+            module.gitRef = refMatch[1];
+        } else if (tagMatch) {
+            module.gitTag = tagMatch[1];
+        }
+
+        console.log(`🔍 [DEBUG] Direct Git module parse result:`, module);
+        return module;
+    }
+
+    private async getModuleInfo(module: PuppetModule): Promise<vscode.MarkdownString | null> {
+        console.log(`🔍 [DEBUG] getModuleInfo called for module: ${module.name}, source: ${module.source}`);
+        
+        if (module.source === 'git') {
+            console.log(`🔍 [DEBUG] Module ${module.name} identified as Git module, calling getGitModuleInfo`);
+            return await this.getGitModuleInfo(module);
+        }
+
+        console.log(`🔍 [DEBUG] Module ${module.name} identified as Forge module, fetching from Forge`);        
 
         try {
             // Fetch from Puppet Forge
@@ -211,7 +292,109 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
     }
 
-    private getGitModuleInfo(module: PuppetModule): vscode.MarkdownString {
+    private async getGitModuleInfo(module: PuppetModule): Promise<vscode.MarkdownString> {
+        console.log(`🔍 [DEBUG] getGitModuleInfo called for module:`, module);
+        
+        const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
+
+        // Try to fetch metadata.json from the Git repository
+        if (module.gitUrl) {
+            try {
+                const ref = module.gitTag || module.gitRef;
+                console.log(`🔍 [DEBUG] Fetching Git metadata for ${module.name} from ${module.gitUrl} with ref: ${ref}`);
+                
+                const metadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
+                console.log(`🔍 [DEBUG] Git metadata result:`, metadata ? 'SUCCESS' : 'FAILED');
+                
+                if (metadata) {
+                    console.log(`🔍 [DEBUG] Using Git metadata with ${metadata.dependencies?.length || 0} dependencies`);
+                    if (metadata.dependencies) {
+                        console.log(`🔍 [DEBUG] Dependencies:`, metadata.dependencies.map(d => `${d.name} ${d.version_requirement}`));
+                    }
+                    return this.formatGitModuleWithMetadata(module, metadata);
+                }
+            } catch (error) {
+                console.warn(`Failed to fetch Git metadata for ${module.name}:`, error);
+            }
+        }
+
+        console.log(`🔍 [DEBUG] Falling back to basic Git module info for ${module.name}`);
+        // Fallback to basic info if metadata fetch fails
+        return this.getBasicGitModuleInfo(module);
+    }
+
+    private formatGitModuleWithMetadata(module: PuppetModule, metadata: GitModuleMetadata): vscode.MarkdownString {
+        const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
+
+        markdown.appendMarkdown(`## 📦 ${metadata.name || module.name} [Git]\n\n`);
+
+        if (metadata.summary) {
+            markdown.appendMarkdown(`*${metadata.summary}*\n\n`);
+        }
+
+        if (metadata.version) {
+            markdown.appendMarkdown(`**Version:** \`${metadata.version}\`\n`);
+        }
+
+        if (metadata.author) {
+            markdown.appendMarkdown(`**Author:** ${metadata.author}\n`);
+        }
+
+        if (metadata.license) {
+            markdown.appendMarkdown(`**License:** ${metadata.license}\n`);
+        }
+
+        markdown.appendMarkdown('\n');
+
+        if (module.gitUrl) {
+            markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n`);
+        }
+
+        if (module.gitTag) {
+            markdown.appendMarkdown(`**Tag:** \`${module.gitTag}\`\n`);
+        } else if (module.gitRef) {
+            markdown.appendMarkdown(`**Reference:** \`${module.gitRef}\`\n`);
+        } else {
+            markdown.appendMarkdown(`**Reference:** Default branch\n`);
+        }
+
+        markdown.appendMarkdown('\n');
+
+        // Add project and issues links if available
+        if (metadata.project_page && metadata.project_page !== module.gitUrl) {
+            markdown.appendMarkdown(`**Project Page:** [${metadata.project_page}](${metadata.project_page})\n`);
+        }
+
+        if (metadata.issues_url) {
+            markdown.appendMarkdown(`**Issues:** [${metadata.issues_url}](${metadata.issues_url})\n`);
+        }
+
+        // Add description if available and different from summary
+        if (metadata.description && metadata.description !== metadata.summary) {
+            markdown.appendMarkdown(`\n**Description:**\n${metadata.description}\n`);
+        }
+
+        // Add tags if available
+        if (metadata.tags && metadata.tags.length > 0) {
+            markdown.appendMarkdown(`\n**Tags:** ${metadata.tags.map(tag => `\`${tag}\``).join(', ')}\n`);
+        }
+
+        // Add dependencies if available
+        if (metadata.dependencies && metadata.dependencies.length > 0) {
+            markdown.appendMarkdown(`\n**Dependencies:**\n`);
+            for (const dep of metadata.dependencies) {
+                markdown.appendMarkdown(`  • ${dep.name} ${dep.version_requirement}\n`);
+            }
+        }
+
+        markdown.appendMarkdown(`\n**Source:** Git repository`);
+
+        return markdown;
+    }
+
+    private getBasicGitModuleInfo(module: PuppetModule): vscode.MarkdownString {
         const markdown = new vscode.MarkdownString();
         markdown.isTrusted = true;
 
@@ -230,6 +413,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
 
         markdown.appendMarkdown(`**Source:** Git repository\n\n`);
+        markdown.appendMarkdown(`*Loading module information...*\n\n`);
         markdown.appendMarkdown(`*Git modules are not managed through Puppet Forge*`);
 
         return markdown;
