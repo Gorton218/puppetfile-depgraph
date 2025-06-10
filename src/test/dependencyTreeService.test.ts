@@ -1,8 +1,21 @@
 import * as assert from 'assert';
+import * as sinon from 'sinon';
 import { DependencyTreeService, DependencyNode } from '../dependencyTreeService';
 import { PuppetModule } from '../puppetfileParser';
+import { GitMetadataService } from '../gitMetadataService';
 
 suite('DependencyTreeService Test Suite', () => {
+    let gitMetadataStub: sinon.SinonStub;
+    
+    setup(() => {
+        // Stub GitMetadataService to prevent network calls
+        gitMetadataStub = sinon.stub(GitMetadataService, 'getModuleMetadataWithFallback');
+        gitMetadataStub.resolves(null); // Default to returning null for all Git metadata requests
+    });
+    
+    teardown(() => {
+        sinon.restore();
+    });
     
     test('generateTreeText should format tree correctly', () => {
         const nodes: DependencyNode[] = [
@@ -244,10 +257,19 @@ suite('DependencyTreeService Test Suite', () => {
         assert.strictEqual(conflicts.length, 0);
     });
 
-    // Note: buildDependencyTree requires network access for API calls
-    // This test focuses on the structure rather than actual API responses
+    // This test verifies the structure of the dependency tree
+    // GitMetadataService is mocked to prevent network calls
     test('buildDependencyTree should handle basic module structure', async function() {
-        this.timeout(15000); // Increase timeout for potential network requests
+        // Mock specific Git metadata response for the test module
+        gitMetadataStub.withArgs('https://github.com/user/module.git', 'v1.0.0').resolves({
+            name: 'custom/module',
+            version: '1.0.0',
+            author: 'test',
+            summary: 'Test module',
+            license: 'Apache-2.0',
+            source: 'https://github.com/user/module.git',
+            dependencies: []
+        });
         
         const modules: PuppetModule[] = [
             {

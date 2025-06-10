@@ -470,17 +470,23 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         }
     });
 
-    test('parseModuleFromLine should preserve correct line number', () => {
+    test('parseModuleFromPosition should parse modules correctly', () => {
         const provider = createProvider();
-        const parseModuleFromLine = (provider as any).parseModuleFromLine;
+        const parseModuleFromPosition = (provider as any).parseModuleFromPosition;
         const testLine = "mod 'puppetlabs/stdlib', '8.5.0'";
-        const expectedLineNumber = 42;
         
-        const result = parseModuleFromLine.call(provider, testLine, expectedLineNumber);
+        // Create a mock document and position
+        const mockDocument = {
+            lineAt: (line: number) => ({ text: testLine }),
+            getText: () => testLine
+        };
+        const mockPosition = { line: 0, character: 10 };
+        
+        const result = parseModuleFromPosition.call(provider, mockDocument, mockPosition);
         
         assert.ok(result, 'Should parse module successfully');
         assert.strictEqual(result.name, 'puppetlabs/stdlib', 'Should parse module name correctly');
         assert.strictEqual(result.version, '8.5.0', 'Should parse module version correctly');
-        assert.strictEqual(result.line, expectedLineNumber, 'Should preserve the correct line number');
+        assert.strictEqual(result.line, 1, 'Should have correct line number');
     });
 });
