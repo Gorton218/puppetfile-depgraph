@@ -33,6 +33,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Correctly resolves transitive dependency versions based on parent constraints
   - Displays accurate version requirements for all dependency levels
   - Module name normalization handles both slash and hyphen formats
+- **Inline Comment Support**: Fixed parsing and version updates for lines with comments
+  - Parser now correctly strips inline comments before parsing module definitions
+  - Version update commands now work correctly on lines with trailing comments
+  - Preserves comment text and formatting when updating versions
+  - Supports both Forge and Git modules with inline comments
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
@@ -50,7 +55,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Added logging for debugging command execution
 
 ### Technical Improvements
-- **Testing**: Expanded test suite to 48 tests
+- **Testing**: Expanded test suite to 109 tests
+  - Added comprehensive tests for inline comment handling
+  - Added tests for version update functionality with comments
+  - Enhanced dependency conflict detection test coverage
+  - Added integration tests for real-world scenarios
   - Added tests for line number preservation
   - Enhanced hover provider test coverage
   - Command registration validation

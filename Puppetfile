@@ -15,6 +15,6 @@ mod 'puppet/foreman'
 mod 'puppetlabs-nginx'
 
 # Git modules
-mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.0.0'
-mod 'internal-module', :git => 'git@github.com:company/internal-module.git', :ref => 'main'
-mod 'custom-module', :git => 'https://gitlab.com/custom/module.git'
+# mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.0.0'
+# mod 'internal-module', :git => 'git@github.com:company/internal-module.git', :ref => 'main'
+# mod 'custom-module', :git => 'https://gitlab.com/custom/module.git'
