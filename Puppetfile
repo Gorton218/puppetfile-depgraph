@@ -5,7 +5,7 @@ forge 'https://forgeapi.puppet.com'
 mod 'puppetlabs-stdlib', '9.4.1'
 mod 'puppetlabs-apache', '5.7.0'
 mod 'puppetlabs-mysql', '16.2.0'
-# mod 'puppetlabs-mongodb', '0.17.0' # Example of commit
+mod 'puppetlabs-mongodb', '0.17.0' # Example of commit
 
 mod 'puppet/foreman'
     :git => 'https://github.com/theforeman/puppet-foreman.git',

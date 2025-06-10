@@ -84,7 +84,15 @@ export class PuppetfileParser {
     private static parseModuleLine(line: string, lineNumber: number): PuppetModule | null {
         // Remove leading/trailing whitespace
         line = line.trim();
-          // Skip non-module lines (forge, etc.)
+        
+        // Strip inline comments (but preserve # in strings)
+        // This regex looks for # that's not inside quotes
+        const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
+        if (commentMatch) {
+            line = commentMatch[1].trim();
+        }
+        
+        // Skip non-module lines (forge, etc.)
         if (!line.startsWith('mod ') && !line.startsWith('mod\'') && !line.startsWith('mod"')) {
             return null;
         }        // Basic regex patterns for different module declaration styles
