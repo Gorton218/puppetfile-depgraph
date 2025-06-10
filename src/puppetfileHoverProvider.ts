@@ -85,25 +85,17 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         const moduleText = this.extractCompleteModuleDefinition(document, position.line);
         
         try {
-            console.log(`🔍 [DEBUG] Parsing module definition: "${moduleText}"`);
+            // Convert multi-line to single line for easier parsing
+            const singleLineText = moduleText.replace(/\n\s*/g, ' ').trim();
             
-            // For multi-line Git modules, parse directly instead of using parseContent
-            if (moduleText.includes('\n') && moduleText.includes(':git')) {
-                console.log(`🔍 [DEBUG] Using direct multi-line parsing for Git module`);
-                return this.parseGitModuleDirectly(moduleText, position.line + 1);
-            }
-            
-            const parseResult = PuppetfileParser.parseContent(moduleText);
+            const parseResult = PuppetfileParser.parseContent(singleLineText);
             if (parseResult.modules.length > 0) {
                 const module = parseResult.modules[0];
                 module.line = position.line + 1; // VS Code uses 0-based line numbers
-                console.log(`🔍 [DEBUG] Parsed module:`, module);
                 return module;
             }
-            console.log(`🔍 [DEBUG] No modules found in definition`);
             return null;
         } catch (error) {
-            console.log(`🔍 [DEBUG] Parse error:`, error);
             return null;
         }
     }
@@ -126,52 +118,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
         }
         
-        console.log(`🔍 [DEBUG] Extracted module definition from lines ${startLine + 1}-${currentLine}: "${moduleText}"`);
         return moduleText;
     }
 
-    private parseGitModuleDirectly(moduleText: string, lineNumber: number): PuppetModule | null {
-        // Extract module name
-        const nameMatch = moduleText.match(/mod\s*['"]([^'"]+)['"]/);
-        if (!nameMatch) {
-            return null;
-        }
-
-        const module: PuppetModule = {
-            name: nameMatch[1],
-            source: 'git',
-            line: lineNumber
-        };
-
-        // Extract git URL
-        const gitMatch = moduleText.match(/:git\s*=>\s*['"]([^'"]+)['"]/);
-        if (gitMatch) {
-            module.gitUrl = gitMatch[1];
-        }
-
-        // Extract ref or tag
-        const refMatch = moduleText.match(/:ref\s*=>\s*['"]([^'"]+)['"]/);
-        const tagMatch = moduleText.match(/:tag\s*=>\s*['"]([^'"]+)['"]/);
-
-        if (refMatch) {
-            module.gitRef = refMatch[1];
-        } else if (tagMatch) {
-            module.gitTag = tagMatch[1];
-        }
-
-        console.log(`🔍 [DEBUG] Direct Git module parse result:`, module);
-        return module;
-    }
-
     private async getModuleInfo(module: PuppetModule): Promise<vscode.MarkdownString | null> {
-        console.log(`🔍 [DEBUG] getModuleInfo called for module: ${module.name}, source: ${module.source}`);
-        
         if (module.source === 'git') {
-            console.log(`🔍 [DEBUG] Module ${module.name} identified as Git module, calling getGitModuleInfo`);
             return await this.getGitModuleInfo(module);
         }
-
-        console.log(`🔍 [DEBUG] Module ${module.name} identified as Forge module, fetching from Forge`);        
 
         try {
             // Fetch from Puppet Forge
@@ -293,8 +246,6 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     }
 
     private async getGitModuleInfo(module: PuppetModule): Promise<vscode.MarkdownString> {
-        console.log(`🔍 [DEBUG] getGitModuleInfo called for module:`, module);
-        
         const markdown = new vscode.MarkdownString();
         markdown.isTrusted = true;
 
@@ -302,16 +253,9 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         if (module.gitUrl) {
             try {
                 const ref = module.gitTag || module.gitRef;
-                console.log(`🔍 [DEBUG] Fetching Git metadata for ${module.name} from ${module.gitUrl} with ref: ${ref}`);
-                
                 const metadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
-                console.log(`🔍 [DEBUG] Git metadata result:`, metadata ? 'SUCCESS' : 'FAILED');
                 
                 if (metadata) {
-                    console.log(`🔍 [DEBUG] Using Git metadata with ${metadata.dependencies?.length || 0} dependencies`);
-                    if (metadata.dependencies) {
-                        console.log(`🔍 [DEBUG] Dependencies:`, metadata.dependencies.map(d => `${d.name} ${d.version_requirement}`));
-                    }
                     return this.formatGitModuleWithMetadata(module, metadata);
                 }
             } catch (error) {
@@ -319,7 +263,6 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
         }
 
-        console.log(`🔍 [DEBUG] Falling back to basic Git module info for ${module.name}`);
         // Fallback to basic info if metadata fetch fails
         return this.getBasicGitModuleInfo(module);
     }

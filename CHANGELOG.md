@@ -16,6 +16,13 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Dependency graph tracking with transitive dependency analysis
   - Suggested fixes for version conflicts with actionable recommendations
   - Visual conflict indicators (❌) in dependency tree view
+- **Git Module Metadata Support**: Added comprehensive Git repository metadata fetching
+  - Fetches metadata.json from Git repositories respecting ref/tag/branch
+  - Supports GitHub, GitLab, Bitbucket, and generic Git hosting
+  - Rich hover tooltips for Git modules with version, author, license, dependencies
+  - Dependency tree analysis for Git modules using their metadata.json
+  - Automatic fallback between main/master branches and error handling
+  - Caching for improved performance with network requests
 
 ### Fixed
 - **Line Number Bug**: Fixed issue where clicking version links always updated line 1
@@ -45,9 +52,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Only shows newer versions when a specific version is pinned
   - Removed bullet separators between versions for cleaner appearance
   - Added descriptive tooltips for version links
-- **Two-Level Caching**: Restructured caching system for better performance
-  - Cache structure: MODULE_NAME -> MODULE_VERSION -> VERSION_DATA
+- **Enhanced Caching System**: Restructured and expanded caching for better performance
+  - Puppet Forge cache: MODULE_NAME -> MODULE_VERSION -> VERSION_DATA
+  - Git metadata cache: URL:REF -> METADATA with smart fallback handling
   - Uses Puppet Forge releases API for comprehensive version information
+  - Clear cache command now clears both Forge and Git metadata caches
   - More efficient cache utilization and lookup
 - **Enhanced Command Registration**: Improved command handling and validation
   - Better argument parsing for command URIs
@@ -55,9 +64,10 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Added logging for debugging command execution
 
 ### Technical Improvements
-- **Testing**: Expanded test suite to 109 tests
+- **Testing**: Expanded test suite to 121 tests
   - Added comprehensive tests for inline comment handling
   - Added tests for version update functionality with comments
+  - Added comprehensive Git metadata service tests
   - Enhanced dependency conflict detection test coverage
   - Added integration tests for real-world scenarios
   - Added tests for line number preservation

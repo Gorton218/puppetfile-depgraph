@@ -81,3 +81,4 @@ The project is actively being enhanced with improvements to hover tooltips, cach
 - Use TypeScript strict mode and maintain type safety
 - Follow existing code patterns and conventions
 - Add tests for new functionality
+- Do not update the `CHANGELOG.md` file unless explicitly instructed

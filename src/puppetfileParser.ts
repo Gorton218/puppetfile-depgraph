@@ -82,19 +82,8 @@ export class PuppetfileParser {
      * @returns PuppetModule if the line contains a module definition, null otherwise
      */
     private static parseModuleLine(line: string, lineNumber: number): PuppetModule | null {
-        // For multi-line strings, only trim each line individually to preserve structure
-        const isMultiLine = line.includes('\n');
-        console.log(`🔍 [DEBUG] Input to parseModuleLine: "${line}"`);
-        console.log(`🔍 [DEBUG] Is multi-line:`, isMultiLine);
-        
-        if (isMultiLine) {
-            // Trim each line individually while preserving the multi-line structure
-            line = line.split('\n').map(l => l.trim()).join('\n');
-            console.log(`🔍 [DEBUG] After trimming: "${line}"`);
-        } else {
-            // For single lines, trim normally
-            line = line.trim();
-        }
+        // Remove leading/trailing whitespace
+        line = line.trim();
         
         // Strip inline comments (but preserve # in strings)
         // This regex looks for # that's not inside quotes
@@ -126,15 +115,9 @@ export class PuppetfileParser {
             /^mod\s*['"]([^'"]+)['"]$/
         ];
         
-        console.log(`🔍 [DEBUG] Testing ${patterns.length} patterns against: "${line}"`);
-        console.log(`🔍 [DEBUG] Line contains newlines:`, line.includes('\n'));
-        console.log(`🔍 [DEBUG] Line length:`, line.length);
-        for (let i = 0; i < patterns.length; i++) {
-            const pattern = patterns[i];
+        for (const pattern of patterns) {
             const match = line.match(pattern);
-            console.log(`🔍 [DEBUG] Pattern ${i + 1}: ${match ? 'MATCH' : 'NO MATCH'} - ${pattern.source}`);
             if (match) {
-                console.log(`🔍 [DEBUG] Match groups:`, match);
                 return this.createModuleFromMatch(match, lineNumber);
             }
         }
