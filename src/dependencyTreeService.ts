@@ -1,6 +1,5 @@
 import { PuppetModule } from './puppetfileParser';
 import { PuppetForgeService, ForgeModule } from './puppetForgeService';
-import { ConflictAnalyzer } from './services/conflictAnalyzer';
 
 /**
  * Represents a node in the dependency tree
@@ -10,7 +9,6 @@ export interface DependencyNode {
     version?: string;
     source: 'forge' | 'git';
     children: DependencyNode[];
-    versionRequirement?: string;
     depth: number;
     isDirectDependency: boolean;
     gitUrl?: string;
@@ -78,7 +76,6 @@ export class DependencyTreeService {
             version: module.version,
             source: module.source,
             children: [],
-            versionRequirement: module.versionRequirement,
             depth,
             isDirectDependency,
             gitUrl: module.gitUrl,
@@ -95,7 +92,6 @@ export class DependencyTreeService {
                         const childModule: PuppetModule = {
                             name: dep.name,
                             version: this.extractVersionFromRequirement(dep.version_requirement),
-                            versionRequirement: dep.version_requirement,
                             source: 'forge',
                             line: -1 // Not from a file line
                         };
@@ -241,38 +237,37 @@ export class DependencyTreeService {
      * @param nodes Array of root dependency nodes
      * @returns Array of conflict descriptions
      */
-    public static async findConflicts(nodes: DependencyNode[]): Promise<string[]> {
+    public static findConflicts(nodes: DependencyNode[]): string[] {
         const conflicts: string[] = [];
-        const requirementMap = new Map<string, Array<{ constraint: string; imposedBy: string }>>();
+        const versionMap = new Map<string, Set<string>>();
 
-        const traverse = (node: DependencyNode, path: string[] = []) => {
-            const imposedBy = path[path.length - 1] || node.name;
-            if (!requirementMap.has(node.name)) {
-                requirementMap.set(node.name, []);
+        // Collect all versions for each module
+        const collectVersions = (node: DependencyNode) => {
+            if (node.version) {
+                if (!versionMap.has(node.name)) {
+                    versionMap.set(node.name, new Set());
+                }
+                versionMap.get(node.name)!.add(node.version);
             }
-            if (node.versionRequirement) {
-                requirementMap.get(node.name)!.push({ constraint: node.versionRequirement, imposedBy });
-            } else if (node.version) {
-                requirementMap.get(node.name)!.push({ constraint: `= ${node.version}`, imposedBy });
-            }
-
+            
             for (const child of node.children) {
-                traverse(child, [...path, node.name]);
+                collectVersions(child);
             }
         };
 
         for (const node of nodes) {
-            traverse(node);
+            collectVersions(node);
         }
 
-        for (const [moduleName, reqs] of requirementMap.entries()) {
-            const constraints = reqs.map(r => ({ requirement: r.constraint, imposedBy: r.imposedBy }));
-            const releases = await PuppetForgeService.getModuleReleases(moduleName);
-            const versions = releases.map(r => r.version);
-            const result = ConflictAnalyzer.analyzeModule(moduleName, constraints, versions);
-            if (result.conflict) {
-                const details = reqs.map(r => `${r.imposedBy} requires ${r.constraint}`).join('; ');
-                conflicts.push(`${moduleName}: ${result.conflict.details}: ${details}`);
+        // Check for conflicts (multiple versions of the same module)
+        for (const [moduleName, versions] of versionMap.entries()) {
+            if (versions.size > 1) {
+                const versionList = Array.from(versions)
+                    .sort((a, b) => a.localeCompare(b))
+                    .join(', ');
+                conflicts.push(
+                    `${moduleName}: Multiple versions found (${versionList})`
+                );
             }
         }
 
