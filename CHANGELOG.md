@@ -10,6 +10,12 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Processes modules in batches to respect API rate limits
   - Significantly improves hover performance after caching
   - Graceful error handling for individual module failures
+- **Advanced Dependency Conflict Detection**: Implemented comprehensive version conflict analysis
+  - Real version constraint parsing supporting all Puppet version formats (>=, <, ~>, wildcards)
+  - Accurate conflict detection that eliminates false positives
+  - Dependency graph tracking with transitive dependency analysis
+  - Suggested fixes for version conflicts with actionable recommendations
+  - Visual conflict indicators (❌) in dependency tree view
 
 ### Fixed
 - **Line Number Bug**: Fixed issue where clicking version links always updated line 1
@@ -22,6 +28,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Updated command URI format to work with VS Code's markdown rendering
   - Added proper command argument handling and user feedback
   - Enhanced error handling with informative success/failure messages
+- **Dependency Tree Version Resolution**: Fixed incorrect constraint display in dependency tree
+  - Tree now uses specific version metadata instead of latest version
+  - Correctly resolves transitive dependency versions based on parent constraints
+  - Displays accurate version requirements for all dependency levels
+  - Module name normalization handles both slash and hyphen formats
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
