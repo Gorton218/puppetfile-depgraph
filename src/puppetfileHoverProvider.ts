@@ -63,8 +63,15 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 return new vscode.Hover(moduleInfo);
             }
         } catch (error) {
-            // If there's an error fetching from Forge, show basic info
-            return new vscode.Hover(this.getBasicModuleInfo(module));
+            console.warn(`Error in hover provider for ${module.name}:`, error);
+            // If there's an error fetching module info, show basic info
+            try {
+                return new vscode.Hover(this.getBasicModuleInfo(module));
+            } catch (basicError) {
+                console.error(`Error creating basic module info for ${module.name}:`, basicError);
+                // Return null to prevent cascade failures
+                return null;
+            }
         }
 
         return null;
@@ -184,6 +191,11 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             // Get all modules for compatibility checking
             const parseResult = PuppetfileParser.parseActiveEditor();
             const allModules = parseResult.modules;
+            
+            // Log parse errors if any (only for debugging)
+            if (parseResult.errors.length > 0) {
+                console.debug('Puppetfile parse errors:', parseResult.errors);
+            }
 
             // Show only newer versions if a version is specified
             if (module.version) {
@@ -192,7 +204,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                     markdown.appendMarkdown(`**Available Updates:**\n`);
                     
                     // Check compatibility for each version
-                    const versionCompatibilities = await this.checkVersionCompatibilities(module, newerVersions, allModules);
+                    let versionCompatibilities = new Map<string, VersionCompatibility>();
+                    try {
+                        versionCompatibilities = await this.checkVersionCompatibilities(module, newerVersions, allModules);
+                    } catch (error) {
+                        console.error(`Error checking version compatibilities for ${module.name}:`, error);
+                        // Continue without compatibility info rather than failing completely
+                    }
                     
                     // Group versions into rows of 5
                     const versionsPerRow = 5;
@@ -226,7 +244,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                     markdown.appendMarkdown(`**Available Versions:**\n`);
                     
                     // Check compatibility for each version
-                    const versionCompatibilities = await this.checkVersionCompatibilities(module, allReleases, allModules);
+                    let versionCompatibilities = new Map<string, VersionCompatibility>();
+                    try {
+                        versionCompatibilities = await this.checkVersionCompatibilities(module, allReleases, allModules);
+                    } catch (error) {
+                        console.error(`Error checking version compatibilities for ${module.name}:`, error);
+                        // Continue without compatibility info rather than failing completely
+                    }
                     
                     // Group versions into rows of 5
                     const versionsPerRow = 5;
@@ -296,32 +320,55 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     }
 
     private async getGitModuleInfo(module: PuppetModule): Promise<vscode.MarkdownString> {
-        const markdown = new vscode.MarkdownString();
-        markdown.isTrusted = true;
-
         // Try to fetch metadata.json from the Git repository
         if (module.gitUrl) {
             try {
                 const ref = module.gitTag || module.gitRef;
+                console.debug(`Fetching Git metadata for ${module.name} from ${module.gitUrl}`);
                 const metadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 
                 if (metadata) {
+                    console.debug(`Retrieved Git metadata for ${module.name}: name="${metadata.name}", version="${metadata.version}"`);
+                    // Check for name mismatch and log it
+                    if (metadata.name && metadata.name !== module.name) {
+                        console.info(`Name mismatch detected: Puppetfile="${module.name}", metadata.json="${metadata.name}"`);
+                    }
                     return this.formatGitModuleWithMetadata(module, metadata);
                 }
             } catch (error) {
                 console.warn(`Failed to fetch Git metadata for ${module.name}:`, error);
+                // Continue to fallback - don't rethrow
             }
         }
 
-        // Fallback to basic info if metadata fetch fails
-        return this.getBasicGitModuleInfo(module);
+        // Fallback to basic info if metadata fetch fails or no gitUrl
+        try {
+            return this.getBasicGitModuleInfo(module);
+        } catch (error) {
+            console.error(`Error creating basic Git module info for ${module.name}:`, error);
+            // Create a minimal markdown as last resort
+            const markdown = new vscode.MarkdownString();
+            markdown.isTrusted = true;
+            markdown.appendMarkdown(`## 📦 ${module.name} [Git]\n\n*Error loading module information*`);
+            return markdown;
+        }
     }
 
     private formatGitModuleWithMetadata(module: PuppetModule, metadata: GitModuleMetadata): vscode.MarkdownString {
         const markdown = new vscode.MarkdownString();
         markdown.isTrusted = true;
 
-        markdown.appendMarkdown(`## 📦 ${metadata.name || module.name} [Git]\n\n`);
+        try {
+            // Always use the Puppetfile declared name for consistency, but show metadata name if different
+            const displayName = module.name;
+            const metadataName = metadata.name;
+            
+            if (metadataName && metadataName !== module.name) {
+                markdown.appendMarkdown(`## 📦 ${displayName} [Git]\n\n`);
+                markdown.appendMarkdown(`*Repository name: \`${metadataName}\`*\n\n`);
+            } else {
+                markdown.appendMarkdown(`## 📦 ${displayName} [Git]\n\n`);
+            }
 
         if (metadata.summary) {
             markdown.appendMarkdown(`*${metadata.summary}*\n\n`);
@@ -376,16 +423,23 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         // Add dependencies if available
         if (metadata.dependencies && metadata.dependencies.length > 0) {
-            markdown.appendMarkdown(`\n**Dependencies:**\n`);
+            markdown.appendMarkdown(`\n**Dependencies:** (${metadata.dependencies.length})\n`);
             for (const dep of metadata.dependencies) {
                 markdown.appendMarkdown(`- \`${dep.name}\` ${dep.version_requirement}\n`);
             }
             markdown.appendMarkdown('\n');
+        } else {
+            markdown.appendMarkdown(`\n**Dependencies:** None\n\n`);
         }
 
-        markdown.appendMarkdown(`\n**Source:** Git repository`);
+            markdown.appendMarkdown(`\n**Source:** Git repository`);
 
-        return markdown;
+            return markdown;
+        } catch (error) {
+            console.error(`Error formatting Git module with metadata for ${module.name}:`, error);
+            // Fallback to basic Git module info if formatting fails
+            return this.getBasicGitModuleInfo(module);
+        }
     }
 
     private getBasicGitModuleInfo(module: PuppetModule): vscode.MarkdownString {
@@ -427,8 +481,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         if (module.source === 'forge') {
             markdown.appendMarkdown(`*Loading additional information...*\n\n`);
-            const forgeUrl = this.getForgeModuleUrl(module, undefined, module.version);
-            markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
+            try {
+                const forgeUrl = this.getForgeModuleUrl(module, undefined, module.version);
+                markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
+            } catch (error) {
+                console.warn(`Error creating Forge URL for ${module.name}:`, error);
+                markdown.appendMarkdown(`*Unable to generate Forge link*`);
+            }
         } else if (module.gitUrl) {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
             if (module.gitTag) {
@@ -475,20 +534,25 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
      * @returns True if cache is being initialized
      */
     private async checkAndInitializeCache(): Promise<boolean> {
-        // Get all forge modules from the current Puppetfile
-        const parseResult = PuppetfileParser.parseActiveEditor();
-        const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
-        
-        // Check if any module is not cached
-        const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
-        
-        if (uncachedModules.length > 0) {
-            // Trigger caching with progress indicator
-            this.triggerCachingWithProgress(forgeModules);
-            return true;
+        try {
+            // Get all forge modules from the current Puppetfile
+            const parseResult = PuppetfileParser.parseActiveEditor();
+            const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
+            
+            // Check if any module is not cached
+            const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
+            
+            if (uncachedModules.length > 0) {
+                // Trigger caching with progress indicator
+                this.triggerCachingWithProgress(forgeModules);
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error in checkAndInitializeCache:', error);
+            return false;
         }
-        
-        return false;
     }
     
     /**
@@ -522,12 +586,25 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             const chunk = versions.slice(i, i + chunkSize);
             const chunkResults = await Promise.all(
                 chunk.map(async (rel) => {
-                    const compatibility = await VersionCompatibilityService.checkVersionCompatibility(
-                        module,
-                        rel.version,
-                        allModules
-                    );
-                    return { version: rel.version, compatibility };
+                    try {
+                        const compatibility = await VersionCompatibilityService.checkVersionCompatibility(
+                            module,
+                            rel.version,
+                            allModules
+                        );
+                        return { version: rel.version, compatibility };
+                    } catch (error) {
+                        console.warn(`Error checking compatibility for ${module.name}@${rel.version}:`, error);
+                        // Return a default compatibility status on error
+                        return { 
+                            version: rel.version, 
+                            compatibility: {
+                                version: rel.version,
+                                isCompatible: true, // Assume compatible if we can't check
+                                conflicts: []
+                            }
+                        };
+                    }
                 })
             );
             

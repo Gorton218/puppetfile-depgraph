@@ -65,6 +65,17 @@ export class PuppetfileParser {
             }
 
             try {
+                // Check if this is the start of a module definition
+                if (line.startsWith('mod ') && !line.includes(';') && (line.includes(':git') || line.includes(','))) {
+                    // This might be a multi-line module definition
+                    const multiLineModule = this.parseMultiLineModule(lines, i);
+                    if (multiLineModule.module) {
+                        modules.push(multiLineModule.module);
+                        i = multiLineModule.lastLine; // Skip the lines we've already processed
+                        continue;
+                    }
+                }
+                
                 const module = this.parseModuleLine(line, lineNumber);
                 if (module) {
                     modules.push(module);
@@ -75,7 +86,66 @@ export class PuppetfileParser {
         }
 
         return { modules, errors };
-    }    /**
+    }
+
+    /**
+     * Parse a multi-line module definition
+     * @param lines Array of all lines in the file
+     * @param startIndex Index of the line where the module definition starts
+     * @returns Object containing the parsed module and the last line index processed
+     */
+    private static parseMultiLineModule(lines: string[], startIndex: number): { module: PuppetModule | null, lastLine: number } {
+        let currentIndex = startIndex;
+        let accumulatedLine = '';
+        let foundEnd = false;
+        const startLineNumber = startIndex + 1;
+
+        // Accumulate lines until we find the end of the module definition
+        while (currentIndex < lines.length && !foundEnd) {
+            const line = lines[currentIndex].trim();
+            
+            // Skip empty lines and comments within the module definition
+            if (!line || line.startsWith('#')) {
+                currentIndex++;
+                continue;
+            }
+
+            // Add the line to our accumulated content
+            if (accumulatedLine) {
+                accumulatedLine += ' ' + line;
+            } else {
+                accumulatedLine = line;
+            }
+
+            // Check if this line ends the module definition
+            // A module definition ends when we find a line that doesn't end with a comma
+            // or when we encounter a closing parenthesis/bracket
+            if (!line.endsWith(',') || line.includes(')') || line.includes(']')) {
+                foundEnd = true;
+            }
+
+            currentIndex++;
+        }
+
+        // If we didn't find a proper end, treat it as a single line
+        if (!foundEnd) {
+            return { module: null, lastLine: startIndex };
+        }
+
+        // Clean up the accumulated line - remove extra whitespace
+        accumulatedLine = accumulatedLine.replace(/\s+/g, ' ').trim();
+
+        try {
+            // Parse the complete multi-line module definition
+            const module = this.parseModuleLine(accumulatedLine, startLineNumber);
+            return { module, lastLine: currentIndex - 1 };
+        } catch (error) {
+            // If parsing fails, return null and let the regular parsing handle it line by line
+            return { module: null, lastLine: startIndex };
+        }
+    }
+
+    /**
      * Parse a single module line from a Puppetfile
      * @param line The line to parse
      * @param lineNumber The line number for error reporting
