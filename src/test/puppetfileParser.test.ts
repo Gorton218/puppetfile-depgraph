@@ -246,4 +246,69 @@ mod 'third', :git => 'https://github.com/user/third.git', :ref => 'main' # Main 
         assert.strictEqual(result.modules[2].gitUrl, 'https://github.com/user/third.git');
         assert.strictEqual(result.modules[2].gitRef, 'main');
     });
+
+    test('Parse multi-line git module with ref', () => {
+        const content = `mod 'echocat/graphite',
+    :git => 'https://github.com/example/puppet-graphite.git',
+    :ref => 'bump_deps_1'`;
+        const result = PuppetfileParser.parseContent(content);
+        
+        assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
+        assert.strictEqual(result.modules.length, 1, 'Should parse one module');
+        
+        const module = result.modules[0];
+        assert.strictEqual(module.name, 'echocat/graphite');
+        assert.strictEqual(module.source, 'git');
+        assert.strictEqual(module.gitUrl, 'https://github.com/example/puppet-graphite.git');
+        assert.strictEqual(module.gitRef, 'bump_deps_1');
+        assert.strictEqual(module.line, 1);
+    });
+
+    test('Parse multi-line git module with tag', () => {
+        const content = `mod 'puppetlabs/apache',
+    :git => 'https://github.com/puppetlabs/puppetlabs-apache.git',
+    :tag => 'v5.10.0'`;
+        const result = PuppetfileParser.parseContent(content);
+        
+        assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
+        assert.strictEqual(result.modules.length, 1, 'Should parse one module');
+        
+        const module = result.modules[0];
+        assert.strictEqual(module.name, 'puppetlabs/apache');
+        assert.strictEqual(module.source, 'git');
+        assert.strictEqual(module.gitUrl, 'https://github.com/puppetlabs/puppetlabs-apache.git');
+        assert.strictEqual(module.gitTag, 'v5.10.0');
+        assert.strictEqual(module.line, 1);
+    });
+
+    test('Parse mixed single-line and multi-line modules', () => {
+        const content = `mod 'puppetlabs-stdlib', '9.4.1'
+mod 'echocat/graphite',
+    :git => 'https://github.com/example/puppet-graphite.git',
+    :ref => 'bump_deps_1'
+mod 'puppetlabs-apache', '2.11.0'`;
+        const result = PuppetfileParser.parseContent(content);
+        
+        assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
+        assert.strictEqual(result.modules.length, 3, 'Should parse three modules');
+        
+        // First module - single line forge
+        assert.strictEqual(result.modules[0].name, 'puppetlabs-stdlib');
+        assert.strictEqual(result.modules[0].version, '9.4.1');
+        assert.strictEqual(result.modules[0].source, 'forge');
+        assert.strictEqual(result.modules[0].line, 1);
+        
+        // Second module - multi-line git
+        assert.strictEqual(result.modules[1].name, 'echocat/graphite');
+        assert.strictEqual(result.modules[1].source, 'git');
+        assert.strictEqual(result.modules[1].gitUrl, 'https://github.com/example/puppet-graphite.git');
+        assert.strictEqual(result.modules[1].gitRef, 'bump_deps_1');
+        assert.strictEqual(result.modules[1].line, 2);
+        
+        // Third module - single line forge
+        assert.strictEqual(result.modules[2].name, 'puppetlabs-apache');
+        assert.strictEqual(result.modules[2].version, '2.11.0');
+        assert.strictEqual(result.modules[2].source, 'forge');
+        assert.strictEqual(result.modules[2].line, 5);
+    });
 });

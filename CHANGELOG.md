@@ -50,6 +50,12 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Properly extracts Git URL, ref, and tag from modules spanning multiple lines
   - Shows correct Git metadata dependencies instead of falling back to Forge data
   - Handles various Git module formatting styles (indented parameters)
+- **Git Module Name Mismatch**: Fixed critical issue where Git modules break hover functionality
+  - Resolved bug where module name in Puppetfile differs from metadata.json name
+  - Enhanced error isolation to prevent single problematic module from affecting others
+  - Added comprehensive error handling throughout hover provider chain
+  - Improved name display showing both Puppetfile name and repository name when different
+  - Added graceful fallbacks for all Git module processing stages
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
@@ -73,7 +79,7 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Consistent spacing and formatting throughout hover tooltips
 
 ### Technical Improvements
-- **Testing**: Expanded test suite to 121 tests
+- **Testing**: Expanded test suite to 138 tests
   - Added comprehensive tests for inline comment handling
   - Added tests for version update functionality with comments
   - Added comprehensive Git metadata service tests
@@ -81,6 +87,7 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Added integration tests for real-world scenarios
   - Added tests for line number preservation
   - Enhanced hover provider test coverage
+  - Added Git module name mismatch test coverage
   - Command registration validation
   - Reduced test code duplication from 24% to ~10% through refactoring
   - Introduced helper functions and factory patterns for cleaner test structure

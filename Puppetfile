@@ -15,6 +15,12 @@ mod 'theforeman-puppet'
     :git => 'https://github.com/theforeman/puppet-foreman.git',
     :ref => '24.2-stable'
 
+# Example of a module with the name different from the one in the `metadata.json`
+# This is a module that is not on the Forge, but is available on GitHub
+mod 'echocat/graphite',
+    :git => 'https://github.com/echocat/puppet-graphite.git',
+    :ref => 'master'
+
 # Forge module without version
 mod 'puppetlabs-nginx'
 

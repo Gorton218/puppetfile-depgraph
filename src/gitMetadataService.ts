@@ -39,7 +39,8 @@ export class GitMetadataService {
         
         // Check cache first
         if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey) || null;
+            const cached = this.cache.get(cacheKey);
+            return cached || null;
         }
 
         try {
@@ -54,9 +55,15 @@ export class GitMetadataService {
                 headers: {
                     'Accept': 'application/json',
                     'User-Agent': 'Puppetfile-DepGraph-VSCode-Extension'
-                }
+                },
+                validateStatus: (status) => status < 500 // Don't throw on 404s
             });
 
+            if (response.status === 404) {
+                this.cache.set(cacheKey, null);
+                return null;
+            }
+            
             const metadata = response.data as GitModuleMetadata;
             this.cache.set(cacheKey, metadata);
             return metadata;
@@ -137,15 +144,20 @@ export class GitMetadataService {
      * @returns Promise with metadata or null
      */
     public static async getModuleMetadataWithFallback(gitUrl: string, ref?: string): Promise<GitModuleMetadata | null> {
-        // Try the primary ref first
-        let metadata = await this.getGitModuleMetadata(gitUrl, ref);
-        
-        // If that fails and no ref was specified, try alternatives
-        if (!metadata && !ref) {
-            metadata = await this.tryAlternativeRefs(gitUrl, ref);
+        try {
+            // Try the primary ref first
+            let metadata = await this.getGitModuleMetadata(gitUrl, ref);
+            
+            // If that fails and no ref was specified, try alternatives
+            if (!metadata && !ref) {
+                metadata = await this.tryAlternativeRefs(gitUrl, ref);
+            }
+            
+            return metadata;
+        } catch (error) {
+            console.warn(`Failed to get metadata for ${gitUrl}:${ref || 'default'}:`, error);
+            return null;
         }
-        
-        return metadata;
     }
 
     /**
@@ -160,5 +172,13 @@ export class GitMetadataService {
      */
     public static getCacheSize(): number {
         return this.cache.size;
+    }
+
+    /**
+     * Check if a specific Git URL is cached
+     */
+    public static isCached(gitUrl: string, ref?: string): boolean {
+        const cacheKey = `${gitUrl}:${ref || 'default'}`;
+        return this.cache.has(cacheKey);
     }
 }
