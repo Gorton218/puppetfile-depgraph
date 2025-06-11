@@ -56,6 +56,11 @@
         "command": "puppetfile-depgraph.cacheAllModules",
         "title": "Cache info for all modules",
         "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.showAbout",
+        "title": "About Puppetfile Dependency Manager",
+        "category": "Puppetfile"
       }
     ],
     "menus": {

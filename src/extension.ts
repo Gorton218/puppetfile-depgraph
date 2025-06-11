@@ -13,9 +13,12 @@ import { CacheService } from './cacheService';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
+	// Get extension version from package.json
+	const extensionVersion = context.extension.packageJSON.version;
+	
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "puppetfile-depgraph" is now active!');
+	console.log(`Puppetfile Dependency Manager v${extensionVersion} is now active!`);
 
 	// Register commands defined in package.json
 	const updateAllToSafe = vscode.commands.registerCommand('puppetfile-depgraph.updateAllToSafe', async () => {
@@ -228,8 +231,43 @@ export function activate(context: vscode.ExtensionContext) {
                 await CacheService.cacheAllModules(forgeModules, true);
         });
 
+        const showAbout = vscode.commands.registerCommand('puppetfile-depgraph.showAbout', async () => {
+                const packageJSON = context.extension.packageJSON;
+                const aboutContent = `# ${packageJSON.displayName}
+
+**Version:** ${packageJSON.version}
+**Description:** ${packageJSON.description}
+
+## Features
+- 🔍 Puppetfile parsing and syntax highlighting
+- 📦 Puppet Forge integration with caching
+- 🔄 Version update commands (safe/latest)
+- 🌳 Dependency tree visualization
+- 💡 Hover tooltips with version information
+- ⚡ Batch module caching for performance
+
+## Commands
+- Update all dependencies to safe versions
+- Update all dependencies to latest versions
+- Show dependency tree (tree/list view)
+- Clear Puppet Forge cache
+- Cache info for all modules
+
+## Repository
+${packageJSON.repository?.url || 'Not specified'}
+
+---
+Built with ❤️ for the Puppet community`;
+
+                const doc = await vscode.workspace.openTextDocument({
+                        content: aboutContent,
+                        language: 'markdown'
+                });
+                await vscode.window.showTextDocument(doc);
+        });
+
         // Add all commands to subscriptions
-        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, updateModuleVersion, cacheAllModules);
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, updateModuleVersion, cacheAllModules, showAbout);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
