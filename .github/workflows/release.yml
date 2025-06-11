@@ -29,6 +29,12 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Sync version with tag
+      run: |
+        VERSION="${GITHUB_REF#refs/tags/}"
+        VERSION="${VERSION#v}"
+        npm pkg set version="$VERSION"
+
     - name: Compile TypeScript
       run: npm run compile
 
