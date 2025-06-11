@@ -321,7 +321,11 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         const markdown = new vscode.MarkdownString();
         markdown.isTrusted = true;
 
-        markdown.appendMarkdown(`## 📦 ${metadata.name || module.name} [Git]\n\n`);
+        markdown.appendMarkdown(`## 📦 ${module.name} [Git]\n\n`);
+
+        if (metadata.name && metadata.name !== module.name) {
+            markdown.appendMarkdown(`**Metadata Name:** \`${metadata.name}\`\n\n`);
+        }
 
         if (metadata.summary) {
             markdown.appendMarkdown(`*${metadata.summary}*\n\n`);
