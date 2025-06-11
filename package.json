@@ -85,7 +85,7 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./scripts/runTests.js",
-    "package": "vsce package"
+    "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -99,7 +99,7 @@
     "eslint": "^9.25.1",
     "sinon": "^20.0.0",
     "typescript": "^5.8.3",
-    "vsce": "^2.15.0"
+    "@vscode/vsce": "^3.5.0"
   },
   "dependencies": {
     "axios": "^1.9.0",

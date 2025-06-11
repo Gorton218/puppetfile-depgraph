@@ -7,6 +7,7 @@ import { DependencyTreeService } from './dependencyTreeService';
 import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
 import { PuppetForgeService } from './puppetForgeService';
 import { GitMetadataService } from './gitMetadataService';
+import { CacheService } from './cacheService';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -223,82 +224,8 @@ export function activate(context: vscode.ExtensionContext) {
                         return;
                 }
 
-                // Show progress indicator with cancellation support
-                await vscode.window.withProgress({
-                        location: vscode.ProgressLocation.Notification,
-                        title: "Caching module information",
-                        cancellable: true
-                }, async (progress, token) => {
-                        try {
-                                progress.report({ increment: 0, message: `Processing ${forgeModules.length} modules...` });
-                                
-                                let completed = 0;
-                                const incrementPerModule = 100 / forgeModules.length;
-                                
-                                // Process modules in parallel but with limited concurrency to avoid rate limiting
-                                const concurrencyLimit = 5;
-                                const moduleChunks: typeof forgeModules[] = [];
-                                
-                                for (let i = 0; i < forgeModules.length; i += concurrencyLimit) {
-                                        moduleChunks.push(forgeModules.slice(i, i + concurrencyLimit));
-                                }
-                                
-                                for (const chunk of moduleChunks) {
-                                        // Check for cancellation
-                                        if (token.isCancellationRequested) {
-                                                return;
-                                        }
-                                        
-                                        // Process chunk in parallel
-                                        const chunkPromises = chunk.map(async (module) => {
-                                                if (token.isCancellationRequested) {
-                                                        return;
-                                                }
-                                                
-                                                try {
-                                                        // Cache module releases (this will populate the cache)
-                                                        await PuppetForgeService.getModuleReleases(module.name);
-                                                        completed++;
-                                                        
-                                                        if (!token.isCancellationRequested) {
-                                                                progress.report({ 
-                                                                        increment: incrementPerModule, 
-                                                                        message: `Cached ${module.name} (${completed}/${forgeModules.length})` 
-                                                                });
-                                                        }
-                                                } catch (error) {
-                                                        console.warn(`Failed to cache module ${module.name}:`, error);
-                                                        completed++;
-                                                        
-                                                        if (!token.isCancellationRequested) {
-                                                                progress.report({ 
-                                                                        increment: incrementPerModule, 
-                                                                        message: `Skipped ${module.name} (error) (${completed}/${forgeModules.length})` 
-                                                                });
-                                                        }
-                                                }
-                                        });
-                                        
-                                        await Promise.all(chunkPromises);
-                                        
-                                        // Small delay between chunks to be respectful to the API
-                                        if (!token.isCancellationRequested && moduleChunks.indexOf(chunk) < moduleChunks.length - 1) {
-                                                await new Promise(resolve => setTimeout(resolve, 100));
-                                        }
-                                }
-                                
-                                if (!token.isCancellationRequested) {
-                                        progress.report({ increment: 100, message: "Caching complete!" });
-                                        vscode.window.showInformationMessage(`Successfully cached information for ${completed} modules`);
-                                } else {
-                                        vscode.window.showInformationMessage(`Caching cancelled. Cached ${completed} of ${forgeModules.length} modules`);
-                                }
-                                
-                        } catch (error) {
-                                console.error('Error during module caching:', error);
-                                vscode.window.showErrorMessage(`Caching failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                        }
-                });
+                // Use the shared caching service
+                await CacheService.cacheAllModules(forgeModules, true);
         });
 
         // Add all commands to subscriptions

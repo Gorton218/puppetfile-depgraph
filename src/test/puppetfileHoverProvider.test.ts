@@ -489,4 +489,94 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         assert.strictEqual(result.version, '8.5.0', 'Should parse module version correctly');
         assert.strictEqual(result.line, 1, 'Should have correct line number');
     });
+
+    test('hasModuleCached should correctly check cache status', () => {
+        // Clear cache first
+        PuppetForgeService.clearCache();
+        
+        // Should return false for uncached module
+        assert.strictEqual(PuppetForgeService.hasModuleCached('puppetlabs/stdlib'), false);
+        
+        // Mock cache by calling internal cache set
+        const moduleVersionCache = (PuppetForgeService as any).moduleVersionCache;
+        const versionMap = new Map();
+        versionMap.set('8.5.0', { version: '8.5.0', metadata: {} });
+        moduleVersionCache.set('puppetlabs/stdlib', versionMap);
+        
+        // Should return true for cached module
+        assert.strictEqual(PuppetForgeService.hasModuleCached('puppetlabs/stdlib'), true);
+        
+        // Clear cache
+        PuppetForgeService.clearCache();
+    });
+
+    test('version compatibility indicators should be shown correctly', async () => {
+        const provider = createProvider();
+        
+        // Mock the parseActiveEditor to return test modules
+        const { PuppetfileParser } = await import('../puppetfileParser.js');
+        const originalParseActiveEditor = PuppetfileParser.parseActiveEditor;
+        PuppetfileParser.parseActiveEditor = () => ({
+            modules: [
+                { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge' as const, line: 1 },
+                { name: 'puppetlabs/concat', version: '7.0.0', source: 'forge' as const, line: 2 }
+            ],
+            errors: []
+        });
+
+        // Override hasModuleCached to return true (simulate cached data)
+        const originalHasModuleCached = PuppetForgeService.hasModuleCached;
+        PuppetForgeService.hasModuleCached = () => true;
+
+        try {
+            await withServiceMocks(async (restore) => {
+                const mockReleases = [
+                    createMockRelease('8.5.0'),  // Compatible version
+                    createMockRelease('9.0.0'),  // Incompatible version
+                    createMockRelease('8.0.0')   // Current version
+                ];
+
+                // Mock concat's dependency on stdlib
+                const originalGetReleaseForVersion = PuppetForgeService.getReleaseForVersion;
+                PuppetForgeService.getReleaseForVersion = async (moduleName: string, version: string) => {
+                    if (moduleName === 'puppetlabs/concat' && version === '7.0.0') {
+                        return {
+                            version: '7.0.0',
+                            metadata: {
+                                dependencies: [
+                                    { name: 'puppetlabs/stdlib', version_requirement: '>= 4.13.1 < 9.0.0' }
+                                ]
+                            }
+                        } as any;
+                    }
+                    return mockReleases.find(r => r.version === version) as any;
+                };
+
+                PuppetForgeService.getModule = async () => createBasicForgeModule('puppetlabs/stdlib', '8.0.0');
+                PuppetForgeService.checkForUpdate = async () => ({ latestVersion: '9.0.0', hasUpdate: true });
+                PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+                const mockModule = { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge' as const, line: 1 };
+                const result = await callGetModuleInfo(provider, mockModule);
+                const markdownText = result.value;
+
+                // Should contain green indicator for compatible version
+                assert.ok(markdownText.includes('🟢'), 'Should show green indicator for compatible versions');
+                assert.ok(markdownText.includes('🟢 [`8.5.0`]'), 'Version 8.5.0 should have green indicator');
+
+                // Should contain yellow indicator for incompatible version
+                assert.ok(markdownText.includes('🟡'), 'Should show yellow indicator for incompatible versions');
+                assert.ok(markdownText.includes('🟡 [`9.0.0`]'), 'Version 9.0.0 should have yellow indicator');
+
+                // Should show conflict details in tooltip
+                assert.ok(markdownText.includes('Conflicts:'), 'Should show conflict details');
+                assert.ok(markdownText.includes('puppetlabs/concat requires >= 4.13.1 < 9.0.0'), 'Should show specific conflict requirement');
+
+                PuppetForgeService.getReleaseForVersion = originalGetReleaseForVersion;
+            });
+        } finally {
+            PuppetfileParser.parseActiveEditor = originalParseActiveEditor;
+            PuppetForgeService.hasModuleCached = originalHasModuleCached;
+        }
+    });
 });

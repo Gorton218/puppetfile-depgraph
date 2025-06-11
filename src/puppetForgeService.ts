@@ -82,6 +82,16 @@ export class PuppetForgeService {
     }
 
     /**
+     * Check if a module has cached data
+     * @param moduleName The full module name (e.g., "puppetlabs/stdlib")
+     * @returns True if the module has cached data
+     */
+    public static hasModuleCached(moduleName: string): boolean {
+        const moduleCache = this.moduleVersionCache.get(moduleName);
+        return moduleCache !== undefined && moduleCache.size > 0;
+    }
+
+    /**
      * Get module information from Puppet Forge
      * @param moduleName The full module name (e.g., "puppetlabs/stdlib")
      * @returns Promise with module information

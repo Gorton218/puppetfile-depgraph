@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
 import { PuppetForgeService, ForgeModule } from './puppetForgeService';
 import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
+import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
+import { CacheService } from './cacheService';
 
 /**
  * Provides hover information for Puppetfile modules
@@ -126,6 +128,24 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             return await this.getGitModuleInfo(module);
         }
 
+        // Check if we need to trigger caching for all modules
+        const needsCaching = await this.checkAndInitializeCache();
+        if (needsCaching) {
+            const markdown = new vscode.MarkdownString();
+            markdown.isTrusted = true;
+            markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
+            
+            if (CacheService.isCachingInProgress()) {
+                markdown.appendMarkdown(`*Module cache is currently being initialized. Check the progress notification.*\n\n`);
+                markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
+            } else {
+                markdown.appendMarkdown(`*Module cache is being initialized in the background.*\n\n`);
+                markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
+                markdown.appendMarkdown(`💡 **Tip:** You can also manually run **Cache All Modules** command to pre-cache module information.`);
+            }
+            return markdown;
+        }
+
         try {
             // Fetch from Puppet Forge
             const forgeModule = await PuppetForgeService.getModule(module.name);
@@ -161,22 +181,39 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 }
             }
 
+            // Get all modules for compatibility checking
+            const parseResult = PuppetfileParser.parseActiveEditor();
+            const allModules = parseResult.modules;
+
             // Show only newer versions if a version is specified
             if (module.version) {
                 const newerVersions = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
                 if (newerVersions.length > 0) {
                     markdown.appendMarkdown(`**Available Updates:**\n`);
                     
+                    // Check compatibility for each version
+                    const versionCompatibilities = await this.checkVersionCompatibilities(module, newerVersions, allModules);
+                    
                     // Group versions into rows of 5
                     const versionsPerRow = 5;
                     for (let i = 0; i < newerVersions.length; i += versionsPerRow) {
                         const rowVersions = newerVersions.slice(i, i + versionsPerRow);
                         
-                        // Create clickable version links without dots
+                        // Create clickable version links with color indicators
                         const versionLinks = rowVersions.map(rel => {
-                            // Try a simpler command format that VS Code can handle
+                            const compatibility = versionCompatibilities.get(rel.version);
+                            const indicator = compatibility?.isCompatible ? '🟢' : '🟡';
                             const args = JSON.stringify([{ line: module.line, version: rel.version }]);
-                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                            
+                            if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
+                                // Add conflict details to tooltip
+                                const conflictDetails = compatibility.conflicts
+                                    .map(c => `${c.moduleName} requires ${c.requirement}`)
+                                    .join(', ');
+                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version} - Conflicts: ${conflictDetails}")`;
+                            } else {
+                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                            }
                         });
                         
                         markdown.appendMarkdown(versionLinks.join('  ') + '\n');
@@ -184,20 +221,33 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                     markdown.appendMarkdown('\n');
                 }
             } else {
-                // No version specified, show all versions
+                // No version specified, show all versions with compatibility
                 if (allReleases.length > 0) {
                     markdown.appendMarkdown(`**Available Versions:**\n`);
+                    
+                    // Check compatibility for each version
+                    const versionCompatibilities = await this.checkVersionCompatibilities(module, allReleases, allModules);
                     
                     // Group versions into rows of 5
                     const versionsPerRow = 5;
                     for (let i = 0; i < allReleases.length; i += versionsPerRow) {
                         const rowVersions = allReleases.slice(i, i + versionsPerRow);
                         
-                        // Create clickable version links without dots
+                        // Create clickable version links with color indicators
                         const versionLinks = rowVersions.map(rel => {
-                            // Try a simpler command format that VS Code can handle
+                            const compatibility = versionCompatibilities.get(rel.version);
+                            const indicator = compatibility?.isCompatible ? '🟢' : '🟡';
                             const args = JSON.stringify([{ line: module.line, version: rel.version }]);
-                            return `[\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                            
+                            if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
+                                // Add conflict details to tooltip
+                                const conflictDetails = compatibility.conflicts
+                                    .map(c => `${c.moduleName} requires ${c.requirement}`)
+                                    .join(', ');
+                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version} - Conflicts: ${conflictDetails}")`;
+                            } else {
+                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                            }
                         });
                         
                         markdown.appendMarkdown(versionLinks.join('  ') + '\n');
@@ -418,6 +468,75 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         // Therefore the `/dependencies` endpoint is used as a workaround 
         // to get the dependencies of a specific version
         return version ? `${base}/${version}/dependencies` : `${base}/dependencies`;
+    }
+    
+    /**
+     * Check if cache needs to be initialized and trigger caching
+     * @returns True if cache is being initialized
+     */
+    private async checkAndInitializeCache(): Promise<boolean> {
+        // Get all forge modules from the current Puppetfile
+        const parseResult = PuppetfileParser.parseActiveEditor();
+        const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
+        
+        // Check if any module is not cached
+        const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
+        
+        if (uncachedModules.length > 0) {
+            // Trigger caching with progress indicator
+            this.triggerCachingWithProgress(forgeModules);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Trigger caching of modules with progress indicator
+     * @param modules All forge modules (we'll filter to uncached ones internally)
+     */
+    private async triggerCachingWithProgress(modules: PuppetModule[]): Promise<void> {
+        // Fire and forget - cache modules with progress
+        CacheService.cacheUncachedModules(modules).catch(error => {
+            console.warn('Background caching failed:', error);
+        });
+    }
+    
+    /**
+     * Check version compatibilities for multiple versions
+     * @param module The module being checked
+     * @param versions Versions to check
+     * @param allModules All modules in the Puppetfile
+     * @returns Map of version to compatibility info
+     */
+    private async checkVersionCompatibilities(
+        module: PuppetModule, 
+        versions: Array<{version: string}>, 
+        allModules: PuppetModule[]
+    ): Promise<Map<string, VersionCompatibility>> {
+        const compatibilityMap = new Map<string, VersionCompatibility>();
+        
+        // Process versions in chunks to avoid overwhelming the system
+        const chunkSize = 10;
+        for (let i = 0; i < versions.length; i += chunkSize) {
+            const chunk = versions.slice(i, i + chunkSize);
+            const chunkResults = await Promise.all(
+                chunk.map(async (rel) => {
+                    const compatibility = await VersionCompatibilityService.checkVersionCompatibility(
+                        module,
+                        rel.version,
+                        allModules
+                    );
+                    return { version: rel.version, compatibility };
+                })
+            );
+            
+            for (const result of chunkResults) {
+                compatibilityMap.set(result.version, result.compatibility);
+            }
+        }
+        
+        return compatibilityMap;
     }
 }
 
