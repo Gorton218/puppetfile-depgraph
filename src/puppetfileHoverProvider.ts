@@ -3,6 +3,7 @@ import { PuppetfileParser, PuppetModule } from './puppetfileParser';
 import { PuppetForgeService, ForgeModule } from './puppetForgeService';
 import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
 import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
+import { CacheService } from './cacheService';
 
 /**
  * Provides hover information for Puppetfile modules
@@ -133,8 +134,15 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             const markdown = new vscode.MarkdownString();
             markdown.isTrusted = true;
             markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
-            markdown.appendMarkdown(`*Initializing module cache... Please wait and try again in a moment.*\n\n`);
-            markdown.appendMarkdown(`💡 **Tip:** Run the command **Cache All Modules** to pre-cache all module information for better performance.`);
+            
+            if (CacheService.isCachingInProgress()) {
+                markdown.appendMarkdown(`*Module cache is currently being initialized. Check the progress notification.*\n\n`);
+                markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
+            } else {
+                markdown.appendMarkdown(`*Module cache is being initialized in the background.*\n\n`);
+                markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
+                markdown.appendMarkdown(`💡 **Tip:** You can also manually run **Cache All Modules** command to pre-cache module information.`);
+            }
             return markdown;
         }
 
@@ -475,8 +483,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
         
         if (uncachedModules.length > 0) {
-            // Trigger background caching
-            this.triggerBackgroundCaching(uncachedModules);
+            // Trigger caching with progress indicator
+            this.triggerCachingWithProgress(forgeModules);
             return true;
         }
         
@@ -484,18 +492,12 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     }
     
     /**
-     * Trigger background caching of modules
-     * @param modules Modules to cache
+     * Trigger caching of modules with progress indicator
+     * @param modules All forge modules (we'll filter to uncached ones internally)
      */
-    private async triggerBackgroundCaching(modules: PuppetModule[]): Promise<void> {
-        // Fire and forget - cache modules in background
-        Promise.all(modules.map(async (module) => {
-            try {
-                await PuppetForgeService.getModuleReleases(module.name);
-            } catch (error) {
-                console.warn(`Failed to cache module ${module.name}:`, error);
-            }
-        })).catch(error => {
+    private async triggerCachingWithProgress(modules: PuppetModule[]): Promise<void> {
+        // Fire and forget - cache modules with progress
+        CacheService.cacheUncachedModules(modules).catch(error => {
             console.warn('Background caching failed:', error);
         });
     }
