@@ -579,4 +579,5 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             PuppetForgeService.hasModuleCached = originalHasModuleCached;
         }
     });
+
 });

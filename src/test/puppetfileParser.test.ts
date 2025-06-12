@@ -311,4 +311,21 @@ mod 'puppetlabs-apache', '2.11.0'`;
         assert.strictEqual(result.modules[2].source, 'forge');
         assert.strictEqual(result.modules[2].line, 5);
     });
+
+    test('Parse multi-line git module with inline comment on first line', () => {
+        const content = `mod 'puppet/collectd', # Example of a git-based module with comment
+    :git => 'https://github.com/voxpupuli/puppet-collectd.git',
+    :ref => 'v14.0.0'`;
+        const result = PuppetfileParser.parseContent(content);
+        
+        assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
+        assert.strictEqual(result.modules.length, 1, 'Should parse one module');
+        
+        const module = result.modules[0];
+        assert.strictEqual(module.name, 'puppet/collectd');
+        assert.strictEqual(module.source, 'git', 'Module should be identified as git source');
+        assert.strictEqual(module.gitUrl, 'https://github.com/voxpupuli/puppet-collectd.git');
+        assert.strictEqual(module.gitRef, 'v14.0.0');
+        assert.strictEqual(module.line, 1);
+    });
 });
