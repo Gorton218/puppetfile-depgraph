@@ -51,7 +51,7 @@ jobs:
       run: npx vsce package $VSCE_FLAGS --out $VSIX_FILE
 
     - name: Upload release asset
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: ${{ env.VSIX_FILE }}
       env:
