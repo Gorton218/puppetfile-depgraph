@@ -66,13 +66,20 @@ export class PuppetfileParser {
 
             try {
                 // Check if this is the start of a module definition
-                if (line.startsWith('mod ') && !line.includes(';') && (line.includes(':git') || line.includes(','))) {
-                    // This might be a multi-line module definition
-                    const multiLineModule = this.parseMultiLineModule(lines, i);
-                    if (multiLineModule.module) {
-                        modules.push(multiLineModule.module);
-                        i = multiLineModule.lastLine; // Skip the lines we've already processed
-                        continue;
+                if (line.startsWith('mod ')) {
+                    // First, strip any inline comment from the line
+                    const cleanLine = this.stripInlineComment(line);
+                    
+                    // Check if this might be a multi-line module definition
+                    // A multi-line module definition typically ends with a comma and doesn't have a complete definition
+                    if (cleanLine.endsWith(',') && !cleanLine.includes(';')) {
+                        // This might be a multi-line module definition
+                        const multiLineModule = this.parseMultiLineModule(lines, i);
+                        if (multiLineModule.module) {
+                            modules.push(multiLineModule.module);
+                            i = multiLineModule.lastLine; // Skip the lines we've already processed
+                            continue;
+                        }
                     }
                 }
                 
@@ -110,17 +117,20 @@ export class PuppetfileParser {
                 continue;
             }
 
+            // Strip inline comments before adding to accumulated content
+            const cleanLine = this.stripInlineComment(line);
+            
             // Add the line to our accumulated content
             if (accumulatedLine) {
-                accumulatedLine += ' ' + line;
+                accumulatedLine += ' ' + cleanLine;
             } else {
-                accumulatedLine = line;
+                accumulatedLine = cleanLine;
             }
 
             // Check if this line ends the module definition
             // A module definition ends when we find a line that doesn't end with a comma
             // or when we encounter a closing parenthesis/bracket
-            if (!line.endsWith(',') || line.includes(')') || line.includes(']')) {
+            if (!cleanLine.endsWith(',') || cleanLine.includes(')') || cleanLine.includes(']')) {
                 foundEnd = true;
             }
 
@@ -152,15 +162,8 @@ export class PuppetfileParser {
      * @returns PuppetModule if the line contains a module definition, null otherwise
      */
     private static parseModuleLine(line: string, lineNumber: number): PuppetModule | null {
-        // Remove leading/trailing whitespace
-        line = line.trim();
-        
-        // Strip inline comments (but preserve # in strings)
-        // This regex looks for # that's not inside quotes
-        const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
-        if (commentMatch) {
-            line = commentMatch[1].trim();
-        }
+        // Remove leading/trailing whitespace and strip inline comments
+        line = this.stripInlineComment(line);
         
         // Skip non-module lines (forge, etc.)
         if (!line.startsWith('mod ') && !line.startsWith('mod\'') && !line.startsWith('mod"')) {
@@ -276,6 +279,18 @@ export class PuppetfileParser {
         }
 
         return module;
+    }
+
+    /**
+     * Strip inline comments from a line while preserving # in strings
+     */
+    private static stripInlineComment(line: string): string {
+        // This regex looks for # that's not inside quotes
+        const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
+        if (commentMatch) {
+            return commentMatch[1].trim();
+        }
+        return line.trim();
     }
 
     /**

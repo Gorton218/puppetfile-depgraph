@@ -94,8 +94,16 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         const moduleText = this.extractCompleteModuleDefinition(document, position.line);
         
         try {
-            // Convert multi-line to single line for easier parsing
-            const singleLineText = moduleText.replace(/\n\s*/g, ' ').trim();
+            // Strip comments from each line before joining them
+            const lines = moduleText.split('\n');
+            const cleanedLines = lines.map(line => {
+                // Strip inline comments while preserving # in strings
+                const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
+                return commentMatch ? commentMatch[1].trim() : line.trim();
+            });
+            
+            // Join the cleaned lines into a single line
+            const singleLineText = cleanedLines.join(' ').trim();
             
             const parseResult = PuppetfileParser.parseContent(singleLineText);
             if (parseResult.modules.length > 0) {
