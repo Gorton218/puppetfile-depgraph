@@ -48,6 +48,10 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
 - **Multi-line Git Module Parsing**: Fixed hover tooltips for multi-line Git module definitions
   - Hover provider now correctly parses multi-line Git module syntax
   - Properly extracts Git URL, ref, and tag from modules spanning multiple lines
+- **Git Module Comment Parsing**: Fixed Git modules with inline comments being treated as Forge modules
+  - Parser now properly detects multi-line modules by checking for trailing commas
+  - Hover provider strips comments from each line before parsing module definitions
+  - Git modules with comments (e.g., `mod 'name', # comment`) are now correctly identified
   - Shows correct Git metadata dependencies instead of falling back to Forge data
   - Handles various Git module formatting styles (indented parameters)
 - **Git Module Name Mismatch**: Fixed critical issue where Git modules break hover functionality
