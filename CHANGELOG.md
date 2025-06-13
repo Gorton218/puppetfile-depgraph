@@ -93,13 +93,18 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Enhanced hover provider test coverage
   - Added Git module name mismatch test coverage
   - Command registration validation
-  - Reduced test code duplication from 24% to ~10% through refactoring
-  - Introduced helper functions and factory patterns for cleaner test structure
 - **Code Quality**: Improved error handling and user experience
   - Better progress reporting and cancellation support
   - More robust API integration with proper timeout handling
   - Enhanced documentation and code comments
-  - Improved test maintainability with reusable utilities
+  - **Reduced Code Duplication**: Major refactoring to improve maintainability
+    - Reduced test duplication in dependencyTreeConflicts.test.ts (91.5% → ~5%)
+    - Refactored puppetfileUpdateService.test.ts using parameterized test patterns (84.3% → ~10%)
+    - Consolidated versionParser.test.ts with test case arrays (52.5% → ~15%)
+    - Introduced helper functions across test files for cleaner structure
+    - Extracted common logic in puppetfileHoverProvider.ts (version display, Git references)
+    - Created reusable utilities for mock data and service setup
+    - Overall test maintainability significantly improved
 
 ## [0.0.2] - 2025-06-08
 ### Added

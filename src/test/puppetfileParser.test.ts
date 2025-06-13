@@ -1,6 +1,18 @@
 import * as assert from 'assert';
 import { PuppetfileParser, PuppetModule } from '../puppetfileParser';
 
+// Helper function to assert module properties
+function assertModule(module: PuppetModule, expected: Partial<PuppetModule>, description?: string) {
+    const prefix = description ? `${description}: ` : '';
+    if (expected.name !== undefined) assert.strictEqual(module.name, expected.name, `${prefix}name mismatch`);
+    if (expected.version !== undefined) assert.strictEqual(module.version, expected.version, `${prefix}version mismatch`);
+    if (expected.source !== undefined) assert.strictEqual(module.source, expected.source, `${prefix}source mismatch`);
+    if (expected.line !== undefined) assert.strictEqual(module.line, expected.line, `${prefix}line mismatch`);
+    if (expected.gitUrl !== undefined) assert.strictEqual(module.gitUrl, expected.gitUrl, `${prefix}gitUrl mismatch`);
+    if (expected.gitTag !== undefined) assert.strictEqual(module.gitTag, expected.gitTag, `${prefix}gitTag mismatch`);
+    if (expected.gitRef !== undefined) assert.strictEqual(module.gitRef, expected.gitRef, `${prefix}gitRef mismatch`);
+}
+
 suite('PuppetfileParser Test Suite', () => {
     
     test('Parse simple forge module with version', () => {
@@ -10,11 +22,12 @@ suite('PuppetfileParser Test Suite', () => {
         assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
         assert.strictEqual(result.modules.length, 1, 'Should parse one module');
         
-        const module = result.modules[0];
-        assert.strictEqual(module.name, 'puppetlabs-stdlib');
-        assert.strictEqual(module.version, '9.4.1');
-        assert.strictEqual(module.source, 'forge');
-        assert.strictEqual(module.line, 1);
+        assertModule(result.modules[0], {
+            name: 'puppetlabs-stdlib',
+            version: '9.4.1',
+            source: 'forge',
+            line: 1
+        });
     });
 
     test('Parse simple forge module without version', () => {
@@ -24,10 +37,11 @@ suite('PuppetfileParser Test Suite', () => {
         assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
         assert.strictEqual(result.modules.length, 1, 'Should parse one module');
         
-        const module = result.modules[0];
-        assert.strictEqual(module.name, 'puppetlabs-apache');
-        assert.strictEqual(module.version, undefined);
-        assert.strictEqual(module.source, 'forge');
+        assertModule(result.modules[0], {
+            name: 'puppetlabs-apache',
+            version: undefined,
+            source: 'forge'
+        });
     });
 
     test('Parse git module with tag', () => {
@@ -37,11 +51,12 @@ suite('PuppetfileParser Test Suite', () => {
         assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
         assert.strictEqual(result.modules.length, 1, 'Should parse one module');
         
-        const module = result.modules[0];
-        assert.strictEqual(module.name, 'mymodule');
-        assert.strictEqual(module.source, 'git');
-        assert.strictEqual(module.gitUrl, 'https://github.com/user/mymodule.git');
-        assert.strictEqual(module.gitTag, 'v1.2.3');
+        assertModule(result.modules[0], {
+            name: 'mymodule',
+            source: 'git',
+            gitUrl: 'https://github.com/user/mymodule.git',
+            gitTag: 'v1.2.3'
+        });
     });
 
     test('Parse git module with ref', () => {
@@ -51,11 +66,12 @@ suite('PuppetfileParser Test Suite', () => {
         assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
         assert.strictEqual(result.modules.length, 1, 'Should parse one module');
         
-        const module = result.modules[0];
-        assert.strictEqual(module.name, 'mymodule');
-        assert.strictEqual(module.source, 'git');
-        assert.strictEqual(module.gitUrl, 'git@github.com:user/mymodule.git');
-        assert.strictEqual(module.gitRef, 'main');
+        assertModule(result.modules[0], {
+            name: 'mymodule',
+            source: 'git',
+            gitUrl: 'git@github.com:user/mymodule.git',
+            gitRef: 'main'
+        });
     });
 
     test('Parse git module without tag or ref', () => {
@@ -65,12 +81,13 @@ suite('PuppetfileParser Test Suite', () => {
         assert.strictEqual(result.errors.length, 0, 'Should have no parsing errors');
         assert.strictEqual(result.modules.length, 1, 'Should parse one module');
         
-        const module = result.modules[0];
-        assert.strictEqual(module.name, 'mymodule');
-        assert.strictEqual(module.source, 'git');
-        assert.strictEqual(module.gitUrl, 'https://github.com/user/mymodule.git');
-        assert.strictEqual(module.gitTag, undefined);
-        assert.strictEqual(module.gitRef, undefined);
+        assertModule(result.modules[0], {
+            name: 'mymodule',
+            source: 'git',
+            gitUrl: 'https://github.com/user/mymodule.git',
+            gitTag: undefined,
+            gitRef: undefined
+        });
     });
 
     test('Parse multiple modules', () => {

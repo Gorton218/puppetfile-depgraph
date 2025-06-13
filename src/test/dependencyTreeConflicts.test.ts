@@ -5,6 +5,33 @@ import { DependencyTreeService } from '../dependencyTreeService';
 import { PuppetForgeService } from '../puppetForgeService';
 import { PuppetModule } from '../puppetfileParser';
 
+// Helper function to create module mock data
+function createModuleMock(name: string, version: string, dependencies: Array<{name: string, version_requirement: string}> = [], availableVersions: string[] = []) {
+  const releases = availableVersions.length > 0 
+    ? availableVersions.map(v => ({ 
+        version: v,
+        metadata: { dependencies }
+      }))
+    : [{ 
+        version,
+        metadata: { dependencies }
+      }];
+  
+  return {
+    name: name.replace('/', '-'),
+    current_release: {
+      version,
+      metadata: { dependencies }
+    },
+    releases
+  };
+}
+
+// Helper function to setup module stub
+function setupModuleStub(stub: sinon.SinonStub, moduleName: string, version: string, dependencies: Array<{name: string, version_requirement: string}> = [], availableVersions: string[] = []) {
+  stub.withArgs(moduleName).resolves(createModuleMock(moduleName, version, dependencies, availableVersions));
+}
+
 suite('DependencyTree Conflict Detection Integration Tests', () => {
   let getModuleStub: sinon.SinonStub;
   
@@ -19,67 +46,16 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
   
   test('should not report false conflicts when versions overlap', async () => {
     // Setup mock data for stdlib module
-    getModuleStub.withArgs('puppetlabs/stdlib').resolves({
-      name: 'puppetlabs-stdlib',
-      current_release: {
-        version: '9.6.0',
-        metadata: {
-          dependencies: []
-        }
-      },
-      releases: [
-        { version: '4.0.0' },
-        { version: '5.0.0' },
-        { version: '6.0.0' },
-        { version: '7.0.0' },
-        { version: '8.0.0' },
-        { version: '8.5.0' },
-        { version: '9.0.0' },
-        { version: '9.6.0' }
-      ]
-    });
+    setupModuleStub(getModuleStub, 'puppetlabs/stdlib', '9.6.0', [], 
+      ['4.0.0', '5.0.0', '6.0.0', '7.0.0', '8.0.0', '8.5.0', '9.0.0', '9.6.0']);
     
     // Setup mock data for apache module that requires stdlib >= 4.0.0 < 9.0.0
-    getModuleStub.withArgs('puppetlabs/apache').resolves({
-      name: 'puppetlabs-apache',
-      current_release: {
-        version: '12.2.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/stdlib', version_requirement: '>= 4.0.0 < 9.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '12.2.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/stdlib', version_requirement: '>= 4.0.0 < 9.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'puppetlabs/apache', '12.2.0', 
+      [{ name: 'puppetlabs/stdlib', version_requirement: '>= 4.0.0 < 9.0.0' }]);
     
     // Setup mock data for mysql module that requires stdlib >= 8.0.0
-    getModuleStub.withArgs('puppetlabs/mysql').resolves({
-      name: 'puppetlabs-mysql',
-      current_release: {
-        version: '16.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '16.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'puppetlabs/mysql', '16.0.0', 
+      [{ name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0' }]);
     
     const modules: PuppetModule[] = [
       { name: 'puppetlabs/apache', version: '12.2.0', source: 'forge', line: 1 },
@@ -95,67 +71,16 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
   
   test('should report real conflicts when no version satisfies all requirements', async () => {
     // Setup mock data for concat module
-    getModuleStub.withArgs('puppetlabs/concat').resolves({
-      name: 'puppetlabs-concat',
-      current_release: {
-        version: '9.0.2',
-        metadata: {
-          dependencies: []
-        }
-      },
-      releases: [
-        { version: '5.0.0' },
-        { version: '6.0.0' },
-        { version: '6.5.0' },
-        { version: '7.0.0' },
-        { version: '7.5.0' },
-        { version: '8.0.0' },
-        { version: '9.0.0' },
-        { version: '9.0.2' }
-      ]
-    });
+    setupModuleStub(getModuleStub, 'puppetlabs/concat', '9.0.2', [], 
+      ['5.0.0', '6.0.0', '6.5.0', '7.0.0', '7.5.0', '8.0.0', '9.0.0', '9.0.2']);
     
     // Apache requires concat >= 6.0.0 < 7.0.0
-    getModuleStub.withArgs('example/apache').resolves({
-      name: 'example-apache',
-      current_release: {
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'example/apache', '1.0.0', 
+      [{ name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }]);
     
     // MySQL requires concat >= 7.0.0
-    getModuleStub.withArgs('example/mysql').resolves({
-      name: 'example-mysql',
-      current_release: {
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'example/mysql', '1.0.0', 
+      [{ name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }]);
     
     const modules: PuppetModule[] = [
       { name: 'example/apache', version: '1.0.0', source: 'forge', line: 1 },
@@ -172,41 +97,11 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
   
   test('should handle exact version constraints from Puppetfile', async () => {
     // Setup mock data
-    getModuleStub.withArgs('puppetlabs/stdlib').resolves({
-      name: 'puppetlabs-stdlib',
-      current_release: {
-        version: '8.6.0',
-        metadata: {
-          dependencies: []
-        }
-      },
-      releases: [
-        { version: '8.0.0' },
-        { version: '8.5.0' },
-        { version: '8.6.0' },
-        { version: '9.0.0' }
-      ]
-    });
+    setupModuleStub(getModuleStub, 'puppetlabs/stdlib', '8.6.0', [], 
+      ['8.0.0', '8.5.0', '8.6.0', '9.0.0']);
     
-    getModuleStub.withArgs('example/mymodule').resolves({
-      name: 'example-mymodule',
-      current_release: {
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/stdlib', version_requirement: '>= 9.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/stdlib', version_requirement: '>= 9.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'example/mymodule', '1.0.0', 
+      [{ name: 'puppetlabs/stdlib', version_requirement: '>= 9.0.0' }]);
     
     const modules: PuppetModule[] = [
       { name: 'puppetlabs/stdlib', version: '8.6.0', source: 'forge', line: 1 },
@@ -223,61 +118,14 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
   
   test('should provide suggested fixes for conflicts', async () => {
     // Setup similar to the real conflict test
-    getModuleStub.withArgs('puppetlabs/concat').resolves({
-      name: 'puppetlabs-concat',
-      current_release: {
-        version: '9.0.2',
-        metadata: {
-          dependencies: []
-        }
-      },
-      releases: [
-        { version: '6.0.0' },
-        { version: '6.5.0' },
-        { version: '7.0.0' },
-        { version: '7.5.0' }
-      ]
-    });
+    setupModuleStub(getModuleStub, 'puppetlabs/concat', '9.0.2', [], 
+      ['6.0.0', '6.5.0', '7.0.0', '7.5.0']);
     
-    getModuleStub.withArgs('example/apache').resolves({
-      name: 'example-apache',
-      current_release: {
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'example/apache', '1.0.0', 
+      [{ name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }]);
     
-    getModuleStub.withArgs('example/mysql').resolves({
-      name: 'example-mysql',
-      current_release: {
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }
-          ]
-        }
-      },
-      releases: [{ 
-        version: '1.0.0',
-        metadata: {
-          dependencies: [
-            { name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }
-          ]
-        }
-      }]
-    });
+    setupModuleStub(getModuleStub, 'example/mysql', '1.0.0', 
+      [{ name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }]);
     
     const modules: PuppetModule[] = [
       { name: 'example/apache', version: '1.0.0', source: 'forge', line: 1 },

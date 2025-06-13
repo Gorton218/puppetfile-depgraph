@@ -168,7 +168,9 @@ export class PuppetfileParser {
         // Skip non-module lines (forge, etc.)
         if (!line.startsWith('mod ') && !line.startsWith('mod\'') && !line.startsWith('mod"')) {
             return null;
-        }        // Basic regex patterns for different module declaration styles
+        }
+        
+        // Basic regex patterns for different module declaration styles
         const patterns = [
             // Multi-line Git modules: mod 'module_name', :git => 'url', :tag => 'tag' (with dotall flag)
             /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"].*:tag\s*=>\s*['"]([^'"]+)['"]/s,
@@ -197,7 +199,9 @@ export class PuppetfileParser {
 
         // If no pattern matches, try to parse as a complex module definition
         return this.parseComplexModuleLine(line, lineNumber);
-    }    /**
+    }
+    
+    /**
      * Create a PuppetModule from a regex match
      */
     private static createModuleFromMatch(match: RegExpMatchArray, lineNumber: number): PuppetModule {
@@ -213,13 +217,7 @@ export class PuppetfileParser {
                 line: lineNumber
             };
 
-            if (match[3]) {
-                if (matchText.includes(':tag')) {
-                    module.gitTag = match[3];
-                } else if (matchText.includes(':ref')) {
-                    module.gitRef = match[3];
-                }
-            }
+            this.extractGitRef(matchText, match[3], module);
 
             return module;
         }
@@ -237,7 +235,9 @@ export class PuppetfileParser {
         }
 
         return module;
-    }    /**
+    }
+    
+    /**
      * Parse complex module lines with multiple options
      */
     private static parseComplexModuleLine(line: string, lineNumber: number): PuppetModule | null {
@@ -264,11 +264,7 @@ export class PuppetfileParser {
             const tagMatch = line.match(/:tag\s*=>\s*['"]([^'"]+)['"]/s);
             const refMatch = line.match(/:ref\s*=>\s*['"]([^'"]+)['"]/s);
 
-            if (tagMatch) {
-                module.gitTag = tagMatch[1];
-            } else if (refMatch) {
-                module.gitRef = refMatch[1];
-            }
+            this.extractGitRef(line, tagMatch?.[1] || refMatch?.[1], module, tagMatch ? 'tag' : 'ref');
         } else {
             // Look for version - check if it's the second quoted string after the module name
             // But make sure it's not part of a git configuration
@@ -291,6 +287,19 @@ export class PuppetfileParser {
             return commentMatch[1].trim();
         }
         return line.trim();
+    }
+
+    /**
+     * Extract Git ref or tag information and add to module
+     */
+    private static extractGitRef(text: string, refValue: string | undefined, module: PuppetModule, refType?: 'tag' | 'ref'): void {
+        if (!refValue) return;
+        
+        if (refType === 'tag' || text.includes(':tag')) {
+            module.gitTag = refValue;
+        } else if (refType === 'ref' || text.includes(':ref')) {
+            module.gitRef = refValue;
+        }
     }
 
     /**

@@ -1,89 +1,115 @@
 import * as assert from 'assert';
 import { PuppetfileUpdateService } from '../puppetfileUpdateService';
 
+interface TestCase {
+    description: string;
+    input: string;
+    newVersion: string;
+    expected: string;
+}
+
 suite('PuppetfileUpdateService Test Suite', () => {
-    
-    test('updateVersionInLine should update forge module version', () => {
-        const line = "mod 'puppetlabs-stdlib', '9.4.1'";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, "mod 'puppetlabs-stdlib', '9.5.0'");
+    const updateVersionTestCases: TestCase[] = [
+        {
+            description: 'update forge module version',
+            input: "mod 'puppetlabs-stdlib', '9.4.1'",
+            newVersion: '9.5.0',
+            expected: "mod 'puppetlabs-stdlib', '9.5.0'"
+        },
+        {
+            description: 'update forge module version with inline comment',
+            input: "mod 'puppetlabs-mongodb', '0.17.0' # Example of commit",
+            newVersion: '0.18.0',
+            expected: "mod 'puppetlabs-mongodb', '0.18.0' # Example of commit"
+        },
+        {
+            description: 'add version to forge module without version',
+            input: "mod 'puppetlabs-apache'",
+            newVersion: '2.11.0',
+            expected: "mod 'puppetlabs-apache', '2.11.0'"
+        },
+        {
+            description: 'add version to forge module without version but with comment',
+            input: "mod 'puppetlabs-mysql' # No version specified",
+            newVersion: '16.2.0',
+            expected: "mod 'puppetlabs-mysql', '16.2.0' # No version specified"
+        },
+        {
+            description: 'update git module tag',
+            input: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.0.0'",
+            newVersion: 'v1.1.0',
+            expected: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.1.0'"
+        },
+        {
+            description: 'update git module tag with inline comment',
+            input: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.0.0' # Stable release",
+            newVersion: 'v1.1.0',
+            expected: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.1.0' # Stable release"
+        },
+        {
+            description: 'update git module ref',
+            input: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'main'",
+            newVersion: 'develop',
+            expected: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'develop'"
+        },
+        {
+            description: 'update git module ref with inline comment',
+            input: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'main' # Main branch",
+            newVersion: 'develop',
+            expected: "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'develop' # Main branch"
+        }
+    ];
+
+    updateVersionTestCases.forEach(testCase => {
+        test(`updateVersionInLine should ${testCase.description}`, () => {
+            const result = PuppetfileUpdateService['updateVersionInLine'](testCase.input, testCase.newVersion);
+            assert.strictEqual(result, testCase.expected);
+        });
     });
-    
-    test('updateVersionInLine should update forge module version with inline comment', () => {
-        const line = "mod 'puppetlabs-mongodb', '0.17.0' # Example of commit";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '0.18.0');
-        assert.strictEqual(result, "mod 'puppetlabs-mongodb', '0.18.0' # Example of commit");
-    });
-    
-    test('updateVersionInLine should add version to forge module without version', () => {
-        const line = "mod 'puppetlabs-apache'";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '2.11.0');
-        assert.strictEqual(result, "mod 'puppetlabs-apache', '2.11.0'");
-    });
-    
-    test('updateVersionInLine should add version to forge module without version but with comment', () => {
-        const line = "mod 'puppetlabs-mysql' # No version specified";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '16.2.0');
-        assert.strictEqual(result, "mod 'puppetlabs-mysql', '16.2.0' # No version specified");
-    });
-    
-    test('updateVersionInLine should update git module tag', () => {
-        const line = "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.0.0'";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, 'v1.1.0');
-        assert.strictEqual(result, "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.1.0'");
-    });
-    
-    test('updateVersionInLine should update git module tag with inline comment', () => {
-        const line = "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.0.0' # Stable release";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, 'v1.1.0');
-        assert.strictEqual(result, "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :tag => 'v1.1.0' # Stable release");
-    });
-    
-    test('updateVersionInLine should update git module ref', () => {
-        const line = "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'main'";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, 'develop');
-        assert.strictEqual(result, "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'develop'");
-    });
-    
-    test('updateVersionInLine should update git module ref with inline comment', () => {
-        const line = "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'main' # Main branch";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, 'develop');
-        assert.strictEqual(result, "mod 'mymodule', :git => 'https://github.com/user/mymodule.git', :ref => 'develop' # Main branch");
-    });
-    
-    test('updateVersionInLine should handle double quotes', () => {
-        const line = 'mod "puppetlabs-stdlib", "9.4.1" # With double quotes';
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, 'mod "puppetlabs-stdlib", \'9.5.0\' # With double quotes');
-    });
-    
-    test('updateVersionInLine should handle mixed quotes', () => {
-        const line = "mod \"puppetlabs-stdlib\", '9.4.1' # Mixed quotes";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, "mod \"puppetlabs-stdlib\", '9.5.0' # Mixed quotes");
-    });
-    
-    test('updateVersionInLine should preserve whitespace around comments', () => {
-        const line = "mod 'puppetlabs-stdlib', '9.4.1'    # Lots of spaces";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, "mod 'puppetlabs-stdlib', '9.5.0'    # Lots of spaces");
-    });
-    
-    test('updateVersionInLine should handle comment without spaces', () => {
-        const line = "mod 'puppetlabs-stdlib', '9.4.1'#NoSpaces";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, "mod 'puppetlabs-stdlib', '9.5.0'#NoSpaces");
-    });
-    
-    test('updateVersionInLine should not modify non-module lines', () => {
-        const line = "forge 'https://forgeapi.puppet.com' # Comment";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, line);
-    });
-    
-    test('updateVersionInLine should not modify comment-only lines', () => {
-        const line = "# This is just a comment";
-        const result = PuppetfileUpdateService['updateVersionInLine'](line, '9.5.0');
-        assert.strictEqual(result, line);
+
+    const edgeCaseTestCases: TestCase[] = [
+        {
+            description: 'handle double quotes',
+            input: 'mod "puppetlabs-stdlib", "9.4.1" # With double quotes',
+            newVersion: '9.5.0',
+            expected: 'mod "puppetlabs-stdlib", \'9.5.0\' # With double quotes'
+        },
+        {
+            description: 'handle mixed quotes',
+            input: "mod \"puppetlabs-stdlib\", '9.4.1' # Mixed quotes",
+            newVersion: '9.5.0',
+            expected: "mod \"puppetlabs-stdlib\", '9.5.0' # Mixed quotes"
+        },
+        {
+            description: 'preserve whitespace around comments',
+            input: "mod 'puppetlabs-stdlib', '9.4.1'    # Lots of spaces",
+            newVersion: '9.5.0',
+            expected: "mod 'puppetlabs-stdlib', '9.5.0'    # Lots of spaces"
+        },
+        {
+            description: 'handle comment without spaces',
+            input: "mod 'puppetlabs-stdlib', '9.4.1'#NoSpaces",
+            newVersion: '9.5.0',
+            expected: "mod 'puppetlabs-stdlib', '9.5.0'#NoSpaces"
+        },
+        {
+            description: 'not modify non-module lines',
+            input: "forge 'https://forgeapi.puppet.com' # Comment",
+            newVersion: '9.5.0',
+            expected: "forge 'https://forgeapi.puppet.com' # Comment"
+        },
+        {
+            description: 'not modify comment-only lines',
+            input: "# This is just a comment",
+            newVersion: '9.5.0',
+            expected: "# This is just a comment"
+        }
+    ];
+
+    edgeCaseTestCases.forEach(testCase => {
+        test(`updateVersionInLine should ${testCase.description}`, () => {
+            const result = PuppetfileUpdateService['updateVersionInLine'](testCase.input, testCase.newVersion);
+            assert.strictEqual(result, testCase.expected);
+        });
     });
 });
