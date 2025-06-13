@@ -9,6 +9,15 @@ interface TestCase {
 }
 
 suite('PuppetfileUpdateService Test Suite', () => {
+    const runTestCases = (testCases: TestCase[]) => {
+        testCases.forEach(testCase => {
+            test(`updateVersionInLine should ${testCase.description}`, () => {
+                const result = PuppetfileUpdateService['updateVersionInLine'](testCase.input, testCase.newVersion);
+                assert.strictEqual(result, testCase.expected);
+            });
+        });
+    };
+
     const updateVersionTestCases: TestCase[] = [
         {
             description: 'update forge module version',
@@ -60,13 +69,6 @@ suite('PuppetfileUpdateService Test Suite', () => {
         }
     ];
 
-    updateVersionTestCases.forEach(testCase => {
-        test(`updateVersionInLine should ${testCase.description}`, () => {
-            const result = PuppetfileUpdateService['updateVersionInLine'](testCase.input, testCase.newVersion);
-            assert.strictEqual(result, testCase.expected);
-        });
-    });
-
     const edgeCaseTestCases: TestCase[] = [
         {
             description: 'handle double quotes',
@@ -106,10 +108,6 @@ suite('PuppetfileUpdateService Test Suite', () => {
         }
     ];
 
-    edgeCaseTestCases.forEach(testCase => {
-        test(`updateVersionInLine should ${testCase.description}`, () => {
-            const result = PuppetfileUpdateService['updateVersionInLine'](testCase.input, testCase.newVersion);
-            assert.strictEqual(result, testCase.expected);
-        });
-    });
+    runTestCases(updateVersionTestCases);
+    runTestCases(edgeCaseTestCases);
 });

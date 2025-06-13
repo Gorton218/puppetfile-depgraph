@@ -11,7 +11,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         languageId
     });
 
-    const createBasicForgeModule = (name: string, version: string = '8.5.0'): ForgeModule => ({
+    const createForgeModule = (name: string, version: string = '8.5.0', dependencies: Array<{name: string; version_requirement: string}> = []): ForgeModule => ({
         name,
         slug: name.replace('/', '-'),
         owner: { 
@@ -21,19 +21,10 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         current_release: { 
             version, 
             created_at: '2023-01-01', 
-            metadata: { dependencies: [] } 
+            metadata: { dependencies } 
         },
         downloads: 123,
         feedback_score: 4.5,
-    });
-
-    const createForgeModuleWithDeps = (name: string, version: string, dependencies: Array<{name: string; version_requirement: string}>): ForgeModule => ({
-        ...createBasicForgeModule(name, version),
-        current_release: {
-            version,
-            created_at: '2023-01-01',
-            metadata: { dependencies }
-        }
     });
 
     const createMockRelease = (version: string, dependencies: Array<{name: string; version_requirement: string}> = []) => ({
@@ -103,7 +94,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         await withServiceMocks(async () => {
             const provider = createProvider();
             const deps = [{ name: 'puppetlabs/concat', version_requirement: '>= 1.0.0' }];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/stdlib', '8.5.0', deps);
+            const mockForgeModule = createForgeModule('puppetlabs/stdlib', '8.5.0', deps);
             const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
             const mockReleases = [createMockRelease('8.5.0', deps)];
 
@@ -130,7 +121,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
     test('getModuleInfo should show clickable version links for updates', async () => {
         await withServiceMocks(async () => {
             const provider = createProvider();
-            const mockForgeModule = createBasicForgeModule('puppetlabs/stdlib', '1.0.0');
+            const mockForgeModule = createForgeModule('puppetlabs/stdlib', '1.0.0');
             const mockUpdateInfo = { latestVersion: '1.2.0', hasUpdate: true };
             const mockReleases = [
                 createMockRelease('1.2.0'),
@@ -165,7 +156,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         await withServiceMocks(async () => {
             const provider = createProvider();
             const currentReleaseDeps = [{ name: 'puppetlabs/concat', version_requirement: '>= 1.0.0' }];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/stdlib', '8.5.0', currentReleaseDeps);
+            const mockForgeModule = createForgeModule('puppetlabs/stdlib', '8.5.0', currentReleaseDeps);
             const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
             
             // Mock releases with empty dependencies metadata
@@ -201,7 +192,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
                 { name: 'puppetlabs/stdlib', version_requirement: '>= 4.13.1 < 9.0.0' },
                 { name: 'puppetlabs/concat', version_requirement: '>= 1.1.1 < 8.0.0' }
             ];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/apache', '8.5.0', deps);
+            const mockForgeModule = createForgeModule('puppetlabs/apache', '8.5.0', deps);
             const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
             const mockReleases = [createMockRelease('8.5.0', deps)];
 
@@ -226,7 +217,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         await withServiceMocks(async () => {
             const provider = createProvider();
             const deps = [{ name: 'puppetlabs/concat', version_requirement: '>= 1.0.0' }];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/stdlib', '8.5.0', deps);
+            const mockForgeModule = createForgeModule('puppetlabs/stdlib', '8.5.0', deps);
             const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: true };
             const mockReleases = [createMockRelease('8.5.0', [])];
 
@@ -257,7 +248,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
                 { name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0 < 9.0.0' },
                 { name: 'puppetlabs/concat', version_requirement: '>= 6.0.0 < 7.0.0' }
             ];
-            const mockForgeModule = createForgeModuleWithDeps('puppetlabs/apache', '11.1.0', latestDeps);
+            const mockForgeModule = createForgeModule('puppetlabs/apache', '11.1.0', latestDeps);
             const mockUpdateInfo = { latestVersion: '11.1.0', hasUpdate: true };
             const mockReleases = [
                 createMockRelease('11.1.0', latestDeps),
@@ -290,7 +281,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
     test('getModuleInfo should display versions in rows of 5', async () => {
         await withServiceMocks(async () => {
             const provider = createProvider();
-            const mockForgeModule = createBasicForgeModule('test/module', '7.0.0');
+            const mockForgeModule = createForgeModule('test/module', '7.0.0');
             const mockUpdateInfo = { latestVersion: '7.0.0', hasUpdate: true };
 
             // Create many versions to test row splitting
@@ -415,7 +406,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
                     return mockReleases.find(r => r.version === version) as any;
                 };
 
-                PuppetForgeService.getModule = async () => createBasicForgeModule('puppetlabs/stdlib', '8.0.0');
+                PuppetForgeService.getModule = async () => createForgeModule('puppetlabs/stdlib', '8.0.0');
                 PuppetForgeService.checkForUpdate = async () => ({ latestVersion: '9.0.0', hasUpdate: true });
                 PuppetForgeService.getModuleReleases = async () => mockReleases;
 

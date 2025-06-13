@@ -170,24 +170,22 @@ export class PuppetfileParser {
             return null;
         }
         
-        // Basic regex patterns for different module declaration styles
+        // Common regex components
+        const MOD_START = /^mod\s*['"]([^'"]+)['"]/.source;
+        const GIT_URL = /:git\s*=>\s*['"]([^'"]+)['"]/.source;
+        const GIT_TAG = /:tag\s*=>\s*['"]([^'"]+)['"]/.source;
+        const GIT_REF = /:ref\s*=>\s*['"]([^'"]+)['"]/.source;
+        const VERSION = /,\s*['"]([^'"]+)['"]/.source;
+        
+        // Build patterns from components
         const patterns = [
-            // Multi-line Git modules: mod 'module_name', :git => 'url', :tag => 'tag' (with dotall flag)
-            /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"].*:tag\s*=>\s*['"]([^'"]+)['"]/s,
-            // Multi-line Git modules: mod 'module_name', :git => 'url', :ref => 'ref' (with dotall flag)
-            /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"].*:ref\s*=>\s*['"]([^'"]+)['"]/s,
-            // Multi-line Git modules: mod 'module_name', :git => 'url' (with dotall flag)
-            /^mod\s*['"]([^'"]+)['"].*:git\s*=>\s*['"]([^'"]+)['"]/s,
-            // Single-line Git modules: mod 'module_name', :git => 'url', :tag => 'tag'
-            /^mod\s*['"]([^'"]+)['"],\s*:git\s*=>\s*['"]([^'"]+)['"],\s*:tag\s*=>\s*['"]([^'"]+)['"]$/,
-            // Single-line Git modules: mod 'module_name', :git => 'url', :ref => 'ref'
-            /^mod\s*['"]([^'"]+)['"],\s*:git\s*=>\s*['"]([^'"]+)['"],\s*:ref\s*=>\s*['"]([^'"]+)['"]$/,
-            // Single-line Git modules: mod 'module_name', :git => 'url'
-            /^mod\s*['"]([^'"]+)['"],\s*:git\s*=>\s*['"]([^'"]+)['"]$/,
-            // mod 'module_name', 'version' - with very flexible whitespace
-            /^mod\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*$/,
-            // mod 'module_name' (only if it's truly a single line with no git params)
-            /^mod\s*['"]([^'"]+)['"]$/
+            // Git modules with tag or ref
+            new RegExp(`${MOD_START}.*${GIT_URL}.*${GIT_TAG}`, 's'),
+            new RegExp(`${MOD_START}.*${GIT_URL}.*${GIT_REF}`, 's'),
+            new RegExp(`${MOD_START}.*${GIT_URL}`, 's'),
+            // Forge modules
+            new RegExp(`${MOD_START}\\s*${VERSION}\\s*$`),
+            new RegExp(`${MOD_START}$`)
         ];
         
         for (const pattern of patterns) {
