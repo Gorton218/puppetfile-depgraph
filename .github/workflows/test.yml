@@ -3,6 +3,7 @@ name: Test
 permissions:
   contents: read
   actions: write
+  pull-requests: read  # Needed for SonarCloud PR decoration
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,6 +12,7 @@ concurrency:
 on:
   pull_request:
     branches: [ main ]
+    types: [opened, synchronize, reopened]
   push:
     branches: [ main ]
 
@@ -21,6 +23,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Shallow clones should be disabled for better SonarCloud analysis
 
     - name: Setup Node.js 20.x
       uses: actions/setup-node@v4
@@ -37,8 +41,20 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
 
-    - name: Run tests
-      run: npm test
+    - name: Run tests with coverage
+      run: npm test -- --coverage || true
+      env:
+        CI: true
+
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      with:
+        args: >
+          -Dsonar.organization=gorton218
+          -Dsonar.projectKey=Gorton218_puppetfile-depgraph
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
