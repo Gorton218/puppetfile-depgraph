@@ -281,7 +281,7 @@ export class PuppetfileParser {
      * Extract Git ref or tag information and add to module
      */
     private static extractGitRef(text: string, refValue: string | undefined, module: PuppetModule, refType?: 'tag' | 'ref'): void {
-        if (!refValue) return;
+        if (!refValue) { return; }
         
         if (refType === 'tag' || text.includes(':tag')) {
             module.gitTag = refValue;
