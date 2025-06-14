@@ -83,5 +83,14 @@ The project is actively being enhanced with improvements to hover tooltips, cach
 - Add tests for new functionality
 - Do not update the `CHANGELOG.md` file unless explicitly instructed
 
+### Code Quality Priorities
+When evaluating code improvements, prioritize in this order:
+1. **Maintainability** - Code should be easy to understand and modify
+2. **Reliability** - Code should work correctly and consistently
+3. **Code Coverage** - Tests should cover important functionality
+4. **Code Duplication** - Some duplication is acceptable if it improves clarity
+
+Note: Test code duplication is often beneficial for test clarity and independence. Each test should be self-contained and easy to understand without excessive abstraction.
+
 ### Misc
 - Do not analyze `.private` folder unless the file from there explicitly mentioned in the conversation

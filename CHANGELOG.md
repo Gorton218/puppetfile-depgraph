@@ -97,14 +97,15 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Better progress reporting and cancellation support
   - More robust API integration with proper timeout handling
   - Enhanced documentation and code comments
-  - **Reduced Code Duplication**: Major refactoring to improve maintainability
-    - Reduced test duplication in dependencyTreeConflicts.test.ts (91.5% → ~5%)
-    - Refactored puppetfileUpdateService.test.ts using parameterized test patterns (84.3% → ~10%)
-    - Consolidated versionParser.test.ts with test case arrays (52.5% → ~15%)
-    - Introduced helper functions across test files for cleaner structure
-    - Extracted common logic in puppetfileHoverProvider.ts (version display, Git references)
-    - Created reusable utilities for mock data and service setup
-    - Overall test maintainability significantly improved
+  - Added code quality priorities documentation to CLAUDE.md
+- **Reduced Code Duplication**: Strategic refactoring to improve maintainability
+  - Reduced parser duplication by extracting common comment stripping logic
+  - Refactored test files with helper functions and utilities:
+    - dependencyTreeConflicts.test.ts: Added helper functions for module creation and test setup
+    - puppetfileUpdateService.test.ts: Extracted common test patterns and mock data
+    - versionParser.test.ts: Consolidated test cases using data-driven approach
+  - Preserved beneficial test duplication for clarity and independence
+  - Documented code quality priorities emphasizing maintainability over duplication metrics
 
 ## [0.0.2] - 2025-06-08
 ### Added
