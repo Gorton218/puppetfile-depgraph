@@ -12,7 +12,8 @@
   "include": [
     "out/**/*.js"
   ],
-  "all": false,
+  "all": true,
   "sourceMap": true,
-  "instrument": true
+  "instrument": true,
+  "src": ["src"]
 }
