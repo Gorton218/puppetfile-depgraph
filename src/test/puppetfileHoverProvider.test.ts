@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as sinon from 'sinon';
 import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
 import { PuppetForgeService, ForgeModule } from '../puppetForgeService';
 
@@ -559,6 +560,9 @@ suite('PuppetfileHoverProvider Test Suite', () => {
     // Test version compatibility error handling
     test('should handle version compatibility check errors', async () => {
         await withServiceMocks(async (restore) => {
+            // Stub console.error to suppress error output during test
+            const consoleErrorStub = sinon.stub(console, 'error');
+            
             PuppetForgeService.getModuleReleases = async () => {
                 throw new Error('Network error');
             };
@@ -577,6 +581,8 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             
             // Should handle error gracefully and return a Map
             assert.ok(result instanceof Map);
+            
+            consoleErrorStub.restore();
             restore();
         });
     });
