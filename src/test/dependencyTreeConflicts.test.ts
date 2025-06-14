@@ -5,31 +5,33 @@ import { DependencyTreeService } from '../dependencyTreeService';
 import { PuppetForgeService } from '../puppetForgeService';
 import { PuppetModule } from '../puppetfileParser';
 
+// Helper types
+type Dependency = { name: string; version_requirement: string };
+type ModuleSetup = { name: string; version: string; deps: Dependency[]; versions?: string[] };
+
 // Helper function to create module mock data
-function createModuleMock(name: string, version: string, dependencies: Array<{name: string, version_requirement: string}> = [], availableVersions: string[] = []) {
+function createModuleMock(name: string, version: string, dependencies: Dependency[] = [], availableVersions: string[] = []) {
+  const createRelease = (v: string) => ({ version: v, metadata: { dependencies } });
   const releases = availableVersions.length > 0 
-    ? availableVersions.map(v => ({ 
-        version: v,
-        metadata: { dependencies }
-      }))
-    : [{ 
-        version,
-        metadata: { dependencies }
-      }];
+    ? availableVersions.map(createRelease)
+    : [createRelease(version)];
   
   return {
     name: name.replace('/', '-'),
-    current_release: {
-      version,
-      metadata: { dependencies }
-    },
+    current_release: createRelease(version),
     releases
   };
 }
 
 // Helper function to setup module stub
-function setupModuleStub(stub: sinon.SinonStub, moduleName: string, version: string, dependencies: Array<{name: string, version_requirement: string}> = [], availableVersions: string[] = []) {
-  stub.withArgs(moduleName).resolves(createModuleMock(moduleName, version, dependencies, availableVersions));
+function setupModuleStub(stub: sinon.SinonStub, setup: ModuleSetup) {
+  const { name, version, deps, versions = [] } = setup;
+  stub.withArgs(name).resolves(createModuleMock(name, version, deps, versions));
+}
+
+// Helper function to create PuppetModule
+function createPuppetModule(name: string, version: string, line: number): PuppetModule {
+  return { name, version, source: 'forge', line };
 }
 
 suite('DependencyTree Conflict Detection Integration Tests', () => {
@@ -45,13 +47,11 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
   });
 
   const runConflictTest = async (
-    moduleSetups: Array<{name: string, version: string, deps: Array<{name: string, version_requirement: string}>, versions?: string[]}>,
+    moduleSetups: ModuleSetup[],
     modules: PuppetModule[],
     assertions: (conflicts: string[]) => void
   ) => {
-    moduleSetups.forEach(setup => {
-      setupModuleStub(getModuleStub, setup.name, setup.version, setup.deps, setup.versions);
-    });
+    moduleSetups.forEach(setup => setupModuleStub(getModuleStub, setup));
 
     const tree = await DependencyTreeService.buildDependencyTree(modules);
     const conflicts = DependencyTreeService.findConflicts(tree);
@@ -66,8 +66,8 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         { name: 'puppetlabs/mysql', version: '16.0.0', deps: [{ name: 'puppetlabs/stdlib', version_requirement: '>= 8.0.0' }] }
       ],
       [
-        { name: 'puppetlabs/apache', version: '12.2.0', source: 'forge', line: 1 },
-        { name: 'puppetlabs/mysql', version: '16.0.0', source: 'forge', line: 2 }
+        createPuppetModule('puppetlabs/apache', '12.2.0', 1),
+        createPuppetModule('puppetlabs/mysql', '16.0.0', 2)
       ],
       (conflicts) => {
         assert.strictEqual(conflicts.length, 0, 'Should not report conflicts when versions overlap');
@@ -83,8 +83,8 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         { name: 'example/mysql', version: '1.0.0', deps: [{ name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }] }
       ],
       [
-        { name: 'example/apache', version: '1.0.0', source: 'forge', line: 1 },
-        { name: 'example/mysql', version: '1.0.0', source: 'forge', line: 2 }
+        createPuppetModule('example/apache', '1.0.0', 1),
+        createPuppetModule('example/mysql', '1.0.0', 2)
       ],
       (conflicts) => {
         assert.ok(conflicts.length > 0, 'Should report conflicts when no version satisfies all requirements');
@@ -100,8 +100,8 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         { name: 'example/mymodule', version: '1.0.0', deps: [{ name: 'puppetlabs/stdlib', version_requirement: '>= 9.0.0' }] }
       ],
       [
-        { name: 'puppetlabs/stdlib', version: '8.6.0', source: 'forge', line: 1 },
-        { name: 'example/mymodule', version: '1.0.0', source: 'forge', line: 2 }
+        createPuppetModule('puppetlabs/stdlib', '8.6.0', 1),
+        createPuppetModule('example/mymodule', '1.0.0', 2)
       ],
       (conflicts) => {
         assert.ok(conflicts.length > 0, 'Should report conflict between exact version and requirement');
@@ -118,8 +118,8 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         { name: 'example/mysql', version: '1.0.0', deps: [{ name: 'puppetlabs/concat', version_requirement: '>= 7.0.0' }] }
       ],
       [
-        { name: 'example/apache', version: '1.0.0', source: 'forge', line: 1 },
-        { name: 'example/mysql', version: '1.0.0', source: 'forge', line: 2 }
+        createPuppetModule('example/apache', '1.0.0', 1),
+        createPuppetModule('example/mysql', '1.0.0', 2)
       ],
       (conflicts) => {
         assert.ok(conflicts.some(c => c.includes('Suggestion:')), 'Should provide suggested fixes');

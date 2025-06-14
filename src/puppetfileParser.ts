@@ -171,21 +171,23 @@ export class PuppetfileParser {
         }
         
         // Common regex components
-        const MOD_START = /^mod\s*['"]([^'"]+)['"]/.source;
-        const GIT_URL = /:git\s*=>\s*['"]([^'"]+)['"]/.source;
-        const GIT_TAG = /:tag\s*=>\s*['"]([^'"]+)['"]/.source;
-        const GIT_REF = /:ref\s*=>\s*['"]([^'"]+)['"]/.source;
-        const VERSION = /,\s*['"]([^'"]+)['"]/.source;
+        const PATTERNS = {
+            MOD_START: /^mod\s*['"]([^'"]+)['"]/.source,
+            GIT_URL: /:git\s*=>\s*['"]([^'"]+)['"]/.source,
+            GIT_TAG: /:tag\s*=>\s*['"]([^'"]+)['"]/.source,
+            GIT_REF: /:ref\s*=>\s*['"]([^'"]+)['"]/.source,
+            VERSION: /,\s*['"]([^'"]+)['"]/.source
+        };
         
         // Build patterns from components
         const patterns = [
             // Git modules with tag or ref
-            new RegExp(`${MOD_START}.*${GIT_URL}.*${GIT_TAG}`, 's'),
-            new RegExp(`${MOD_START}.*${GIT_URL}.*${GIT_REF}`, 's'),
-            new RegExp(`${MOD_START}.*${GIT_URL}`, 's'),
+            new RegExp(`${PATTERNS.MOD_START}.*${PATTERNS.GIT_URL}.*${PATTERNS.GIT_TAG}`, 's'),
+            new RegExp(`${PATTERNS.MOD_START}.*${PATTERNS.GIT_URL}.*${PATTERNS.GIT_REF}`, 's'),
+            new RegExp(`${PATTERNS.MOD_START}.*${PATTERNS.GIT_URL}`, 's'),
             // Forge modules
-            new RegExp(`${MOD_START}\\s*${VERSION}\\s*$`),
-            new RegExp(`${MOD_START}$`)
+            new RegExp(`${PATTERNS.MOD_START}\\s*${PATTERNS.VERSION}\\s*$`),
+            new RegExp(`${PATTERNS.MOD_START}$`)
         ];
         
         for (const pattern of patterns) {
@@ -205,30 +207,18 @@ export class PuppetfileParser {
     private static createModuleFromMatch(match: RegExpMatchArray, lineNumber: number): PuppetModule {
         const moduleName = match[1];
         const matchText = match[0];
+        const isGitModule = matchText.includes(':git');
         
-        // Check if it's a git-based module
-        if (matchText.includes(':git')) {
-            const module: PuppetModule = {
-                name: moduleName,
-                source: 'git',
-                gitUrl: match[2],
-                line: lineNumber
-            };
-
-            this.extractGitRef(matchText, match[3], module);
-
-            return module;
-        }
-
-        // Otherwise, it's a forge module
         const module: PuppetModule = {
             name: moduleName,
-            source: 'forge',
+            source: isGitModule ? 'git' : 'forge',
             line: lineNumber
         };
-
-        // Add version if present and it's not a git URL
-        if (match[2] && !match[2].includes('git') && !match[2].includes('http')) {
+        
+        if (isGitModule) {
+            module.gitUrl = match[2];
+            this.extractGitRef(matchText, match[3], module);
+        } else if (match[2] && !match[2].includes('git') && !match[2].includes('http')) {
             module.version = match[2];
         }
 
