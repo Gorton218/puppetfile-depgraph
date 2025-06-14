@@ -434,4 +434,151 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         }
     });
 
+    // Test for non-Puppetfile documents
+    test('should return null for non-Puppetfile documents', async () => {
+        await withServiceMocks(async (restore) => {
+            const provider = createProvider();
+            const document = createMockDocument('test.txt', 'plaintext');
+            const position = { line: 0, character: 5 } as any;
+            
+            const result = await provider.provideHover(document as any, position, {} as any);
+            
+            assert.strictEqual(result, null);
+            restore();
+        });
+    });
+
+    // Test for no word range at cursor position
+    test('should return null when no word range at cursor position', async () => {
+        await withServiceMocks(async (restore) => {
+            const provider = createProvider();
+            const document = {
+                fileName: 'Puppetfile',
+                languageId: 'puppetfile',
+                getWordRangeAtPosition: () => undefined
+            };
+            const position = { line: 0, character: 5 } as any;
+            
+            const result = await provider.provideHover(document as any, position, {} as any);
+            
+            assert.strictEqual(result, null);
+            restore();
+        });
+    });
+
+    // Test for cursor outside module name
+    test('should return null when cursor is outside module name', async () => {
+        await withServiceMocks(async (restore) => {
+            const provider = createProvider();
+            const document = {
+                fileName: 'Puppetfile',
+                languageId: 'puppetfile',
+                getWordRangeAtPosition: () => ({ start: { line: 0, character: 0 }, end: { line: 0, character: 5 } }),
+                lineAt: () => ({ text: "mod 'puppetlabs/stdlib', '8.5.0'" })
+            };
+            const position = { line: 0, character: 50 } as any; // Position outside the line
+            
+            const result = await provider.provideHover(document as any, position, {} as any);
+            
+            assert.strictEqual(result, null);
+            restore();
+        });
+    });
+
+    // Test for module info timeout (simplified test without actual timeout)
+    test('should handle timeout when fetching module info', async () => {
+        await withServiceMocks(async (restore) => {
+            // Mock a response that simulates timeout behavior by returning quickly
+            // but we test the timeout path by mocking the internal timeout logic
+            PuppetForgeService.getModule = async () => {
+                // Return a promise that simulates what happens after timeout
+                throw new Error('Request timeout');
+            };
+            
+            const provider = createProvider();
+            const document = {
+                fileName: 'Puppetfile',
+                languageId: 'puppetfile',
+                getWordRangeAtPosition: () => ({ start: { line: 0, character: 4 }, end: { line: 0, character: 20 } }),
+                lineAt: () => ({ text: "mod 'puppetlabs/stdlib', '8.5.0'" })
+            };
+            const position = { line: 0, character: 10 } as any;
+            
+            const result = await provider.provideHover(document as any, position, {} as any);
+            
+            // Should still return hover info even when service throws error (fallback)
+            assert.notStrictEqual(result, null);
+            restore();
+        });
+    });
+
+    // Test extractCompleteModuleDefinition with multi-line modules
+    test('should extract complete multi-line module definition', async () => {
+        await withServiceMocks(async (restore) => {
+            const provider = createProvider();
+            const document = {
+                fileName: 'Puppetfile',
+                languageId: 'puppetfile',
+                lineCount: 5,
+                lineAt: (lineNumber: number) => {
+                    const lines = [
+                        "mod 'puppetlabs/stdlib',",
+                        "  :git => 'https://github.com/puppetlabs/puppetlabs-stdlib.git',",
+                        "  :ref => 'main',",
+                        "  :tag => 'v8.5.0'",
+                        ""
+                    ];
+                    return { text: lines[lineNumber] || '' };
+                }
+            };
+            
+            const result = (provider as any).extractCompleteModuleDefinition(document, 0);
+            
+            assert.ok(result.includes('puppetlabs/stdlib'));
+            assert.ok(result.includes(':git'));
+            assert.ok(result.includes(':ref'));
+            assert.ok(result.includes(':tag'));
+            restore();
+        });
+    });
+
+    // Test cache initialization
+    test('should handle cache initialization', async () => {
+        await withServiceMocks(async (restore) => {
+            const provider = createProvider();
+            
+            // Test checkAndInitializeCache method
+            await (provider as any).checkAndInitializeCache();
+            
+            // Should complete without throwing
+            assert.ok(true);
+            restore();
+        });
+    });
+
+    // Test version compatibility error handling
+    test('should handle version compatibility check errors', async () => {
+        await withServiceMocks(async (restore) => {
+            PuppetForgeService.getModuleReleases = async () => {
+                throw new Error('Network error');
+            };
+            
+            const provider = createProvider();
+            const releases = [createMockRelease('8.5.0'), createMockRelease('8.4.0')];
+            const mockModule = { name: 'puppetlabs/stdlib', version: '8.5.0', source: 'forge' as const, line: 1 };
+            const allModules = [mockModule];
+            
+            // Test the internal method that handles version compatibility with correct parameters
+            const result = await (provider as any).checkVersionCompatibilities(
+                mockModule,
+                releases,
+                allModules
+            );
+            
+            // Should handle error gracefully and return a Map
+            assert.ok(result instanceof Map);
+            restore();
+        });
+    });
+
 });

@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from '../puppetfileParser';
 
 // Helper function to assert module properties
@@ -344,5 +345,156 @@ mod 'puppetlabs-apache', '2.11.0'`;
         assert.strictEqual(module.gitUrl, 'https://github.com/voxpupuli/puppet-collectd.git');
         assert.strictEqual(module.gitRef, 'v14.0.0');
         assert.strictEqual(module.line, 1);
+    });
+
+    // Test parseActiveEditor with no active editor
+    test('parseActiveEditor should handle no active editor', () => {
+        const originalGetPropertyDescriptor = Object.getOwnPropertyDescriptor;
+        
+        try {
+            // Mock Object.getOwnPropertyDescriptor to return undefined for activeTextEditor
+            Object.getOwnPropertyDescriptor = (target, prop) => {
+                if (target === vscode.window && prop === 'activeTextEditor') {
+                    return { value: undefined, configurable: true, enumerable: true, writable: true };
+                }
+                return originalGetPropertyDescriptor(target, prop);
+            };
+            
+            // Override the property with undefined
+            Object.defineProperty(vscode.window, 'activeTextEditor', {
+                value: undefined,
+                configurable: true
+            });
+
+            const result = PuppetfileParser.parseActiveEditor();
+            
+            assert.strictEqual(result.modules.length, 0, 'Should return empty modules array');
+            assert.strictEqual(result.errors.length, 1, 'Should have one error');
+            assert.ok(result.errors[0].includes('No active editor'), 'Error should mention no active editor');
+        } finally {
+            Object.getOwnPropertyDescriptor = originalGetPropertyDescriptor;
+        }
+    });
+
+    // Test parseActiveEditor with non-Puppetfile document
+    test('parseActiveEditor should handle non-Puppetfile documents', () => {
+        const originalGetPropertyDescriptor = Object.getOwnPropertyDescriptor;
+        
+        try {
+            const mockEditor = {
+                document: {
+                    fileName: 'test.js',
+                    languageId: 'javascript',
+                    getText: () => 'const x = 1;'
+                }
+            };
+            
+            Object.defineProperty(vscode.window, 'activeTextEditor', {
+                value: mockEditor,
+                configurable: true
+            });
+
+            const result = PuppetfileParser.parseActiveEditor();
+            
+            assert.strictEqual(result.modules.length, 0, 'Should return empty modules array');
+            assert.strictEqual(result.errors.length, 1, 'Should have one error');
+            assert.ok(result.errors[0].includes('not a Puppetfile'), 'Error should mention not a Puppetfile');
+        } finally {
+            Object.getOwnPropertyDescriptor = originalGetPropertyDescriptor;
+        }
+    });
+
+    // Test getActivePuppetfileDocument with no active editor
+    test('getActivePuppetfileDocument should return null with no active editor', () => {
+        const originalGetPropertyDescriptor = Object.getOwnPropertyDescriptor;
+        
+        try {
+            Object.defineProperty(vscode.window, 'activeTextEditor', {
+                value: undefined,
+                configurable: true
+            });
+
+            const result = PuppetfileParser.getActivePuppetfileDocument();
+            
+            assert.strictEqual(result, null, 'Should return null when no active editor');
+        } finally {
+            Object.getOwnPropertyDescriptor = originalGetPropertyDescriptor;
+        }
+    });
+
+    // Test getActivePuppetfileDocument with non-Puppetfile document
+    test('getActivePuppetfileDocument should return null for non-Puppetfile documents', () => {
+        const originalGetPropertyDescriptor = Object.getOwnPropertyDescriptor;
+        
+        try {
+            const mockEditor = {
+                document: {
+                    fileName: 'test.py',
+                    languageId: 'python'
+                }
+            };
+            
+            Object.defineProperty(vscode.window, 'activeTextEditor', {
+                value: mockEditor,
+                configurable: true
+            });
+
+            const result = PuppetfileParser.getActivePuppetfileDocument();
+            
+            assert.strictEqual(result, null, 'Should return null for non-Puppetfile document');
+        } finally {
+            Object.getOwnPropertyDescriptor = originalGetPropertyDescriptor;
+        }
+    });
+
+    // Test parseMultiLineModule parsing failure scenarios
+    test('parseMultiLineModule should handle malformed multi-line modules', () => {
+        const content = `mod 'incomplete-module',
+    :git => 'https://github.com/user/repo.git'
+    # Missing closing quote or proper end`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        // Should still try to parse what it can, but may produce errors or incomplete modules
+        // The exact behavior depends on implementation, but should not crash
+        assert.ok(Array.isArray(result.modules), 'Should return modules array');
+        assert.ok(Array.isArray(result.errors), 'Should return errors array');
+    });
+
+    // Test edge case with incomplete multi-line module
+    test('parseMultiLineModule should handle module without proper end', () => {
+        const content = `mod 'test-module',
+    :git => 'https://example.com/repo.git',
+    :ref =>`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        // Should handle gracefully without crashing
+        assert.ok(Array.isArray(result.modules), 'Should return modules array');
+        assert.ok(Array.isArray(result.errors), 'Should return errors array');
+    });
+
+    // Test complex parsing scenarios that might trigger error paths
+    test('should handle complex parsing edge cases', () => {
+        const content = `
+# Complex scenarios that might trigger various parsing paths
+mod 'valid-module', '1.0.0'
+
+mod 'incomplete-git-module',
+    :git => 'https://github.com/example/repo.git'
+    # Missing proper closure
+
+mod 'another-valid', '2.0.0'
+`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        // Should handle mixed valid and problematic content
+        assert.ok(Array.isArray(result.modules), 'Should return modules array');
+        assert.ok(Array.isArray(result.errors), 'Should return errors array');
+        
+        // Should successfully parse at least the valid modules
+        const validModules = result.modules.filter(m => m.name === 'valid-module' || m.name === 'another-valid');
+        assert.ok(validModules.length >= 2, 'Should parse valid modules even with problematic content');
     });
 });
