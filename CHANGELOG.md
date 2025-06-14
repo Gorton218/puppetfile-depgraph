@@ -106,6 +106,7 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
     - versionParser.test.ts: Consolidated test cases using data-driven approach
   - Preserved beneficial test duplication for clarity and independence
   - Documented code quality priorities emphasizing maintainability over duplication metrics
+  - Added SonarQube configuration to exclude test files from duplication checks
 
 ## [0.0.2] - 2025-06-08
 ### Added
