@@ -23,9 +23,13 @@ describe('CacheService', () => {
     let mockWithProgress: jest.Mock;
     let mockShowInformationMessage: jest.Mock;
     let mockShowErrorMessage: jest.Mock;
+    let consoleWarnSpy: jest.SpyInstance;
 
     beforeEach(() => {
         jest.clearAllMocks();
+        
+        // Spy on console.warn to suppress output but still allow testing
+        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         
         mockProgress = {
             report: jest.fn()
@@ -47,6 +51,11 @@ describe('CacheService', () => {
         mockWithProgress.mockImplementation(async (options, callback) => {
             return await callback(mockProgress, mockToken);
         });
+    });
+
+    afterEach(() => {
+        // Restore console.warn spy
+        consoleWarnSpy.mockRestore();
     });
     
     test('should prevent concurrent caching operations', async () => {
@@ -222,6 +231,9 @@ describe('CacheService', () => {
                 increment: 50,
                 message: 'Skipped puppetlabs/stdlib (error) (1/2)'
             });
+
+            // Should have logged the error
+            expect(consoleWarnSpy).toHaveBeenCalledWith('Failed to cache module puppetlabs/stdlib:', expect.any(Error));
         });
 
         test('should complete caching despite module errors', async () => {

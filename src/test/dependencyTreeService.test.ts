@@ -11,10 +11,14 @@ describe('DependencyTreeService Test Suite', () => {
     let forgeModuleStub: sinon.SinonStub;
     let conflictAnalyzerStub: sinon.SinonStub;
     let versionParserStub: sinon.SinonStub;
+    let consoleWarnSpy: jest.SpyInstance;
     
     beforeEach(() => {
         // Reset dependency graph before each test
         DependencyTreeService.resetDependencyGraph();
+        
+        // Spy on console.warn to suppress output but still allow testing
+        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         
         // Stub GitMetadataService to prevent network calls
         gitMetadataStub = sinon.stub(GitMetadataService, 'getModuleMetadataWithFallback');
@@ -35,6 +39,8 @@ describe('DependencyTreeService Test Suite', () => {
     
     afterEach(() => {
         sinon.restore();
+        // Restore console.warn spy
+        consoleWarnSpy.mockRestore();
     });
     
     test('generateTreeText should format tree correctly', () => {
@@ -506,6 +512,9 @@ describe('DependencyTreeService Test Suite', () => {
             expect(result.length).toBe(1);
             expect(result[0].name).toBe('puppetlabs/stdlib');
             expect(result[0].children.length).toBe(0);
+            
+            // Should have logged the error
+            expect(consoleWarnSpy).toHaveBeenCalledWith('Could not fetch dependencies for puppetlabs/stdlib:', expect.any(Error));
         });
 
         test('should handle git service errors gracefully', async () => {
@@ -526,6 +535,9 @@ describe('DependencyTreeService Test Suite', () => {
             expect(result.length).toBe(1);
             expect(result[0].name).toBe('custom/module');
             expect(result[0].children.length).toBe(0);
+            
+            // Should have logged the error
+            expect(consoleWarnSpy).toHaveBeenCalledWith('Could not fetch Git metadata for custom/module:', expect.any(Error));
         });
 
         test('should handle version constraints and conflict analysis', async () => {
