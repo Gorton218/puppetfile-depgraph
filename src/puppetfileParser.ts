@@ -191,7 +191,7 @@ export class PuppetfileParser {
         ];
         
         for (const pattern of patterns) {
-            const match = line.match(pattern);
+            const match = pattern.exec(line);
             if (match) {
                 return this.createModuleFromMatch(match, lineNumber);
             }
@@ -230,7 +230,8 @@ export class PuppetfileParser {
      */
     private static parseComplexModuleLine(line: string, lineNumber: number): PuppetModule | null {
         // Extract module name
-        const modMatch = line.match(/^mod\s*['"]([^'"]+)['"]/);
+        const modRegex = /^mod\s*['"]([^'"]+)['"]/;
+        const modMatch = modRegex.exec(line);
         if (!modMatch) {
             throw new Error('Invalid module declaration syntax');
         }
@@ -243,20 +244,24 @@ export class PuppetfileParser {
         };
 
         // Check for git source (handle multi-line with dotall flag)
-        const gitMatch = line.match(/:git\s*=>\s*['"]([^'"]+)['"]/s);
+        const gitRegex = /:git\s*=>\s*['"]([^'"]+)['"]/s;
+        const gitMatch = gitRegex.exec(line);
         if (gitMatch) {
             module.source = 'git';
             module.gitUrl = gitMatch[1];
 
             // Look for tag or ref (handle multi-line)
-            const tagMatch = line.match(/:tag\s*=>\s*['"]([^'"]+)['"]/s);
-            const refMatch = line.match(/:ref\s*=>\s*['"]([^'"]+)['"]/s);
+            const tagRegex = /:tag\s*=>\s*['"]([^'"]+)['"]/s;
+            const refRegex = /:ref\s*=>\s*['"]([^'"]+)['"]/s;
+            const tagMatch = tagRegex.exec(line);
+            const refMatch = refRegex.exec(line);
 
             this.extractGitRef(line, tagMatch?.[1] || refMatch?.[1], module, tagMatch ? 'tag' : 'ref');
         } else {
             // Look for version - check if it's the second quoted string after the module name
             // But make sure it's not part of a git configuration
-            const versionMatch = line.match(/^mod\s*['"]([^'"]+)['"],\s*['"]([^'"]+)['"](?:\s*$|,)/);
+            const versionRegex = /^mod\s*['"]([^'"]+)['"],\s*['"]([^'"]+)['"](?:\s*$|,)/;
+            const versionMatch = versionRegex.exec(line);
             if (versionMatch && !line.includes(':git')) {
                 module.version = versionMatch[2];
             }
@@ -270,7 +275,8 @@ export class PuppetfileParser {
      */
     private static stripInlineComment(line: string): string {
         // This regex looks for # that's not inside quotes
-        const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
+        const commentRegex = /^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/;
+        const commentMatch = commentRegex.exec(line);
         if (commentMatch) {
             return commentMatch[1].trim();
         }
