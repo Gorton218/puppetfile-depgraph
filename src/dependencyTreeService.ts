@@ -95,6 +95,42 @@ export class DependencyTreeService {
         // Add current module to path
         this.currentPath.push(module.name);
 
+        // Check for early exit conditions
+        const earlyExitNode = this.checkForEarlyExit(module, depth, isDirectDependency, versionRequirement);
+        if (earlyExitNode) {
+            this.currentPath.pop();
+            return earlyExitNode;
+        }
+
+        this.visitedModules.add(module.name);
+
+        // Collect requirement information
+        this.collectRequirementInformation(module, imposedBy, versionRequirement, isDirectDependency);
+
+        // Create the dependency node
+        const node = this.createDependencyNode(module, depth, isDirectDependency, versionRequirement);
+
+        // Fetch dependencies based on module source
+        if (module.source === 'forge') {
+            await this.processForgeModuleDependencies(module, node, depth, versionRequirement);
+        } else if (module.source === 'git' && module.gitUrl) {
+            await this.processGitModuleDependencies(module, node, depth);
+        }
+
+        this.visitedModules.delete(module.name);
+        this.currentPath.pop();
+        return node;
+    }
+
+    /**
+     * Check for early exit conditions (max depth, visited modules, circular dependencies)
+     */
+    private static checkForEarlyExit(
+        module: PuppetModule, 
+        depth: number, 
+        isDirectDependency: boolean, 
+        versionRequirement?: string
+    ): DependencyNode | null {
         // Check for circular dependencies
         const circularConflict = ConflictAnalyzer.checkForCircularDependencies(
             module.name, 
@@ -103,7 +139,6 @@ export class DependencyTreeService {
 
         // Prevent infinite recursion and circular dependencies
         if (depth >= this.MAX_DEPTH || this.visitedModules.has(module.name)) {
-            this.currentPath.pop();
             return {
                 name: module.name,
                 version: module.version,
@@ -119,25 +154,50 @@ export class DependencyTreeService {
             };
         }
 
-        this.visitedModules.add(module.name);
+        return null;
+    }
 
-        // Collect requirement information
+    /**
+     * Collect requirement information for the dependency graph
+     */
+    private static collectRequirementInformation(
+        module: PuppetModule, 
+        imposedBy?: string, 
+        versionRequirement?: string, 
+        isDirectDependency?: boolean
+    ): void {
         if (imposedBy && versionRequirement) {
             const normalizedName = this.normalizeModuleName(module.name);
             this.addRequirement(normalizedName, {
                 constraint: versionRequirement,
                 imposedBy,
                 path: [...this.currentPath],
-                isDirectDependency
+                isDirectDependency: isDirectDependency || false
             });
         }
+    }
+
+    /**
+     * Create a dependency node with all required properties
+     */
+    private static createDependencyNode(
+        module: PuppetModule, 
+        depth: number, 
+        isDirectDependency: boolean, 
+        versionRequirement?: string
+    ): DependencyNode {
+        // Get circular conflict for the node
+        const circularConflict = ConflictAnalyzer.checkForCircularDependencies(
+            module.name, 
+            this.currentPath.slice(0, -1)
+        );
 
         // Determine how to display this dependency
         const resolvedVersion = this.getResolvedVersion(this.normalizeModuleName(module.name));
         const displayVersion = this.determineDisplayVersion(module, versionRequirement, resolvedVersion, isDirectDependency);
         const isConstraintViolated = this.checkConstraintViolation(resolvedVersion, versionRequirement);
         
-        const node: DependencyNode = {
+        return {
             name: module.name,
             version: module.version || resolvedVersion,
             source: module.source,
@@ -152,96 +212,107 @@ export class DependencyTreeService {
             displayVersion,
             isConstraintViolated
         };
+    }
 
-        // Fetch dependencies based on module source
-        if (module.source === 'forge') {
-            try {
-                const forgeModule = await PuppetForgeService.getModule(module.name);
-                let releaseToUse = forgeModule?.current_release;
-                
-                // Determine which release to use for fetching dependencies
-                if (module.version && forgeModule?.releases) {
-                    // For direct dependencies with a specific version, use that version's metadata
-                    const specificRelease = forgeModule.releases.find(r => r.version === module.version);
+    /**
+     * Process dependencies for Forge modules
+     */
+    private static async processForgeModuleDependencies(
+        module: PuppetModule, 
+        node: DependencyNode, 
+        depth: number, 
+        versionRequirement?: string
+    ): Promise<void> {
+        try {
+            const forgeModule = await PuppetForgeService.getModule(module.name);
+            let releaseToUse = forgeModule?.current_release;
+            
+            // Determine which release to use for fetching dependencies
+            if (module.version && forgeModule?.releases) {
+                // For direct dependencies with a specific version, use that version's metadata
+                const specificRelease = forgeModule.releases.find(r => r.version === module.version);
+                if (specificRelease) {
+                    releaseToUse = specificRelease;
+                }
+            } else if (versionRequirement && forgeModule?.releases) {
+                // For transitive dependencies with version constraints, find the best matching release
+                const resolvedVersion = this.findBestMatchingVersion(versionRequirement, forgeModule.releases.map(r => r.version));
+                if (resolvedVersion) {
+                    const specificRelease = forgeModule.releases.find(r => r.version === resolvedVersion);
                     if (specificRelease) {
                         releaseToUse = specificRelease;
                     }
-                } else if (versionRequirement && forgeModule?.releases) {
-                    // For transitive dependencies with version constraints, find the best matching release
-                    const resolvedVersion = this.findBestMatchingVersion(versionRequirement, forgeModule.releases.map(r => r.version));
-                    if (resolvedVersion) {
-                        const specificRelease = forgeModule.releases.find(r => r.version === resolvedVersion);
-                        if (specificRelease) {
-                            releaseToUse = specificRelease;
-                        }
-                    }
                 }
-                
-                if (releaseToUse?.metadata?.dependencies) {
-                    for (const dep of releaseToUse.metadata.dependencies) {
-                        const normalizedDepName = this.normalizeModuleName(dep.name);
-                        
-                        // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
-                        const childModule: PuppetModule = {
-                            name: normalizedDepName,
-                            version: undefined, // Will be set in buildNodeTree based on context
-                            source: 'forge',
-                            line: -1 // Not from a file line
-                        };
-
-                        const childNode = await this.buildNodeTree(
-                            childModule, 
-                            depth + 1, 
-                            false,
-                            module.name,
-                            dep.version_requirement
-                        );
-                        if (childNode) {
-                            node.children.push(childNode);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.warn(`Could not fetch dependencies for ${module.name}:`, error);
             }
-        } else if (module.source === 'git' && module.gitUrl) {
-            // Fetch dependencies for Git modules
-            try {
-                const ref = module.gitTag || module.gitRef;
-                const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
-                
-                if (gitMetadata?.dependencies) {
-                    for (const dep of gitMetadata.dependencies) {
-                        const normalizedDepName = this.normalizeModuleName(dep.name);
-                        
-                        // Git module dependencies are typically Forge modules
-                        const childModule: PuppetModule = {
-                            name: normalizedDepName,
-                            version: undefined,
-                            source: 'forge', // Most dependencies are from Forge
-                            line: -1
-                        };
+            
+            if (releaseToUse?.metadata?.dependencies) {
+                for (const dep of releaseToUse.metadata.dependencies) {
+                    const normalizedDepName = this.normalizeModuleName(dep.name);
+                    
+                    // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
+                    const childModule: PuppetModule = {
+                        name: normalizedDepName,
+                        version: undefined, // Will be set in buildNodeTree based on context
+                        source: 'forge',
+                        line: -1 // Not from a file line
+                    };
 
-                        const childNode = await this.buildNodeTree(
-                            childModule, 
-                            depth + 1, 
-                            false,
-                            module.name,
-                            dep.version_requirement
-                        );
-                        if (childNode) {
-                            node.children.push(childNode);
-                        }
+                    const childNode = await this.buildNodeTree(
+                        childModule, 
+                        depth + 1, 
+                        false,
+                        module.name,
+                        dep.version_requirement
+                    );
+                    if (childNode) {
+                        node.children.push(childNode);
                     }
                 }
-            } catch (error) {
-                console.warn(`Could not fetch Git metadata for ${module.name}:`, error);
             }
+        } catch (error) {
+            console.warn(`Could not fetch dependencies for ${module.name}:`, error);
         }
+    }
 
-        this.visitedModules.delete(module.name);
-        this.currentPath.pop();
-        return node;
+    /**
+     * Process dependencies for Git modules
+     */
+    private static async processGitModuleDependencies(
+        module: PuppetModule, 
+        node: DependencyNode, 
+        depth: number
+    ): Promise<void> {
+        try {
+            const ref = module.gitTag || module.gitRef;
+            const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl!, ref);
+            
+            if (gitMetadata?.dependencies) {
+                for (const dep of gitMetadata.dependencies) {
+                    const normalizedDepName = this.normalizeModuleName(dep.name);
+                    
+                    // Git module dependencies are typically Forge modules
+                    const childModule: PuppetModule = {
+                        name: normalizedDepName,
+                        version: undefined,
+                        source: 'forge', // Most dependencies are from Forge
+                        line: -1
+                    };
+
+                    const childNode = await this.buildNodeTree(
+                        childModule, 
+                        depth + 1, 
+                        false,
+                        module.name,
+                        dep.version_requirement
+                    );
+                    if (childNode) {
+                        node.children.push(childNode);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn(`Could not fetch Git metadata for ${module.name}:`, error);
+        }
     }
 
     /**
