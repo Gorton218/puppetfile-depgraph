@@ -40,7 +40,10 @@ jobs:
       run: npm run compile
 
     - name: Run tests with coverage
-      run: npm run test:coverage
+      run: |
+        npm run test:coverage
+        ls -l
+        ls -l coverage
 
     - name: SonarQube Scan
       uses: SonarSource/sonarqube-scan-action@v5
