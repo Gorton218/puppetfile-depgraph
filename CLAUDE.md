@@ -16,7 +16,14 @@ Puppetfile Dependency Manager is a VS Code extension for managing Puppet module 
 - `npm run vscode:prepublish` - Prepare for publication
 
 ### Testing
-Tests use Jest framework. Test files are in `src/test/` and use `describe()` and `test()` functions. VS Code extensions can still be tested using the VS Code test runner for integration tests.
+The project uses a dual testing approach:
+
+- **Unit Tests**: Jest framework in `src/test/` using `describe()` and `test()` functions
+  - Run with: `npm test` or `npm run test:unit`
+  - Coverage: `npm run test:coverage`
+- **Integration Tests**: VS Code test runner with Mocha in `src/integration-test/` using `suite()` and `test()` functions  
+  - Run with: `npm run test:integration`
+- **All Tests**: `npm run test:all` (runs both unit and integration tests)
 
 ## Architecture
 

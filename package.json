@@ -90,8 +90,10 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "jest",
-    "test:vscode": "node ./scripts/runTests.js",
+    "test:unit": "jest",
+    "test:integration": "node ./scripts/runTests.js",
     "test:coverage": "jest --coverage",
+    "test:all": "npm run test:coverage && npm run test:integration",
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
