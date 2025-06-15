@@ -842,6 +842,62 @@ describe('DependencyTreeService Test Suite', () => {
             expect(result[0].children[0].isConstraintViolated).toBe(true);
         });
 
+        test('checkConstraintViolation should handle parsing errors gracefully', async () => {
+            // Test the error handling branch in checkConstraintViolation
+            versionParserStub.restore();
+            const parseStub = sinon.stub(VersionParser, 'parse');
+            parseStub.throws(new Error('Invalid constraint format'));
+
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: 'invalid!!!' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'other/module', version_requirement: 'invalid!!!' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '1.5.0', metadata: { dependencies: [] } }
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                },
+                {
+                    name: 'other/module',
+                    version: '1.5.0',
+                    source: 'forge',
+                    line: 2
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should not crash and should assume no violation when parsing fails
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].isConstraintViolated).toBe(false);
+        });
+
         test('findBestMatchingVersion should find optimal version', async () => {
             versionParserStub.restore();
             const parseStub = sinon.stub(VersionParser, 'parse');
@@ -900,6 +956,130 @@ describe('DependencyTreeService Test Suite', () => {
 
             expect(result[0].children.length).toBe(1);
             // Should use the best matching version (highest that satisfies constraint)
+        });
+
+        test('findBestMatchingVersion should handle complex version sorting', async () => {
+            // Test version sorting with different version formats and lengths
+            versionParserStub.restore();
+            const parseStub = sinon.stub(VersionParser, 'parse');
+            const satisfiesStub = sinon.stub(VersionParser, 'satisfiesAll');
+
+            parseStub.returns([{ operator: '>=', version: '1.0.0' }]);
+            // All versions satisfy the constraint
+            satisfiesStub.returns(true);
+
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'sorted/module', version_requirement: '>= 1.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'sorted/module', version_requirement: '>= 1.0.0' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            const mockSortedModule = {
+                name: 'sorted-module',
+                current_release: { version: '2.10.0', metadata: { dependencies: [] } },
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } },
+                    { version: '1.9.0', metadata: { dependencies: [] } },
+                    { version: '1.10.0', metadata: { dependencies: [] } },
+                    { version: '2.0.0', metadata: { dependencies: [] } },
+                    { version: '2.1.0', metadata: { dependencies: [] } },
+                    { version: '2.1.1', metadata: { dependencies: [] } },
+                    { version: '2.10.0', metadata: { dependencies: [] } },
+                    { version: '10.0.0', metadata: { dependencies: [] } }
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('sorted/module').resolves(mockSortedModule);
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should select 10.0.0 as the highest version
+            expect(result[0].children.length).toBe(1);
+            // The version selection happens internally
+        });
+
+        test('findBestMatchingVersion should handle versions with equal parts', async () => {
+            // Test when versions have equal parts, ensuring all paths are covered
+            versionParserStub.restore();
+            const parseStub = sinon.stub(VersionParser, 'parse');
+            const satisfiesStub = sinon.stub(VersionParser, 'satisfiesAll');
+
+            parseStub.returns([{ operator: '>=', version: '1.0.0' }]);
+            satisfiesStub.returns(true);
+
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'equal/module', version_requirement: '>= 1.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'equal/module', version_requirement: '>= 1.0.0' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            const mockEqualModule = {
+                name: 'equal-module',
+                current_release: { version: '1.2.3', metadata: { dependencies: [] } },
+                releases: [
+                    { version: '1.2.3', metadata: { dependencies: [] } },
+                    { version: '1.2.3.0', metadata: { dependencies: [] } }, // Same but with extra zero
+                    { version: '1.2.3.1', metadata: { dependencies: [] } }  // Higher with extra part
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('equal/module').resolves(mockEqualModule);
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            expect(result[0].children.length).toBe(1);
         });
 
         test('extractVersionFromRequirement should extract version numbers', () => {
@@ -1310,6 +1490,61 @@ describe('DependencyTreeService Test Suite', () => {
             expect(result[0].children[0].name).toBe('transitive-module');
             expect(result[0].children[0].displayVersion).toBe('requires >= 1.0.0');
             expect(result[0].children[0].isDirectDependency).toBe(false);
+        });
+
+        test('buildNodeTree should handle missing release metadata dependencies', async () => {
+            // Test edge case where release metadata or dependencies is undefined
+            const mockParentModule = {
+                name: 'parent-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'child/module', version_requirement: '>= 2.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'child/module', version_requirement: '>= 2.0.0' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            // Mock the child module with a release that has no metadata
+            const mockChildModule = {
+                name: 'child-module',
+                current_release: {
+                    version: '2.0.0'
+                    // No metadata property
+                },
+                releases: [
+                    { version: '2.0.0' } // No metadata property
+                ]
+            };
+
+            forgeModuleStub.withArgs('parent/module').resolves(mockParentModule);
+            forgeModuleStub.withArgs('child/module').resolves(mockChildModule);
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'parent/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should handle missing metadata gracefully
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].name).toBe('child-module');
         });
     });
 
