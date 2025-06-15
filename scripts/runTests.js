@@ -20,21 +20,3 @@ if (testResult.error) {
 } else {
     console.log('Tests completed successfully.');
 }
-
-// Now generate coverage using c8 report with the correct temp directory
-console.log('Generating coverage report...');
-const c8Cmd = isWin ? 'npx.cmd' : 'npx';
-const reportResult = spawnSync(c8Cmd, [
-    'c8', 
-    'report', 
-    '--config', '.c8rc.json',
-    '--temp-directory', 'coverage/tmp'
-], { stdio: 'inherit' });
-
-if (reportResult.status !== 0) {
-    console.log('Could not generate c8 report, status:', reportResult.status);
-} else {
-    console.log('Coverage report generated successfully!');
-}
-
-process.exit(testResult.status ?? 0);
