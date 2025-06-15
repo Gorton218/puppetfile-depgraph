@@ -1083,18 +1083,30 @@ describe('DependencyTreeService Test Suite', () => {
         });
 
         test('extractVersionFromRequirement should extract version numbers', () => {
-            // This method is private, but we can test it through other functionality
-            const modules: PuppetModule[] = [
-                {
-                    name: 'test/module',
-                    version: '1.0.0',
-                    source: 'forge',
-                    line: 1
-                }
+            // Since the method is private, we need to access it via the class
+            const extractMethod = (DependencyTreeService as any).extractVersionFromRequirement;
+            
+            // Test cases covering different version requirement formats
+            const testCases = [
+                { requirement: '>= 1.0.0', expected: '1.0.0' },
+                { requirement: '< 2.0.0', expected: '2.0.0' },
+                { requirement: '~> 1.2.3', expected: '1.2.3' },
+                { requirement: '= 4.5.6', expected: '4.5.6' },
+                { requirement: '>= 1.2.3 < 2.0.0', expected: '1.2.3' }, // Should extract first version
+                { requirement: 'version 3.14.159', expected: '3.14.159' },
+                { requirement: '1.0', expected: '1.0' },
+                { requirement: '10.20.30', expected: '10.20.30' },
+                { requirement: 'no_version_here', expected: undefined },
+                { requirement: 'latest', expected: undefined },
+                { requirement: '', expected: undefined },
+                { requirement: '1', expected: '1' },
+                { requirement: 'v1.2.3-suffix', expected: '1.2.3' }
             ];
-
-            DependencyTreeService.buildDependencyTree(modules);
-            // The method would be used internally during tree building
+            
+            testCases.forEach(({ requirement, expected }) => {
+                const result = extractMethod(requirement);
+                expect(result).toBe(expected);
+            });
         });
 
         test('extractVersionFromRequirement should handle requirements without version numbers', async () => {
