@@ -7,8 +7,21 @@ const vscode = {
   Range: jest.fn(),
   Position: jest.fn(),
   WorkspaceEdit: jest.fn(),
-  MarkdownString: jest.fn((value) => ({ value })),
-  Hover: jest.fn((contents, range) => ({ contents, range })),
+  MarkdownString: jest.fn((value) => {
+    const markdown = {
+      value: value || '',
+      isTrusted: false,
+      appendMarkdown: jest.fn((text) => {
+        markdown.value += text;
+        return markdown;
+      })
+    };
+    return markdown;
+  }),
+  Hover: jest.fn((contents, range) => ({ 
+    contents: Array.isArray(contents) ? contents : [contents], 
+    range 
+  })),
   ProgressLocation: {
     Notification: 15,
     Window: 10,
@@ -18,7 +31,13 @@ const vscode = {
     showErrorMessage: jest.fn(),
     showInformationMessage: jest.fn(),
     withProgress: jest.fn(),
-    activeTextEditor: null
+    activeTextEditor: {
+      document: {
+        fileName: 'Puppetfile',
+        languageId: 'puppetfile',
+        getText: jest.fn(() => 'mock content')
+      }
+    }
   },
   workspace: {
     getConfiguration: jest.fn(() => ({

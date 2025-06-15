@@ -507,7 +507,11 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const result = await provider.provideHover(document as any, position, {} as any);
             
             // Should still return hover info even when service throws error (fallback)
-            expect(result).toBe(null);
+            expect(result).not.toBe(null);
+            if (result) {
+                const markdown = result.contents[0] as any;
+                expect(markdown.value).toContain('📦 puppetlabs/stdlib');
+            }
             restore();
         });
     });
