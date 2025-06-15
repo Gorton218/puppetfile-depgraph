@@ -1,19 +1,18 @@
-import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { DependencyTreeService, DependencyNode } from '../dependencyTreeService';
 import { PuppetModule } from '../puppetfileParser';
 import { GitMetadataService } from '../gitMetadataService';
 
-suite('DependencyTreeService Test Suite', () => {
+describe('DependencyTreeService Test Suite', () => {
     let gitMetadataStub: sinon.SinonStub;
     
-    setup(() => {
+    beforeEach(() => {
         // Stub GitMetadataService to prevent network calls
         gitMetadataStub = sinon.stub(GitMetadataService, 'getModuleMetadataWithFallback');
         gitMetadataStub.resolves(null); // Default to returning null for all Git metadata requests
     });
     
-    teardown(() => {
+    afterEach(() => {
         sinon.restore();
     });
     
@@ -51,14 +50,14 @@ suite('DependencyTreeService Test Suite', () => {
         
         const result = DependencyTreeService.generateTreeText(nodes);
         
-        assert.ok(result.includes('├── puppetlabs/stdlib (8.5.0) [forge]'));
-        assert.ok(result.includes('│   └── puppetlabs/concat (7.0.0) [forge]'));
-        assert.ok(result.includes('└── puppetlabs/firewall (3.4.0) [forge]'));
+        expect(result).toContain('├── puppetlabs/stdlib (8.5.0) [forge]');
+        expect(result).toContain('│   └── puppetlabs/concat (7.0.0) [forge]');
+        expect(result).toContain('└── puppetlabs/firewall (3.4.0) [forge]');
     });
     
     test('generateTreeText should handle empty array', () => {
         const result = DependencyTreeService.generateTreeText([]);
-        assert.strictEqual(result, '');
+        expect(result).toBe('');
     });
     
     test('generateTreeText should handle single module without version', () => {
@@ -74,8 +73,8 @@ suite('DependencyTreeService Test Suite', () => {
         ];
         
         const result = DependencyTreeService.generateTreeText(nodes);
-        assert.ok(result.includes('└── puppetlabs/stdlib [forge]'));
-        assert.ok(!result.includes('()'));
+        expect(result).toContain('└── puppetlabs/stdlib [forge]');
+        expect(result).not.toContain('()');
     });
     
     test('generateTreeText should handle git modules', () => {
@@ -93,7 +92,7 @@ suite('DependencyTreeService Test Suite', () => {
         ];
         
         const result = DependencyTreeService.generateTreeText(nodes);
-        assert.ok(result.includes('└── custom/module (master) [git]'));
+        expect(result).toContain('└── custom/module (master) [git]');
     });
     
     test('generateListText should format list correctly', () => {
@@ -127,17 +126,17 @@ suite('DependencyTreeService Test Suite', () => {
         
         const result = DependencyTreeService.generateListText(nodes);
         
-        assert.ok(result.includes('Total Dependencies: 3'));
-        assert.ok(result.includes('Direct Dependencies (2):'));
-        assert.ok(result.includes('Transitive Dependencies (1):'));
-        assert.ok(result.includes('• puppetlabs/stdlib (8.5.0) [forge]'));
-        assert.ok(result.includes('• custom/module [git]'));
-        assert.ok(result.includes('• puppetlabs/concat (7.0.0) [forge]'));
+        expect(result).toContain('Total Dependencies: 3');
+        expect(result).toContain('Direct Dependencies (2):');
+        expect(result).toContain('Transitive Dependencies (1):');
+        expect(result).toContain('• puppetlabs/stdlib (8.5.0) [forge]');
+        expect(result).toContain('• custom/module [git]');
+        expect(result).toContain('• puppetlabs/concat (7.0.0) [forge]');
     });
     
     test('generateListText should handle empty dependencies', () => {
         const result = DependencyTreeService.generateListText([]);
-        assert.ok(result.includes('Total Dependencies: 0'));
+        expect(result).toContain('Total Dependencies: 0');
     });
     
     test('generateListText should handle only direct dependencies', () => {
@@ -154,9 +153,9 @@ suite('DependencyTreeService Test Suite', () => {
         
         const result = DependencyTreeService.generateListText(nodes);
         
-        assert.ok(result.includes('Total Dependencies: 1'));
-        assert.ok(result.includes('Direct Dependencies (1):'));
-        assert.ok(!result.includes('Transitive Dependencies'));
+        expect(result).toContain('Total Dependencies: 1');
+        expect(result).toContain('Direct Dependencies (1):');
+        expect(result).not.toContain('Transitive Dependencies');
     });
     
     test('findConflicts should detect version conflicts', () => {
@@ -209,7 +208,7 @@ suite('DependencyTreeService Test Suite', () => {
         
         // The new implementation requires the full buildDependencyTree process
         // to collect requirements and analyze conflicts properly
-        assert.strictEqual(conflicts.length, 0);
+        expect(conflicts.length).toBe(0);
     });
     
     test('findConflicts should return empty array when no conflicts', () => {
@@ -236,7 +235,7 @@ suite('DependencyTreeService Test Suite', () => {
         ];
         
         const conflicts = DependencyTreeService.findConflicts(nodes);
-        assert.strictEqual(conflicts.length, 0);
+        expect(conflicts.length).toBe(0);
     });
     
     test('findConflicts should handle modules without versions', () => {
@@ -254,7 +253,7 @@ suite('DependencyTreeService Test Suite', () => {
         ];
         
         const conflicts = DependencyTreeService.findConflicts(nodes);
-        assert.strictEqual(conflicts.length, 0);
+        expect(conflicts.length).toBe(0);
     });
 
     // This test verifies the structure of the dependency tree
@@ -289,19 +288,19 @@ suite('DependencyTreeService Test Suite', () => {
         
         const result = await DependencyTreeService.buildDependencyTree(modules);
         
-        assert.strictEqual(result.length, 2);
-        assert.strictEqual(result[0].name, 'puppetlabs/stdlib');
-        assert.strictEqual(result[0].isDirectDependency, true);
-        assert.strictEqual(result[0].depth, 0);
+        expect(result.length).toBe(2);
+        expect(result[0].name).toBe('puppetlabs/stdlib');
+        expect(result[0].isDirectDependency).toBe(true);
+        expect(result[0].depth).toBe(0);
         
-        assert.strictEqual(result[1].name, 'custom/module');
-        assert.strictEqual(result[1].source, 'git');
-        assert.strictEqual(result[1].gitUrl, 'https://github.com/user/module.git');
-        assert.strictEqual(result[1].gitTag, 'v1.0.0');
+        expect(result[1].name).toBe('custom/module');
+        expect(result[1].source).toBe('git');
+        expect(result[1].gitUrl).toBe('https://github.com/user/module.git');
+        expect(result[1].gitTag).toBe('v1.0.0');
     });
     
     test('buildDependencyTree should handle empty modules array', async () => {
         const result = await DependencyTreeService.buildDependencyTree([]);
-        assert.strictEqual(result.length, 0);
+        expect(result.length).toBe(0);
     });
 });

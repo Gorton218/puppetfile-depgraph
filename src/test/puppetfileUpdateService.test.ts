@@ -1,4 +1,3 @@
-import * as assert from 'assert';
 import { PuppetfileUpdateService } from '../puppetfileUpdateService';
 
 interface TestCase {
@@ -8,7 +7,7 @@ interface TestCase {
     expected: string;
 }
 
-suite('PuppetfileUpdateService Test Suite', () => {
+describe('PuppetfileUpdateService Test Suite', () => {
     const createTestCase = (description: string, input: string, newVersion: string, expected: string): TestCase => ({
         description,
         input,
@@ -20,7 +19,7 @@ suite('PuppetfileUpdateService Test Suite', () => {
         testCases.forEach(testCase => {
             test(`updateVersionInLine should ${testCase.description}`, () => {
                 const result = PuppetfileUpdateService['updateVersionInLine'](testCase.input, testCase.newVersion);
-                assert.strictEqual(result, testCase.expected);
+                expect(result).toBe(testCase.expected);
             });
         });
     };

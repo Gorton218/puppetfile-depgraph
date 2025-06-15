@@ -1,5 +1,3 @@
-import * as assert from 'assert';
-import { suite, test } from 'mocha';
 import * as sinon from 'sinon';
 import { DependencyTreeService } from '../dependencyTreeService';
 import { PuppetForgeService } from '../puppetForgeService';
@@ -34,15 +32,15 @@ function createPuppetModule(name: string, version: string, line: number): Puppet
   return { name, version, source: 'forge', line };
 }
 
-suite('DependencyTree Conflict Detection Integration Tests', () => {
+describe('DependencyTree Conflict Detection Integration Tests', () => {
   let getModuleStub: sinon.SinonStub;
   
-  setup(() => {
+  beforeEach(() => {
     // Stub the Puppet Forge API calls
     getModuleStub = sinon.stub(PuppetForgeService, 'getModule');
   });
   
-  teardown(() => {
+  afterEach(() => {
     sinon.restore();
   });
 
@@ -70,7 +68,7 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         createPuppetModule('puppetlabs/mysql', '16.0.0', 2)
       ],
       (conflicts) => {
-        assert.strictEqual(conflicts.length, 0, 'Should not report conflicts when versions overlap');
+        expect(conflicts.length).toBe(0); // Should not report conflicts when versions overlap
       }
     );
   });
@@ -87,8 +85,8 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         createPuppetModule('example/mysql', '1.0.0', 2)
       ],
       (conflicts) => {
-        assert.ok(conflicts.length > 0, 'Should report conflicts when no version satisfies all requirements');
-        assert.ok(conflicts.some(c => c.includes('No version of puppetlabs-concat satisfies all requirements')));
+        expect(conflicts.length).toBeGreaterThan(0); // Should report conflicts when no version satisfies all requirements
+        expect(conflicts.some(c => c.includes('No version of puppetlabs-concat satisfies all requirements'))).toBe(true);
       }
     );
   });
@@ -104,8 +102,8 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         createPuppetModule('example/mymodule', '1.0.0', 2)
       ],
       (conflicts) => {
-        assert.ok(conflicts.length > 0, 'Should report conflict between exact version and requirement');
-        assert.ok(conflicts.some(c => c.includes('puppetlabs-stdlib')));
+        expect(conflicts.length).toBeGreaterThan(0); // Should report conflict between exact version and requirement
+        expect(conflicts.some(c => c.includes('puppetlabs-stdlib'))).toBe(true);
       }
     );
   });
@@ -122,7 +120,7 @@ suite('DependencyTree Conflict Detection Integration Tests', () => {
         createPuppetModule('example/mysql', '1.0.0', 2)
       ],
       (conflicts) => {
-        assert.ok(conflicts.some(c => c.includes('Suggestion:')), 'Should provide suggested fixes');
+        expect(conflicts.some(c => c.includes('Suggestion:'))).toBe(true); // Should provide suggested fixes
       }
     );
   });

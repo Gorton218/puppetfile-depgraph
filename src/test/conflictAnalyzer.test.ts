@@ -1,11 +1,9 @@
-import * as assert from 'assert';
-import { suite, test } from 'mocha';
 import { ConflictAnalyzer } from '../services/conflictAnalyzer';
 import { Requirement } from '../types/dependencyTypes';
 
-suite('ConflictAnalyzer Test Suite', () => {
+describe('ConflictAnalyzer Test Suite', () => {
   
-  suite('analyzeModule()', () => {
+  describe('analyzeModule()', () => {
     test('should detect no conflict when versions overlap', () => {
       const requirements: Requirement[] = [
         {
@@ -26,9 +24,9 @@ suite('ConflictAnalyzer Test Suite', () => {
       
       const result = ConflictAnalyzer.analyzeModule('puppetlabs/stdlib', requirements, availableVersions);
       
-      assert.strictEqual(result.hasConflict, false);
-      assert.ok(result.satisfyingVersions);
-      assert.deepStrictEqual(result.satisfyingVersions, ['8.0.0', '8.5.0']);
+      expect(result.hasConflict).toBe(false);
+      expect(result.satisfyingVersions).toBeTruthy();
+      expect(result.satisfyingVersions).toEqual(['8.0.0', '8.5.0']);
     });
     
     test('should detect no-intersection conflict', () => {
@@ -51,10 +49,10 @@ suite('ConflictAnalyzer Test Suite', () => {
       
       const result = ConflictAnalyzer.analyzeModule('puppetlabs/concat', requirements, availableVersions);
       
-      assert.strictEqual(result.hasConflict, true);
-      assert.ok(result.conflict);
-      assert.strictEqual(result.conflict.type, 'no-intersection');
-      assert.ok(result.conflict.details.includes('No version of puppetlabs/concat satisfies all requirements'));
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflict).toBeTruthy();
+      expect(result.conflict!.type).toBe('no-intersection');
+      expect(result.conflict!.details).toContain('No version of puppetlabs/concat satisfies all requirements');
     });
     
     test('should detect no-available-version conflict', () => {
@@ -71,9 +69,9 @@ suite('ConflictAnalyzer Test Suite', () => {
       
       const result = ConflictAnalyzer.analyzeModule('example/future', requirements, availableVersions);
       
-      assert.strictEqual(result.hasConflict, true);
-      assert.ok(result.conflict);
-      assert.strictEqual(result.conflict.type, 'no-available-version');
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflict).toBeTruthy();
+      expect(result.conflict!.type).toBe('no-available-version');
     });
     
     test('should handle exact version requirements', () => {
@@ -96,9 +94,9 @@ suite('ConflictAnalyzer Test Suite', () => {
       
       const result = ConflictAnalyzer.analyzeModule('mymodule', requirements, availableVersions);
       
-      assert.strictEqual(result.hasConflict, false);
-      assert.ok(result.satisfyingVersions);
-      assert.deepStrictEqual(result.satisfyingVersions, ['1.2.3']);
+      expect(result.hasConflict).toBe(false);
+      expect(result.satisfyingVersions).toBeTruthy();
+      expect(result.satisfyingVersions).toEqual(['1.2.3']);
     });
     
     test('should generate suggested fixes for conflicts', () => {
@@ -121,35 +119,35 @@ suite('ConflictAnalyzer Test Suite', () => {
       
       const result = ConflictAnalyzer.analyzeModule('puppetlabs/concat', requirements, availableVersions);
       
-      assert.strictEqual(result.hasConflict, true);
-      assert.ok(result.conflict);
-      assert.ok(result.conflict.suggestedFixes.length > 0);
+      expect(result.hasConflict).toBe(true);
+      expect(result.conflict).toBeTruthy();
+      expect(result.conflict!.suggestedFixes.length).toBeGreaterThan(0);
     });
   });
   
-  suite('checkForCircularDependencies()', () => {
+  describe('checkForCircularDependencies()', () => {
     test('should detect circular dependency', () => {
       const path = ['moduleA', 'moduleB', 'moduleC'];
       const conflict = ConflictAnalyzer.checkForCircularDependencies('moduleB', path);
       
-      assert.ok(conflict);
-      assert.strictEqual(conflict.type, 'circular');
-      assert.ok(conflict.details.includes('Circular dependency detected'));
-      assert.ok(conflict.details.includes('moduleB -> moduleC -> moduleB'));
+      expect(conflict).toBeTruthy();
+      expect(conflict!.type).toBe('circular');
+      expect(conflict!.details).toContain('Circular dependency detected');
+      expect(conflict!.details).toContain('moduleB -> moduleC -> moduleB');
     });
     
     test('should not detect circular dependency when none exists', () => {
       const path = ['moduleA', 'moduleB', 'moduleC'];
       const conflict = ConflictAnalyzer.checkForCircularDependencies('moduleD', path);
       
-      assert.strictEqual(conflict, null);
+      expect(conflict).toBeNull();
     });
     
     test('should handle empty path', () => {
       const path: string[] = [];
       const conflict = ConflictAnalyzer.checkForCircularDependencies('moduleA', path);
       
-      assert.strictEqual(conflict, null);
+      expect(conflict).toBeNull();
     });
   });
 });

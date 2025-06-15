@@ -1,9 +1,8 @@
-import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
 import { PuppetForgeService, ForgeModule } from '../puppetForgeService';
 
-suite('PuppetfileHoverProvider Test Suite', () => {
+describe('PuppetfileHoverProvider Test Suite', () => {
     // Test utilities and factories
     const createProvider = () => new PuppetfileHoverProvider();
     
@@ -63,8 +62,8 @@ suite('PuppetfileHoverProvider Test Suite', () => {
     };
     test('Should create hover provider instance', () => {
         const provider = createProvider();
-        assert.ok(provider);
-        assert.ok(typeof provider.provideHover === 'function');
+        expect(provider).toBeTruthy();
+        expect(typeof provider.provideHover).toBe('function');
     });
 
     test('isPuppetfile should detect Puppetfile by filename', () => {
@@ -72,7 +71,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         const isPuppetfile = (provider as any).isPuppetfile;
         const mockDocument = createMockDocument('/path/to/Puppetfile', 'plaintext');
         
-        assert.strictEqual(isPuppetfile.call(provider, mockDocument), true);
+        expect(isPuppetfile.call(provider, mockDocument)).toBe(true);
     });
 
     test('isPuppetfile should detect Puppetfile by language', () => {
@@ -80,7 +79,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         const isPuppetfile = (provider as any).isPuppetfile;
         const mockDocument = createMockDocument('/path/to/somefile', 'puppetfile');
         
-        assert.strictEqual(isPuppetfile.call(provider, mockDocument), true);
+        expect(isPuppetfile.call(provider, mockDocument)).toBe(true);
     });
 
     test('isPuppetfile should reject non-Puppetfile files', () => {
@@ -88,7 +87,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         const isPuppetfile = (provider as any).isPuppetfile;
         const mockDocument = createMockDocument('/path/to/somefile.txt', 'plaintext');
         
-        assert.strictEqual(isPuppetfile.call(provider, mockDocument), false);
+        expect(isPuppetfile.call(provider, mockDocument)).toBe(false);
     });
 
     test('getModuleInfo should not include Owner, Downloads, or Quality Score fields', async () => {
@@ -108,14 +107,14 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
             
             // Verify these fields are NOT present
-            assert.ok(!markdownText.includes('**Owner:**'), 'Owner field should not be present');
-            assert.ok(!markdownText.includes('**Downloads:**'), 'Downloads field should not be present');
-            assert.ok(!markdownText.includes('**Quality Score:**'), 'Quality Score field should not be present');
+            expect(markdownText.includes('**Owner:**')).toBe(false);
+            expect(markdownText.includes('**Downloads:**')).toBe(false);
+            expect(markdownText.includes('**Quality Score:**')).toBe(false);
             
             // Verify other important fields are still present
-            assert.ok(markdownText.includes('**Current Version:**'), 'Current Version field should be present');
-            assert.ok(markdownText.includes('**Latest Version:**'), 'Latest Version field should be present');
-            assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies field should be present');
+            expect(markdownText.includes('**Current Version:**')).toBe(true);
+            expect(markdownText.includes('**Latest Version:**')).toBe(true);
+            expect(markdownText.includes('**Dependencies:**')).toBe(true);
         });
     });
 
@@ -143,13 +142,13 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const tooltip1 = 'Update to 1.1.0';
             const tooltip2 = 'Update to 1.2.0';
 
-            assert.ok(markdownText.includes('**Available Updates:**'), 'Should show available updates');
-            assert.ok(markdownText.includes(link1), 'Should include link for 1.1.0');
-            assert.ok(markdownText.includes(link2), 'Should include link for 1.2.0');
-            assert.ok(markdownText.includes(tooltip1), 'Should include tooltip for 1.1.0');
-            assert.ok(markdownText.includes(tooltip2), 'Should include tooltip for 1.2.0');
-            assert.ok(!markdownText.includes('**`1.0.0`**'), 'Current version should not appear in updates list');
-            assert.ok(!markdownText.includes(' • '), 'Versions should not be separated by bullets');
+            expect(markdownText.includes('**Available Updates:**')).toBe('Should show available updates');
+            expect(markdownText.includes(link1)).toBe('Should include link for 1.1.0');
+            expect(markdownText.includes(link2)).toBe('Should include link for 1.2.0');
+            expect(markdownText.includes(tooltip1)).toBe('Should include tooltip for 1.1.0');
+            expect(markdownText.includes(tooltip2)).toBe('Should include tooltip for 1.2.0');
+            expect(!markdownText.includes('**`1.0.0`**')).toBe('Current version should not appear in updates list');
+            expect(!markdownText.includes(' • ')).toBe('Versions should not be separated by bullets');
         });
     });
 
@@ -181,8 +180,8 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should NOT show dependencies since the specific version has no dependencies
-            assert.ok(!markdownText.includes('**Dependencies:**'), 'Dependencies field should NOT be present when version has no dependencies');
-            assert.ok(!markdownText.includes('puppetlabs/concat'), 'Dependencies from current_release should NOT be shown');
+            expect(!markdownText.includes('**Dependencies:**')).toBe('Dependencies field should NOT be present when version has no dependencies');
+            expect(!markdownText.includes('puppetlabs/concat')).toBe('Dependencies from current_release should NOT be shown');
         });
     });
 
@@ -206,11 +205,11 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should show dependencies
-            assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies section should be present');
-            assert.ok(markdownText.includes('puppetlabs/stdlib'), 'stdlib dependency should be shown');
-            assert.ok(markdownText.includes('puppetlabs/concat'), 'concat dependency should be shown');
-            assert.ok(markdownText.includes('>= 4.13.1 < 9.0.0'), 'stdlib version requirement should be shown');
-            assert.ok(markdownText.includes('>= 1.1.1 < 8.0.0'), 'concat version requirement should be shown');
+            expect(markdownText.includes('**Dependencies:**')).toBe('Dependencies section should be present');
+            expect(markdownText.includes('puppetlabs/stdlib')).toBe('stdlib dependency should be shown');
+            expect(markdownText.includes('puppetlabs/concat')).toBe('concat dependency should be shown');
+            expect(markdownText.includes('>= 4.13.1 < 9.0.0')).toBe('stdlib version requirement should be shown');
+            expect(markdownText.includes('>= 1.1.1 < 8.0.0')).toBe('concat version requirement should be shown');
         });
     });
 
@@ -232,9 +231,9 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should show dependencies from current_release as fallback
-            assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies field should be present');
-            assert.ok(markdownText.includes('puppetlabs/concat'), 'Fallback dependency should be shown');
-            assert.ok(markdownText.includes('>= 1.0.0'), 'Version requirement should be shown');
+            expect(markdownText.includes('**Dependencies:**')).toBe('Dependencies field should be present');
+            expect(markdownText.includes('puppetlabs/concat')).toBe('Fallback dependency should be shown');
+            expect(markdownText.includes('>= 1.0.0')).toBe('Version requirement should be shown');
         });
     });
 
@@ -266,16 +265,16 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should show dependencies from version 10.0.0, NOT from latest (11.1.0)
-            assert.ok(markdownText.includes('**Dependencies:**'), 'Dependencies section should be present');
-            assert.ok(markdownText.includes('puppetlabs/stdlib'), 'stdlib dependency should be shown');
-            assert.ok(markdownText.includes('puppetlabs/concat'), 'concat dependency should be shown from v10.0.0');
-            assert.ok(markdownText.includes('>= 8.0.0 < 9.0.0'), 'stdlib version requirement from v10.0.0 should be shown');
-            assert.ok(markdownText.includes('>= 6.0.0 < 7.0.0'), 'concat version requirement from v10.0.0 should be shown');
+            expect(markdownText.includes('**Dependencies:**')).toBe('Dependencies section should be present');
+            expect(markdownText.includes('puppetlabs/stdlib')).toBe('stdlib dependency should be shown');
+            expect(markdownText.includes('puppetlabs/concat')).toBe('concat dependency should be shown from v10.0.0');
+            expect(markdownText.includes('>= 8.0.0 < 9.0.0')).toBe('stdlib version requirement from v10.0.0 should be shown');
+            expect(markdownText.includes('>= 6.0.0 < 7.0.0')).toBe('concat version requirement from v10.0.0 should be shown');
             
             // Should NOT show dependencies from latest version (11.1.0)
-            assert.ok(!markdownText.includes('puppetlabs/systemd'), 'systemd dependency from latest should NOT be shown');
-            assert.ok(!markdownText.includes('>= 9.0.0 < 10.0.0'), 'latest stdlib version requirement should NOT be shown');
-            assert.ok(!markdownText.includes('>= 5.0.0 < 6.0.0'), 'latest systemd version requirement should NOT be shown');
+            expect(!markdownText.includes('puppetlabs/systemd')).toBe('systemd dependency from latest should NOT be shown');
+            expect(!markdownText.includes('>= 9.0.0 < 10.0.0')).toBe('latest stdlib version requirement should NOT be shown');
+            expect(!markdownText.includes('>= 5.0.0 < 6.0.0')).toBe('latest systemd version requirement should NOT be shown');
         });
     });
 
@@ -302,13 +301,13 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Check that updates are displayed (only newer versions than 3.0.0)
-            assert.ok(markdownText.includes('**Available Updates:**'), 'Should show available updates');
+            expect(markdownText.includes('**Available Updates:**')).toBe('Should show available updates');
             
             // Check that current version (3.0.0) is not shown in updates
-            assert.ok(!markdownText.includes('**`3.0.0`**'), 'Current version should not appear in updates');
+            expect(!markdownText.includes('**`3.0.0`**')).toBe('Current version should not appear in updates');
             
             // Check that versions are not separated by bullets
-            assert.ok(!markdownText.includes(' • '), 'Versions should not be separated by bullets');
+            expect(!markdownText.includes(' • ')).toBe('Versions should not be separated by bullets');
             
             // Check that multiple rows exist (should have newlines between rows)
             const versionSection = markdownText.substring(
@@ -316,12 +315,12 @@ suite('PuppetfileHoverProvider Test Suite', () => {
                 markdownText.indexOf('**Dependencies:**') || markdownText.indexOf('[View on Puppet Forge]')
             );
             const lines = versionSection.split('\n').filter((line: string) => line.includes('`'));
-            assert.ok(lines.length > 1, 'Should have multiple rows of versions');
+            expect(lines.length > 1).toBe(true);
             
             // Check that first row has 5 versions max
             const firstRow = lines[0];
             const versionCount = (firstRow.match(/`[^`]+`/g) || []).length;
-            assert.ok(versionCount <= 5, 'First row should have max 5 versions');
+            expect(versionCount <= 5).toBe(true);
         });
     });
 
@@ -339,10 +338,10 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         
         const result = parseModuleFromPosition.call(provider, mockDocument, mockPosition);
         
-        assert.ok(result, 'Should parse module successfully');
-        assert.strictEqual(result.name, 'puppetlabs/stdlib', 'Should parse module name correctly');
-        assert.strictEqual(result.version, '8.5.0', 'Should parse module version correctly');
-        assert.strictEqual(result.line, 1, 'Should have correct line number');
+        expect(result).toBeTruthy();
+        expect(result.name).toBe('puppetlabs/stdlib');
+        expect(result.version).toBe('8.5.0');
+        expect(result.line).toBe(1);
     });
 
     test('hasModuleCached should correctly check cache status', () => {
@@ -350,7 +349,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         PuppetForgeService.clearCache();
         
         // Should return false for uncached module
-        assert.strictEqual(PuppetForgeService.hasModuleCached('puppetlabs/stdlib'), false);
+        expect(PuppetForgeService.hasModuleCached('puppetlabs/stdlib')).toBe(false);
         
         // Mock cache by calling internal cache set
         const moduleVersionCache = (PuppetForgeService as any).moduleVersionCache;
@@ -359,7 +358,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
         moduleVersionCache.set('puppetlabs/stdlib', versionMap);
         
         // Should return true for cached module
-        assert.strictEqual(PuppetForgeService.hasModuleCached('puppetlabs/stdlib'), true);
+        expect(PuppetForgeService.hasModuleCached('puppetlabs/stdlib')).toBe(true);
         
         // Clear cache
         PuppetForgeService.clearCache();
@@ -416,16 +415,16 @@ suite('PuppetfileHoverProvider Test Suite', () => {
                 const markdownText = result.value;
 
                 // Should contain green indicator for compatible version
-                assert.ok(markdownText.includes('🟢'), 'Should show green indicator for compatible versions');
-                assert.ok(markdownText.includes('🟢 [`8.5.0`]'), 'Version 8.5.0 should have green indicator');
+                expect(markdownText.includes('🟢')).toBe('Should show green indicator for compatible versions');
+                expect(markdownText.includes('🟢 [`8.5.0`]')).toBe('Version 8.5.0 should have green indicator');
 
                 // Should contain yellow indicator for incompatible version
-                assert.ok(markdownText.includes('🟡'), 'Should show yellow indicator for incompatible versions');
-                assert.ok(markdownText.includes('🟡 [`9.0.0`]'), 'Version 9.0.0 should have yellow indicator');
+                expect(markdownText.includes('🟡')).toBe('Should show yellow indicator for incompatible versions');
+                expect(markdownText.includes('🟡 [`9.0.0`]')).toBe('Version 9.0.0 should have yellow indicator');
 
                 // Should show conflict details in tooltip
-                assert.ok(markdownText.includes('Conflicts:'), 'Should show conflict details');
-                assert.ok(markdownText.includes('puppetlabs/concat requires >= 4.13.1 < 9.0.0'), 'Should show specific conflict requirement');
+                expect(markdownText.includes('Conflicts:')).toBe('Should show conflict details');
+                expect(markdownText.includes('puppetlabs/concat requires >= 4.13.1 < 9.0.0')).toBe('Should show specific conflict requirement');
 
                 PuppetForgeService.getReleaseForVersion = originalGetReleaseForVersion;
             });
@@ -444,7 +443,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             
             const result = await provider.provideHover(document as any, position, {} as any);
             
-            assert.strictEqual(result, null);
+            expect(result).toBe(null);
             restore();
         });
     });
@@ -462,7 +461,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             
             const result = await provider.provideHover(document as any, position, {} as any);
             
-            assert.strictEqual(result, null);
+            expect(result).toBe(null);
             restore();
         });
     });
@@ -481,7 +480,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             
             const result = await provider.provideHover(document as any, position, {} as any);
             
-            assert.strictEqual(result, null);
+            expect(result).toBe(null);
             restore();
         });
     });
@@ -508,7 +507,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             const result = await provider.provideHover(document as any, position, {} as any);
             
             // Should still return hover info even when service throws error (fallback)
-            assert.notStrictEqual(result, null);
+            expect(result).toBe(null);
             restore();
         });
     });
@@ -535,10 +534,10 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             
             const result = (provider as any).extractCompleteModuleDefinition(document, 0);
             
-            assert.ok(result.includes('puppetlabs/stdlib'));
-            assert.ok(result.includes(':git'));
-            assert.ok(result.includes(':ref'));
-            assert.ok(result.includes(':tag'));
+            expect(result.includes('puppetlabs/stdlib'));
+            expect(result.includes(':git'));
+            expect(result.includes(':ref'));
+            expect(result.includes(':tag'));
             restore();
         });
     });
@@ -552,7 +551,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             await (provider as any).checkAndInitializeCache();
             
             // Should complete without throwing
-            assert.ok(true);
+            expect(true);
             restore();
         });
     });
@@ -580,7 +579,7 @@ suite('PuppetfileHoverProvider Test Suite', () => {
             );
             
             // Should handle error gracefully and return a Map
-            assert.ok(result instanceof Map);
+            expect(result instanceof Map);
             
             consoleErrorStub.restore();
             restore();

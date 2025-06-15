@@ -1,22 +1,20 @@
-import * as assert from 'assert';
-import { suite, test } from 'mocha';
 import * as sinon from 'sinon';
 import { GitMetadataService } from '../gitMetadataService';
 import axios from 'axios';
 
-suite('GitMetadataService Test Suite', () => {
+describe('GitMetadataService Test Suite', () => {
   let axiosGetStub: sinon.SinonStub;
   let consoleWarnStub: sinon.SinonStub;
   let consoleErrorStub: sinon.SinonStub;
   
-  setup(() => {
+  beforeEach(() => {
     axiosGetStub = sinon.stub(axios, 'get');
     consoleWarnStub = sinon.stub(console, 'warn');
     consoleErrorStub = sinon.stub(console, 'error');
     GitMetadataService.clearCache();
   });
   
-  teardown(() => {
+  afterEach(() => {
     sinon.restore();
   });
 
@@ -27,7 +25,7 @@ suite('GitMetadataService Test Suite', () => {
     const githubUrl = 'https://github.com/theforeman/puppet-foreman.git';
     const result = convertToRawUrl(githubUrl, '24.2-stable');
     
-    assert.strictEqual(result, 'https://raw.githubusercontent.com/theforeman/puppet-foreman/24.2-stable/metadata.json');
+    expect(result).toBe('https://raw.githubusercontent.com/theforeman/puppet-foreman/24.2-stable/metadata.json');
   });
 
   test('convertToRawUrl should handle GitHub SSH URLs', () => {
@@ -36,7 +34,7 @@ suite('GitMetadataService Test Suite', () => {
     const githubSshUrl = 'git@github.com:theforeman/puppet-foreman.git';
     const result = convertToRawUrl(githubSshUrl, 'main');
     
-    assert.strictEqual(result, 'https://raw.githubusercontent.com/theforeman/puppet-foreman/main/metadata.json');
+    expect(result).toBe('https://raw.githubusercontent.com/theforeman/puppet-foreman/main/metadata.json');
   });
 
   test('convertToRawUrl should handle GitLab URLs', () => {
@@ -45,7 +43,7 @@ suite('GitMetadataService Test Suite', () => {
     const gitlabUrl = 'https://gitlab.com/user/project.git';
     const result = convertToRawUrl(gitlabUrl, 'develop');
     
-    assert.strictEqual(result, 'https://gitlab.com/user/project/-/raw/develop/metadata.json');
+    expect(result).toBe('https://gitlab.com/user/project/-/raw/develop/metadata.json');
   });
 
   test('convertToRawUrl should handle Bitbucket URLs', () => {
@@ -54,7 +52,7 @@ suite('GitMetadataService Test Suite', () => {
     const bitbucketUrl = 'https://bitbucket.org/user/project.git';
     const result = convertToRawUrl(bitbucketUrl, 'main');
     
-    assert.strictEqual(result, 'https://bitbucket.org/user/project/raw/main/metadata.json');
+    expect(result).toBe('https://bitbucket.org/user/project/raw/main/metadata.json');
   });
 
   test('convertToRawUrl should default to main branch', () => {
@@ -63,7 +61,7 @@ suite('GitMetadataService Test Suite', () => {
     const githubUrl = 'https://github.com/user/project.git';
     const result = convertToRawUrl(githubUrl);
     
-    assert.strictEqual(result, 'https://raw.githubusercontent.com/user/project/main/metadata.json');
+    expect(result).toBe('https://raw.githubusercontent.com/user/project/main/metadata.json');
   });
 
   test('getGitModuleMetadata should fetch and parse metadata', async () => {
@@ -86,12 +84,12 @@ suite('GitMetadataService Test Suite', () => {
       '24.2-stable'
     );
 
-    assert.deepStrictEqual(result, mockMetadata);
-    assert.ok(axiosGetStub.calledOnce);
-    assert.ok(axiosGetStub.calledWith(
+    expect(result).toEqual(mockMetadata);
+    expect(axiosGetStub.calledOnce).toBe(true);
+    expect(axiosGetStub.calledWith(
       'https://raw.githubusercontent.com/theforeman/puppet-foreman/24.2-stable/metadata.json',
       sinon.match.object
-    ));
+    )).toBe(true);
   });
 
   test('getGitModuleMetadata should handle fetch errors gracefully', async () => {
@@ -102,8 +100,8 @@ suite('GitMetadataService Test Suite', () => {
       'main'
     );
 
-    assert.strictEqual(result, null);
-    assert.ok(axiosGetStub.calledOnce);
+    expect(result).toBe(null);
+    expect(axiosGetStub.calledOnce).toBe(true);
   });
 
   test('getGitModuleMetadata should cache results', async () => {
@@ -130,9 +128,9 @@ suite('GitMetadataService Test Suite', () => {
       'main'
     );
 
-    assert.deepStrictEqual(result1, mockMetadata);
-    assert.deepStrictEqual(result2, mockMetadata);
-    assert.ok(axiosGetStub.calledOnce, 'Should only make one HTTP request due to caching');
+    expect(result1).toEqual(mockMetadata);
+    expect(result2).toEqual(mockMetadata);
+    expect(axiosGetStub.calledOnce).toBe(true);
   });
 
   test('getGitModuleMetadata should handle different refs separately in cache', async () => {
@@ -152,9 +150,9 @@ suite('GitMetadataService Test Suite', () => {
       'v2.0.0'
     );
 
-    assert.strictEqual(result1?.version, '1.0.0');
-    assert.strictEqual(result2?.version, '2.0.0');
-    assert.ok(axiosGetStub.calledTwice, 'Should make separate requests for different refs');
+    expect(result1?.version).toBe('1.0.0');
+    expect(result2?.version).toBe('2.0.0');
+    expect(axiosGetStub.calledTwice).toBe(true);
   });
 
   test('clearCache should empty the cache', async () => {
@@ -163,15 +161,15 @@ suite('GitMetadataService Test Suite', () => {
 
     // Prime the cache
     await GitMetadataService.getGitModuleMetadata('https://github.com/test/module.git');
-    assert.strictEqual(GitMetadataService.getCacheSize(), 1);
+    expect(GitMetadataService.getCacheSize()).toBe(1);
 
     // Clear cache
     GitMetadataService.clearCache();
-    assert.strictEqual(GitMetadataService.getCacheSize(), 0);
+    expect(GitMetadataService.getCacheSize()).toBe(0);
 
     // Next call should hit the network again
     await GitMetadataService.getGitModuleMetadata('https://github.com/test/module.git');
-    assert.ok(axiosGetStub.calledTwice);
+    expect(axiosGetStub.calledTwice).toBe(true);
   });
 
   test('getModuleMetadataWithFallback should try alternative refs', async () => {
@@ -186,8 +184,8 @@ suite('GitMetadataService Test Suite', () => {
       'https://github.com/test/module.git'
     );
 
-    assert.deepStrictEqual(result, mockMetadata);
-    assert.ok(axiosGetStub.calledTwice);
+    expect(result).toEqual(mockMetadata);
+    expect(axiosGetStub.calledTwice).toBe(true);
     // Note: Console.warn is stubbed to prevent error messages during test execution
   });
 
@@ -197,6 +195,6 @@ suite('GitMetadataService Test Suite', () => {
     const githubUrl = 'https://github.com/user/project';
     const result = convertToRawUrl(githubUrl, 'main');
     
-    assert.strictEqual(result, 'https://raw.githubusercontent.com/user/project/main/metadata.json');
+    expect(result).toBe('https://raw.githubusercontent.com/user/project/main/metadata.json');
   });
 });
