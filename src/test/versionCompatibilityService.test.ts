@@ -217,4 +217,304 @@ describe('VersionCompatibilityService', () => {
         expect(result.conflicts).toBeTruthy();
         expect(result.conflicts!.length).toBe(1);
     });
+
+    test('should handle target module with dependencies', async () => {
+        // Add target module with dependencies
+        mockReleases['puppetlabs/firewall'] = {
+            '3.0.0': {
+                version: '3.0.0',
+                metadata: {
+                    dependencies: [
+                        { name: 'puppetlabs/stdlib', version_requirement: '>= 6.0.0 < 9.0.0' }
+                    ]
+                }
+            }
+        };
+        
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/firewall',
+            source: 'forge',
+            version: '2.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'puppetlabs/stdlib',
+                source: 'forge',
+                version: '5.0.0', // This doesn't satisfy >= 6.0.0
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '3.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+        expect(result.conflicts![0].moduleName).toBe('puppetlabs/stdlib');
+        expect(result.conflicts![0].currentVersion).toBe('5.0.0');
+        expect(result.conflicts![0].requirement).toBe('>= 6.0.0 < 9.0.0');
+    });
+
+    test('should handle modules without specified version (latest)', async () => {
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/stdlib',
+            source: 'forge',
+            version: '8.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'puppetlabs/concat',
+                source: 'forge',
+                // No version specified - should use latest
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '9.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+        expect(result.conflicts![0].currentVersion).toBe('latest');
+    });
+
+    test('should handle modules with no dependencies returned from API', async () => {
+        // Mock a module that returns null from getReleaseForVersion
+        const targetModule: PuppetModule = {
+            name: 'example/unknown',
+            source: 'forge',
+            version: '1.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'puppetlabs/stdlib',
+                source: 'forge',
+                version: '8.0.0',
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '2.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
+    });
+
+    test('should handle module without metadata.dependencies', async () => {
+        // Add a module with no dependencies metadata
+        mockReleases['example/nodeps'] = {
+            '1.0.0': {
+                version: '1.0.0',
+                metadata: {}
+            }
+        };
+        
+        const targetModule: PuppetModule = {
+            name: 'example/nodeps',
+            source: 'forge',
+            version: '1.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'puppetlabs/stdlib',
+                source: 'forge',
+                version: '8.0.0',
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '1.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
+    });
+
+    test('should handle complex version requirements', async () => {
+        // Add module with complex version requirements
+        mockReleases['example/complex'] = {
+            '2.0.0': {
+                version: '2.0.0',
+                metadata: {
+                    dependencies: [
+                        { name: 'puppetlabs/stdlib', version_requirement: '>= 7.0.0 <= 8.0.0' }
+                    ]
+                }
+            }
+        };
+        
+        const targetModule: PuppetModule = {
+            name: 'example/complex',
+            source: 'forge',
+            version: '1.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'puppetlabs/stdlib',
+                source: 'forge',
+                version: '8.5.0', // This doesn't satisfy <= 8.0.0
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '2.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+        expect(result.conflicts![0].requirement).toBe('>= 7.0.0 <= 8.0.0');
+    });
+
+    test('should handle module name normalization edge cases', async () => {
+        // Test module with dash format that needs conversion
+        const dashFormatName = 'puppetlabs-stdlib';
+        const slashFormatName = 'puppetlabs/stdlib';
+        
+        mockReleases['example/dash-module'] = {
+            '1.0.0': {
+                version: '1.0.0',
+                metadata: {
+                    dependencies: [
+                        { name: dashFormatName, version_requirement: '>= 8.0.0' }
+                    ]
+                }
+            }
+        };
+        
+        const targetModule: PuppetModule = {
+            name: 'example/dash-module',
+            source: 'forge',
+            version: '1.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: slashFormatName,
+                source: 'forge',
+                version: '7.0.0', // This doesn't satisfy >= 8.0.0
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '1.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+    });
+
+    test('should handle modules that depend on the target module', async () => {
+        // Create a scenario where another module depends on the target
+        mockReleases['example/dependent'] = {
+            '1.0.0': {
+                version: '1.0.0',
+                metadata: {
+                    dependencies: [
+                        { name: 'puppetlabs/stdlib', version_requirement: '< 8.0.0' }
+                    ]
+                }
+            }
+        };
+        
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/stdlib',
+            source: 'forge',
+            version: '7.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'example/dependent',
+                source: 'forge',
+                version: '1.0.0',
+                line: 2
+            }
+        ];
+        
+        // Try to upgrade stdlib to 8.0.0, which violates the < 8.0.0 requirement
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '8.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+        expect(result.conflicts![0].moduleName).toBe('example/dependent');
+        expect(result.conflicts![0].requirement).toBe('< 8.0.0');
+    });
+
+    test('should handle empty releases array', async () => {
+        // Mock a module that returns empty releases array
+        mockReleases['example/empty'] = {};
+        
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/stdlib',
+            source: 'forge',
+            version: '8.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'example/empty',
+                source: 'forge',
+                // No version, will try to get latest
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '9.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
+    });
 });
