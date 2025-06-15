@@ -625,6 +625,7 @@ export class DependencyTreeService {
             const requirements = VersionParser.parse(versionRequirement);
             return !VersionParser.satisfiesAll(resolvedVersion, requirements);
         } catch (error) {
+            console.warn(`Could not parse version requirement "${versionRequirement}" for version "${resolvedVersion}":`, error);
             // If we can't parse, assume no violation
             return false;
         }
