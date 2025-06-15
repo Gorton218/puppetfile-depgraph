@@ -93,6 +93,7 @@
     "test:unit": "jest",
     "test:integration": "node ./scripts/runTests.js",
     "test:coverage": "jest --coverage",
+    "test:debug": "jest --detectOpenHandles",
     "test:all": "npm run test:coverage && npm run test:integration",
     "package": "npx @vscode/vsce package"
   },

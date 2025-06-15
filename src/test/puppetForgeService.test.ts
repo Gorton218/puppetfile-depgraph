@@ -4,8 +4,9 @@ import pkg from '../../package.json';
 describe('PuppetForgeService Test Suite', () => {
     
     afterAll(() => {
-        // Clear cache to ensure clean state
+        // Clear cache and cleanup agents to ensure clean state
         PuppetForgeService.clearCache();
+        PuppetForgeService.cleanupAgents();
     });
     
     test('compareVersions should correctly compare semantic versions', () => {

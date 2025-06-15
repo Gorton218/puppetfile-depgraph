@@ -26,6 +26,8 @@ module.exports = {
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testTimeout: 30000,
+  globalTeardown: '<rootDir>/jest.teardown.js',
+  testTimeout: 15000,
+  maxWorkers: 1,
   forceExit: true
 };
