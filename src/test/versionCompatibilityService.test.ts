@@ -1,5 +1,6 @@
 import { VersionCompatibilityService } from '../versionCompatibilityService';
 import { PuppetForgeService } from '../puppetForgeService';
+import { GitMetadataService, GitModuleMetadata } from '../gitMetadataService';
 import { PuppetModule } from '../puppetfileParser';
 
 describe('VersionCompatibilityService', () => {
@@ -41,6 +42,7 @@ describe('VersionCompatibilityService', () => {
     // Override PuppetForgeService methods for testing
     const originalGetReleaseForVersion = PuppetForgeService.getReleaseForVersion;
     const originalGetModuleReleases = PuppetForgeService.getModuleReleases;
+    const originalGetModuleMetadataWithFallback = GitMetadataService.getModuleMetadataWithFallback;
     
     beforeEach(() => {
         // Mock PuppetForgeService methods
@@ -59,12 +61,32 @@ describe('VersionCompatibilityService', () => {
             }
             return [];
         };
+        
+        // Mock GitMetadataService
+        GitMetadataService.getModuleMetadataWithFallback = async (gitUrl: string, ref?: string): Promise<GitModuleMetadata | null> => {
+            // Mock echocat/graphite module metadata
+            if (gitUrl.includes('echocat/puppet-graphite')) {
+                return {
+                    name: 'echocat-graphite',
+                    version: '1.0.0',
+                    author: 'echocat',
+                    summary: 'Puppet module for Graphite',
+                    license: 'Apache-2.0',
+                    source: 'https://github.com/echocat/puppet-graphite',
+                    dependencies: [
+                        { name: 'puppetlabs-stdlib', version_requirement: '>= 4.13.1 < 7.0.0' }
+                    ]
+                };
+            }
+            return null;
+        };
     });
     
     afterEach(() => {
         // Restore original methods
         PuppetForgeService.getReleaseForVersion = originalGetReleaseForVersion;
         PuppetForgeService.getModuleReleases = originalGetModuleReleases;
+        GitMetadataService.getModuleMetadataWithFallback = originalGetModuleMetadataWithFallback;
     });
     
     test('should detect compatible version when no conflicts exist', async () => {
@@ -504,6 +526,99 @@ describe('VersionCompatibilityService', () => {
                 name: 'example/empty',
                 source: 'forge',
                 // No version, will try to get latest
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '9.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
+    });
+
+    test('should detect conflicts from git module dependencies', async () => {
+        // Test case for the specific issue: git modules should be considered in conflict analysis
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/stdlib',
+            source: 'forge',
+            version: '9.4.1',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'echocat/graphite',
+                source: 'git',
+                gitUrl: 'https://github.com/echocat/puppet-graphite.git',
+                gitRef: 'master',
+                line: 2
+            }
+        ];
+        
+        // Try to upgrade stdlib to 9.0.0, which violates git module's requirement (< 7.0.0)
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '9.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+        expect(result.conflicts![0].moduleName).toBe('echocat/graphite');
+        expect(result.conflicts![0].currentVersion).toBe('master');
+        expect(result.conflicts![0].requirement).toBe('>= 4.13.1 < 7.0.0');
+    });
+
+    test('should handle git modules with no dependencies', async () => {
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/stdlib',
+            source: 'forge',
+            version: '8.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'example/git-module-no-deps',
+                source: 'git',
+                gitUrl: 'https://github.com/example/git-module-no-deps.git',
+                gitRef: 'main',
+                line: 2
+            }
+        ];
+        
+        const result = await VersionCompatibilityService.checkVersionCompatibility(
+            targetModule,
+            '9.0.0',
+            allModules
+        );
+        
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
+    });
+
+    test('should handle git modules without metadata', async () => {
+        const targetModule: PuppetModule = {
+            name: 'puppetlabs/stdlib',
+            source: 'forge',
+            version: '8.0.0',
+            line: 1
+        };
+        
+        const allModules: PuppetModule[] = [
+            targetModule,
+            {
+                name: 'example/git-module-no-metadata',
+                source: 'git',
+                gitUrl: 'https://github.com/example/git-module-no-metadata.git',
+                gitRef: 'main',
                 line: 2
             }
         ];
