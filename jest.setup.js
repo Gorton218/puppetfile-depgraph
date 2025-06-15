@@ -9,9 +9,15 @@ const vscode = {
   WorkspaceEdit: jest.fn(),
   MarkdownString: jest.fn((value) => ({ value })),
   Hover: jest.fn((contents, range) => ({ contents, range })),
+  ProgressLocation: {
+    Notification: 15,
+    Window: 10,
+    SourceControl: 1
+  },
   window: {
     showErrorMessage: jest.fn(),
     showInformationMessage: jest.fn(),
+    withProgress: jest.fn(),
     activeTextEditor: null
   },
   workspace: {
