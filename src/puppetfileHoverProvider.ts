@@ -36,7 +36,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
 
         // Check if the cursor is over the module name
-        const moduleNameMatch = line.match(/mod\s*['"]([^'"]+)['"]/);
+        const moduleNamePattern = /mod\s*['"]([^'"]+)['"]/ ;
+        const moduleNameMatch = moduleNamePattern.exec(line);
         if (!moduleNameMatch) {
             return null;
         }
@@ -96,9 +97,10 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         try {
             // Strip comments from each line before joining them
             const lines = moduleText.split('\n');
+            const commentPattern = /^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/;
             const cleanedLines = lines.map(line => {
                 // Strip inline comments while preserving # in strings
-                const commentMatch = line.match(/^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/);
+                const commentMatch = commentPattern.exec(line);
                 return commentMatch ? commentMatch[1].trim() : line.trim();
             });
             
@@ -122,11 +124,12 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         let currentLine = startLine + 1;
         
         // Check consecutive lines for Git module parameters
+        const gitParameterPattern = /^[\t\s]+:(git|ref|tag|branch)\s*=>/;
         while (currentLine < document.lineCount) {
             const lineText = document.lineAt(currentLine).text;
             
             // Check if this line starts with whitespace followed by :git, :ref, :tag, etc.
-            if (lineText.match(/^[\t\s]+:(git|ref|tag|branch)\s*=>/)) {
+            if (gitParameterPattern.exec(lineText)) {
                 moduleText += '\n' + lineText;
                 currentLine++;
             } else {
