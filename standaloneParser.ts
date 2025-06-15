@@ -84,7 +84,7 @@ export class StandalonePuppetfileParser {
         ];
 
         for (const pattern of patterns) {
-            const match = line.match(pattern);
+            const match = pattern.exec(line);
             if (match) {
                 return this.createModuleFromMatch(match, lineNumber);
             }
