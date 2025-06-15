@@ -259,6 +259,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             return markdown;
 
         } catch (error) {
+            console.warn(`Error fetching module info for ${module.name}:`, error);
             return this.getBasicModuleInfo(module);
         }
     }
