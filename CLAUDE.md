@@ -82,6 +82,7 @@ The project is actively being enhanced with improvements to hover tooltips, cach
 - Follow existing code patterns and conventions
 - Add tests for new functionality
 - Do not update the `CHANGELOG.md` file unless explicitly instructed
+- Always use LF (Line Feed) line endings for all files
 
 ### Code Quality Priorities
 When evaluating code improvements, prioritize in this order:

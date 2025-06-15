@@ -89,11 +89,13 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./scripts/runTests.js",
-    "test:coverage": "c8 --reporter=lcov npm test",
+    "test": "jest",
+    "test:vscode": "node ./scripts/runTests.js",
+    "test:coverage": "jest --coverage",
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/sinon": "^17.0.4",
@@ -102,10 +104,12 @@
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.5.0",
     "eslint": "^9.25.1",
+    "jest": "^30.0.0",
     "sinon": "^20.0.0",
-    "typescript": "^5.8.3",
-    "@vscode/vsce": "^3.5.0"
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "axios": "^1.9.0",
