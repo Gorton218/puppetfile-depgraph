@@ -113,6 +113,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
             return null;
         } catch (error) {
+            console.debug('Failed to parse module from position:', error);
             return null;
         }
     }
@@ -259,6 +260,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             return markdown;
 
         } catch (error) {
+            console.warn(`Error fetching module info for ${module.name}:`, error);
             return this.getBasicModuleInfo(module);
         }
     }
