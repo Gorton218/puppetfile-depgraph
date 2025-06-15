@@ -767,6 +767,13 @@ describe('DependencyTreeService Test Suite', () => {
                     gitUrl: 'https://github.com/user/module.git',
                     gitRef: 'main',
                     line: 3
+                },
+                {
+                    name: 'git-no-ref/module',
+                    source: 'git',
+                    gitUrl: 'https://github.com/user/module.git',
+                    // No gitRef or gitTag
+                    line: 4
                 }
             ];
 
@@ -775,6 +782,7 @@ describe('DependencyTreeService Test Suite', () => {
             expect(result[0].displayVersion).toBe('1.0.0');
             expect(result[1].displayVersion).toBe('tag: v1.0.0');
             expect(result[2].displayVersion).toBe('ref: main');
+            expect(result[3].displayVersion).toBe('git'); // Should show 'git' when no ref or tag
         });
 
         test('checkConstraintViolation should detect violations', async () => {
@@ -908,9 +916,422 @@ describe('DependencyTreeService Test Suite', () => {
             DependencyTreeService.buildDependencyTree(modules);
             // The method would be used internally during tree building
         });
+
+        test('extractVersionFromRequirement should handle requirements without version numbers', async () => {
+            // Test the scenario where version requirement doesn't match the regex pattern
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: 'latest' } // No version number
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'other/module', version_requirement: 'latest' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } }
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            expect(result[0].children.length).toBe(1);
+            // Should handle requirement without version number gracefully
+            expect(result[0].children[0].displayVersion).toContain('requires latest');
+        });
+
+        test('findBestMatchingVersion should handle parsing errors', async () => {
+            // Test the error handling branch when VersionParser.parse throws an error
+            versionParserStub.restore();
+            const parseStub = sinon.stub(VersionParser, 'parse');
+            parseStub.throws(new Error('Invalid version constraint'));
+
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: 'invalid!!constraint' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'other/module', version_requirement: 'invalid!!constraint' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } },
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } },
+                    { version: '2.0.0', metadata: { dependencies: [] } }
+                ]
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should handle parsing error gracefully and fall back to current_release
+            expect(result[0].children.length).toBe(1);
+            // The error is logged during conflict analysis, not during findBestMatchingVersion
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Could not analyze conflicts'), 
+                expect.any(Error)
+            );
+        });
+
+        test('findBestMatchingVersion should return null when no versions satisfy constraint', async () => {
+            // Test the branch where no versions satisfy the constraint
+            versionParserStub.restore();
+            const parseStub = sinon.stub(VersionParser, 'parse');
+            const satisfiesStub = sinon.stub(VersionParser, 'satisfiesAll');
+
+            parseStub.returns([{ operator: '>=', version: '3.0.0' }]);
+            satisfiesStub.returns(false); // No version satisfies
+
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: '>= 3.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'other/module', version_requirement: '>= 3.0.0' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } },
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } },
+                    { version: '2.0.0', metadata: { dependencies: [] } }
+                ]
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should use current_release when no version matches constraint
+            expect(result[0].children.length).toBe(1);
+        });
+
+        test('buildNodeTree should handle forge modules without releases array', async () => {
+            // Test the branch where forgeModule.releases is undefined
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: '>= 1.0.0' }
+                        ]
+                    }
+                }
+                // No releases array
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } }
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should use current_release when releases array is missing
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].name).toBe('other-module');
+        });
+
+        test('buildNodeTree should handle forge modules with empty releases array', async () => {
+            // Test the branch where forgeModule.releases is an empty array
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: '>= 1.0.0' }
+                        ]
+                    }
+                },
+                releases: [] // Empty releases array
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } }
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should use current_release when releases array is empty
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].name).toBe('other-module');
+        });
+
+        test('buildNodeTree should handle forge module without specific version release', async () => {
+            // Test when the specific version is not found in releases
+            const mockForgeModule = {
+                name: 'test-module',
+                current_release: {
+                    version: '2.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'other/module', version_requirement: '>= 2.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '2.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'other/module', version_requirement: '>= 2.0.0' }
+                            ]
+                        }
+                    }
+                    // Version 1.0.0 is not in releases
+                ]
+            };
+
+            forgeModuleStub.withArgs('test/module').resolves(mockForgeModule);
+            forgeModuleStub.withArgs('other/module').resolves({
+                name: 'other-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } }
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    version: '1.0.0', // This version is not in releases
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should fall back to current_release when specific version not found
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].name).toBe('other-module');
+        });
+
+        test('buildNodeTree should handle transitive dependencies with version constraints', async () => {
+            // Test the branch for transitive dependencies with version requirements
+            versionParserStub.restore();
+            const parseStub = sinon.stub(VersionParser, 'parse');
+            const satisfiesStub = sinon.stub(VersionParser, 'satisfiesAll');
+
+            parseStub.returns([{ operator: '>=', version: '2.0.0' }, { operator: '<', version: '3.0.0' }]);
+            satisfiesStub.withArgs('2.5.0', sinon.match.any).returns(true);
+            satisfiesStub.withArgs('3.0.0', sinon.match.any).returns(false);
+            satisfiesStub.withArgs('1.0.0', sinon.match.any).returns(false);
+
+            const mockParentModule = {
+                name: 'parent-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'child/module', version_requirement: '>= 2.0.0 < 3.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'child/module', version_requirement: '>= 2.0.0 < 3.0.0' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            const mockChildModule = {
+                name: 'child-module',
+                current_release: {
+                    version: '3.0.0',
+                    metadata: { dependencies: [] }
+                },
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } },
+                    { version: '2.5.0', metadata: { dependencies: [] } },
+                    { version: '3.0.0', metadata: { dependencies: [] } }
+                ]
+            };
+
+            forgeModuleStub.withArgs('parent/module').resolves(mockParentModule);
+            forgeModuleStub.withArgs('child/module').resolves(mockChildModule);
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'parent/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should find best matching version (2.5.0) for the transitive dependency
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].name).toBe('child-module');
+            expect(result[0].children[0].displayVersion).toContain('requires >= 2.0.0 < 3.0.0');
+        });
+
+        test('buildNodeTree should handle transitive dependencies when no resolved version exists', async () => {
+            // Test when transitive dependency doesn't have a resolved version in Puppetfile
+            const mockParentModule = {
+                name: 'parent-module',
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'transitive/module', version_requirement: '>= 1.0.0' }
+                        ]
+                    }
+                },
+                releases: [
+                    {
+                        version: '1.0.0',
+                        metadata: {
+                            dependencies: [
+                                { name: 'transitive/module', version_requirement: '>= 1.0.0' }
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            forgeModuleStub.withArgs('parent/module').resolves(mockParentModule);
+            forgeModuleStub.withArgs('transitive/module').resolves({
+                name: 'transitive-module',
+                current_release: { version: '2.0.0', metadata: { dependencies: [] } }
+            });
+
+            const modules: PuppetModule[] = [
+                {
+                    name: 'parent/module',
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 1
+                }
+                // Note: transitive/module is NOT in the Puppetfile
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            expect(result[0].children.length).toBe(1);
+            expect(result[0].children[0].name).toBe('transitive-module');
+            expect(result[0].children[0].displayVersion).toBe('requires >= 1.0.0');
+            expect(result[0].children[0].isDirectDependency).toBe(false);
+        });
     });
 
     describe('Conflict detection and analysis', () => {
+        test('analyzeConflicts should skip modules with no requirements', async () => {
+            // Test the branch where requirements.length === 0
+            const modules: PuppetModule[] = [
+                {
+                    name: 'test/module',
+                    source: 'forge',
+                    line: 1
+                    // No version, so no requirement will be added
+                }
+            ];
+
+            const result = await DependencyTreeService.buildDependencyTree(modules);
+
+            // Should handle modules without requirements gracefully
+            expect(result.length).toBe(1);
+            expect(result[0].name).toBe('test/module');
+        });
+
         test('findConflicts should report conflicts from dependency graph', () => {
             // Manually add conflict to dependency graph for testing
             const modules: PuppetModule[] = [
