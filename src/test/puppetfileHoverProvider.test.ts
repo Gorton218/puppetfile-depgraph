@@ -592,4 +592,421 @@ describe('PuppetfileHoverProvider Test Suite', () => {
         });
     });
 
+    // Test Git module hover information
+    test('should provide hover for Git modules with metadata', async () => {
+        const provider = createProvider();
+        
+        // Stub console methods to suppress debug output
+        const consoleDebugStub = sinon.stub(console, 'debug');
+        const consoleInfoStub = sinon.stub(console, 'info');
+        
+        // Mock GitMetadataService.getModuleMetadataWithFallback
+        const { GitMetadataService } = require('../gitMetadataService');
+        const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
+        
+        GitMetadataService.getModuleMetadataWithFallback = async () => ({
+            name: 'custom/module',
+            version: '1.0.0',
+            summary: 'Test module summary',
+            author: 'Test Author',
+            license: 'Apache-2.0',
+            project_page: 'https://github.com/test/module',
+            issues_url: 'https://github.com/test/module/issues',
+            description: 'Detailed description of the module',
+            tags: ['test', 'module'],
+            dependencies: [
+                { name: 'puppetlabs/stdlib', version_requirement: '>= 4.0.0' }
+            ]
+        });
+        
+        try {
+            const mockModule = { 
+                name: 'test/module', 
+                source: 'git' as const, 
+                gitUrl: 'https://github.com/test/module.git',
+                gitTag: 'v1.0.0'
+            };
+            
+            const result = await callGetModuleInfo(provider, mockModule);
+            const markdownText = result.value;
+            
+            expect(markdownText).toContain('📦 test/module [Git]');
+            expect(markdownText).toContain('Repository name: `custom/module`');
+            expect(markdownText).toContain('Test module summary');
+            expect(markdownText).toContain('**Version:** `1.0.0`');
+            expect(markdownText).toContain('**Author:** Test Author');
+            expect(markdownText).toContain('**License:** Apache-2.0');
+            expect(markdownText).toContain('**Tag:** `v1.0.0`');
+            expect(markdownText).toContain('**Dependencies:**');
+            expect(markdownText).toContain('puppetlabs/stdlib');
+            expect(markdownText).toContain('**Tags:** `test`, `module`');
+        } finally {
+            GitMetadataService.getModuleMetadataWithFallback = originalGetMetadata;
+            consoleDebugStub.restore();
+            consoleInfoStub.restore();
+        }
+    });
+
+    test('should provide hover for Git modules without metadata', async () => {
+        const provider = createProvider();
+        
+        // Stub console methods to suppress debug output
+        const consoleDebugStub = sinon.stub(console, 'debug');
+        
+        // Mock GitMetadataService to return null (no metadata)
+        const { GitMetadataService } = require('../gitMetadataService');
+        const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
+        GitMetadataService.getModuleMetadataWithFallback = async () => null;
+        
+        try {
+            const mockModule = { 
+                name: 'test/module', 
+                source: 'git' as const, 
+                gitUrl: 'https://github.com/test/module.git',
+                gitRef: 'main'
+            };
+            
+            const result = await callGetModuleInfo(provider, mockModule);
+            const markdownText = result.value;
+            
+            expect(markdownText).toContain('📦 test/module [Git]');
+            expect(markdownText).toContain('**Repository:** [https://github.com/test/module.git](https://github.com/test/module.git)');
+            expect(markdownText).toContain('**Reference:** `main`');
+            expect(markdownText).toContain('Loading module information...');
+            expect(markdownText).toContain('Git modules are not managed through Puppet Forge');
+        } finally {
+            GitMetadataService.getModuleMetadataWithFallback = originalGetMetadata;
+            consoleDebugStub.restore();
+        }
+    });
+
+    test('should handle Git metadata service errors gracefully', async () => {
+        const provider = createProvider();
+        
+        // Mock GitMetadataService to throw error
+        const { GitMetadataService } = require('../gitMetadataService');
+        const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
+        GitMetadataService.getModuleMetadataWithFallback = async () => {
+            throw new Error('Network error');
+        };
+        
+        // Stub console methods to suppress debug and warning output
+        const consoleDebugStub = sinon.stub(console, 'debug');
+        const consoleWarnStub = sinon.stub(console, 'warn');
+        
+        try {
+            const mockModule = { 
+                name: 'test/module', 
+                source: 'git' as const, 
+                gitUrl: 'https://github.com/test/module.git'
+            };
+            
+            const result = await callGetModuleInfo(provider, mockModule);
+            const markdownText = result.value;
+            
+            // Should fallback to basic Git module info
+            expect(markdownText).toContain('📦 test/module [Git]');
+            expect(markdownText).toContain('**Reference:** Default branch');
+            expect(markdownText).toContain('Loading module information...');
+        } finally {
+            GitMetadataService.getModuleMetadataWithFallback = originalGetMetadata;
+            consoleDebugStub.restore();
+            consoleWarnStub.restore();
+        }
+    });
+
+    test('should handle caching initialization for uncached modules', async () => {
+        await withServiceMocks(async (restore) => {
+            const provider = createProvider();
+            
+            // Mock PuppetfileParser to return modules
+            const { PuppetfileParser } = require('../puppetfileParser');
+            const originalParseActiveEditor = PuppetfileParser.parseActiveEditor;
+            PuppetfileParser.parseActiveEditor = () => ({
+                modules: [
+                    { name: 'puppetlabs/stdlib', version: '8.5.0', source: 'forge' as const, line: 1 }
+                ],
+                errors: []
+            });
+            
+            // Mock PuppetForgeService.hasModuleCached to return false (uncached)
+            const originalHasModuleCached = PuppetForgeService.hasModuleCached;
+            PuppetForgeService.hasModuleCached = () => false;
+            
+            // Mock CacheService.isCachingInProgress
+            const { CacheService } = require('../cacheService');
+            const originalIsCachingInProgress = CacheService.isCachingInProgress;
+            CacheService.isCachingInProgress = () => true;
+            
+            try {
+                const mockModule = { name: 'puppetlabs/stdlib', version: '8.5.0', source: 'forge' as const };
+                const result = await callGetModuleInfo(provider, mockModule);
+                const markdownText = result.value;
+                
+                expect(markdownText).toContain('📦 puppetlabs/stdlib');
+                expect(markdownText).toContain('Module cache is currently being initialized');
+                expect(markdownText).toContain('Check the progress notification');
+            } finally {
+                PuppetfileParser.parseActiveEditor = originalParseActiveEditor;
+                PuppetForgeService.hasModuleCached = originalHasModuleCached;
+                CacheService.isCachingInProgress = originalIsCachingInProgress;
+                restore();
+            }
+        });
+    });
+
+    test('should handle module without version (latest)', async () => {
+        await withServiceMocks(async () => {
+            const provider = createProvider();
+            const mockForgeModule = createForgeModule('puppetlabs/stdlib', '8.5.0');
+            const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
+            const mockReleases = [
+                createMockRelease('8.5.0'),
+                createMockRelease('8.4.0'),
+                createMockRelease('8.3.0')
+            ];
+
+            PuppetForgeService.getModule = async () => mockForgeModule;
+            PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+            PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+            // Module without version specified
+            const mockModule = { name: 'puppetlabs/stdlib', source: 'forge' as const };
+            const result = await callGetModuleInfo(provider, mockModule);
+            const markdownText = result.value;
+
+            expect(markdownText).toContain('**Version:** Latest available');
+            expect(markdownText).toContain('**Available Versions:**');
+            expect(markdownText).toContain('8.5.0');
+            expect(markdownText).toContain('8.4.0');
+            expect(markdownText).toContain('8.3.0');
+        });
+    });
+
+    test('should handle old module name format with dash', async () => {
+        await withServiceMocks(async () => {
+            const provider = createProvider();
+            const mockModule = { name: 'puppetlabs-stdlib', version: '8.5.0', source: 'forge' as const };
+            
+            // Test internal getForgeModuleUrl method
+            const url = (provider as any).getForgeModuleUrl(mockModule, null, '8.5.0');
+            
+            expect(url).toBe('https://forge.puppet.com/modules/puppetlabs/stdlib/8.5.0/dependencies');
+        });
+    });
+
+    test('should handle module name without slash or dash', async () => {
+        await withServiceMocks(async () => {
+            const provider = createProvider();
+            const mockModule = { name: 'stdlib', version: '8.5.0', source: 'forge' as const };
+            
+            // Test internal getForgeModuleUrl method
+            const url = (provider as any).getForgeModuleUrl(mockModule, null, '8.5.0');
+            
+            expect(url).toBe('https://forge.puppet.com/modules/stdlib/8.5.0/dependencies');
+        });
+    });
+
+    test('should handle appendGitReference with different Git references', async () => {
+        const provider = createProvider();
+        const markdown = new (require('vscode')).MarkdownString();
+        markdown.isTrusted = true;
+        
+        // Test with gitTag
+        let mockModule: any = { name: 'test/module', source: 'git' as const, gitTag: 'v1.0.0' };
+        (provider as any).appendGitReference(markdown, mockModule);
+        expect(markdown.value).toContain('**Tag:** `v1.0.0`');
+        
+        // Reset markdown
+        markdown.value = '';
+        
+        // Test with gitRef
+        mockModule = { name: 'test/module', source: 'git' as const, gitRef: 'develop' };
+        (provider as any).appendGitReference(markdown, mockModule);
+        expect(markdown.value).toContain('**Reference:** `develop`');
+        
+        // Reset markdown
+        markdown.value = '';
+        
+        // Test with neither gitTag nor gitRef
+        mockModule = { name: 'test/module', source: 'git' as const };
+        (provider as any).appendGitReference(markdown, mockModule);
+        expect(markdown.value).toContain('**Reference:** Default branch');
+    });
+
+    test('should handle empty module releases list', async () => {
+        await withServiceMocks(async () => {
+            const provider = createProvider();
+            const mockForgeModule = createForgeModule('puppetlabs/stdlib', '8.5.0');
+            const mockUpdateInfo = { latestVersion: '8.5.0', hasUpdate: false };
+            const mockReleases: any[] = []; // Empty releases
+
+            PuppetForgeService.getModule = async () => mockForgeModule;
+            PuppetForgeService.checkForUpdate = async () => mockUpdateInfo;
+            PuppetForgeService.getModuleReleases = async () => mockReleases;
+
+            const mockModule = { name: 'puppetlabs/stdlib', version: '8.5.0', source: 'forge' as const };
+            const result = await callGetModuleInfo(provider, mockModule);
+            const markdownText = result.value;
+
+            expect(markdownText).toContain('📦 puppetlabs/stdlib');
+            expect(markdownText).toContain('**Current Version:** `8.5.0`');
+            expect(markdownText).not.toContain('**Available Updates:**');
+        });
+    });
+
+    test('should handle comment stripping in parseModuleFromPosition', () => {
+        const provider = createProvider();
+        const parseModuleFromPosition = (provider as any).parseModuleFromPosition;
+        
+        const mockDocument = {
+            lineAt: (line: number) => ({ 
+                text: "mod 'puppetlabs/stdlib', '8.5.0' # This is a comment" 
+            }),
+            getText: () => "mod 'puppetlabs/stdlib', '8.5.0' # This is a comment"
+        };
+        const mockPosition = { line: 0, character: 10 };
+        
+        const result = parseModuleFromPosition.call(provider, mockDocument, mockPosition);
+        
+        expect(result).toBeTruthy();
+        expect(result.name).toBe('puppetlabs/stdlib');
+        expect(result.version).toBe('8.5.0');
+    });
+
+    test('should handle parsing error in parseModuleFromPosition', () => {
+        const provider = createProvider();
+        const parseModuleFromPosition = (provider as any).parseModuleFromPosition;
+        
+        const mockDocument = {
+            lineAt: (line: number) => ({ 
+                text: "invalid module syntax" 
+            }),
+            getText: () => "invalid module syntax"
+        };
+        const mockPosition = { line: 0, character: 10 };
+        
+        const result = parseModuleFromPosition.call(provider, mockDocument, mockPosition);
+        
+        expect(result).toBe(null);
+    });
+
+    test('should handle basic module info with valid module name', async () => {
+        const provider = createProvider();
+        
+        // Create a module with a normal name that should work
+        const mockModule = { name: 'puppetlabs/stdlib', version: '8.5.0', source: 'forge' as const };
+        
+        const result = (provider as any).getBasicModuleInfo(mockModule);
+        const markdownText = result.value;
+        
+        expect(markdownText).toContain('📦 puppetlabs/stdlib');
+        expect(markdownText).toContain('**Version:** `8.5.0`');
+        expect(markdownText).toContain('**Source:** Puppet Forge');
+        expect(markdownText).toContain('View on Puppet Forge');
+    });
+
+    test('should handle Git module with only gitUrl and no other references', async () => {
+        const provider = createProvider();
+        
+        const mockModule = { 
+            name: 'test/module', 
+            source: 'git' as const, 
+            gitUrl: 'https://github.com/test/module.git'
+        };
+        
+        const result = (provider as any).getBasicGitModuleInfo(mockModule);
+        const markdownText = result.value;
+        
+        expect(markdownText).toContain('📦 test/module [Git]');
+        expect(markdownText).toContain('**Repository:** [https://github.com/test/module.git](https://github.com/test/module.git)');
+        expect(markdownText).toContain('**Reference:** Default branch');
+        expect(markdownText).toContain('**Source:** Git repository');
+    });
+
+    test('should handle extractCompleteModuleDefinition with no additional lines', () => {
+        const provider = createProvider();
+        const mockDocument = {
+            lineCount: 2,
+            lineAt: (lineNumber: number) => {
+                const lines = [
+                    "mod 'puppetlabs/stdlib', '8.5.0'",
+                    "mod 'puppetlabs/concat', '7.0.0'"
+                ];
+                return { text: lines[lineNumber] || '' };
+            }
+        };
+        
+        const result = (provider as any).extractCompleteModuleDefinition(mockDocument, 0);
+        
+        expect(result).toBe("mod 'puppetlabs/stdlib', '8.5.0'");
+    });
+
+    test('should handle error in formatGitModuleWithMetadata', async () => {
+        const provider = createProvider();
+        
+        // Mock a module that will cause an error during formatting
+        const mockModule = { name: 'test/module', source: 'git' as const };
+        const mockMetadata = null; // This will cause an error when accessing properties
+        
+        // Stub console.error to suppress error output
+        const consoleErrorStub = sinon.stub(console, 'error');
+        
+        try {
+            const result = (provider as any).formatGitModuleWithMetadata(mockModule, mockMetadata);
+            
+            // Should fallback to basic Git module info
+            expect(result.value).toContain('📦 test/module [Git]');
+            expect(result.value).toContain('Loading module information...');
+        } finally {
+            consoleErrorStub.restore();
+        }
+    });
+
+    test('should handle checkAndInitializeCache error gracefully', async () => {
+        const provider = createProvider();
+        
+        // Mock PuppetfileParser to throw an error
+        const { PuppetfileParser } = require('../puppetfileParser');
+        const originalParseActiveEditor = PuppetfileParser.parseActiveEditor;
+        PuppetfileParser.parseActiveEditor = () => {
+            throw new Error('Parser error');
+        };
+        
+        // Stub console.error to suppress error output
+        const consoleErrorStub = sinon.stub(console, 'error');
+        
+        try {
+            const result = await (provider as any).checkAndInitializeCache();
+            
+            // Should return false when error occurs
+            expect(result).toBe(false);
+        } finally {
+            PuppetfileParser.parseActiveEditor = originalParseActiveEditor;
+            consoleErrorStub.restore();
+        }
+    });
+
+    test('should handle createModuleError in Git module processing', async () => {
+        const provider = createProvider();
+        
+        // Stub console methods to suppress debug output
+        const consoleDebugStub = sinon.stub(console, 'debug');
+        
+        try {
+            // Mock a module with no gitUrl to test the fallback path in getGitModuleInfo
+            const mockModule = { name: 'test/module', source: 'git' as const };
+            
+            const result = await callGetModuleInfo(provider, mockModule);
+            const markdownText = result.value;
+            
+            // Should fallback to basic Git module info when no gitUrl is present
+            expect(markdownText).toContain('📦 test/module [Git]');
+            expect(markdownText).toContain('**Source:** Git repository');
+            expect(markdownText).toContain('Loading module information...');
+        } finally {
+            consoleDebugStub.restore();
+        }
+    });
+
 });
