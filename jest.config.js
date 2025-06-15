@@ -9,7 +9,11 @@ module.exports = {
     'node_modules/'
   ],
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        isolatedModules: true
+      }
+    }]
   },
   collectCoverage: true,
   coverageDirectory: 'coverage',
@@ -21,12 +25,5 @@ module.exports = {
     '!src/test/**/*'
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        isolatedModules: true
-      }
-    }
-  }
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
 };
