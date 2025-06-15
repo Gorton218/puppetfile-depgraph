@@ -29,7 +29,7 @@ export interface DependencyNode {
  */
 export class DependencyTreeService {
     private static readonly MAX_DEPTH = 5; // Prevent infinite recursion
-    private static visitedModules = new Set<string>();
+    private static readonly visitedModules = new Set<string>();
     private static dependencyGraph: DependencyGraph = {};
     private static currentPath: string[] = [];
     private static directDependencies = new Map<string, string>();
