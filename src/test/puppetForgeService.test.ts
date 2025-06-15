@@ -3,6 +3,11 @@ import pkg from '../../package.json';
 
 describe('PuppetForgeService Test Suite', () => {
     
+    afterAll(() => {
+        // Clear cache to ensure clean state
+        PuppetForgeService.clearCache();
+    });
+    
     test('compareVersions should correctly compare semantic versions', () => {
         // Basic version comparison
         expect(PuppetForgeService.compareVersions('1.0.0', '2.0.0')).toBe(-1);
@@ -144,8 +149,6 @@ describe('PuppetForgeService Test Suite', () => {
         // Use a very old version that should definitely have updates
         const result = await PuppetForgeService.checkForUpdate('puppetlabs/stdlib', '1.0.0');
         
-        // Debug output to understand what's happening
-        console.log('Update check result:', result);
         
         // The test should pass if either there's an update available OR if the module couldn't be found
         if (result.latestVersion === null) {

@@ -25,5 +25,7 @@ module.exports = {
     '!src/test/**/*'
   ],
   moduleFileExtensions: ['ts', 'js', 'json'],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  testTimeout: 30000,
+  forceExit: true
 };
