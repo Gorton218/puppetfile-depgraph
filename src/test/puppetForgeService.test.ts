@@ -115,7 +115,7 @@ suite('PuppetForgeService Test Suite', () => {
 
     // Note: These tests require network access and may be slow
     // In a real-world scenario, you might want to mock these API calls
-    test('getModule should handle non-existent modules gracefully', async function() {
+    test.skip('getModule should handle non-existent modules gracefully', async function() {
         this.timeout(15000); // Increase timeout for network requests
         
         const result = await PuppetForgeService.getModule('nonexistent/invalid-module-12345');

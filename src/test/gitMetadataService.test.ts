@@ -6,9 +6,13 @@ import axios from 'axios';
 
 suite('GitMetadataService Test Suite', () => {
   let axiosGetStub: sinon.SinonStub;
+  let consoleWarnStub: sinon.SinonStub;
+  let consoleErrorStub: sinon.SinonStub;
   
   setup(() => {
     axiosGetStub = sinon.stub(axios, 'get');
+    consoleWarnStub = sinon.stub(console, 'warn');
+    consoleErrorStub = sinon.stub(console, 'error');
     GitMetadataService.clearCache();
   });
   
@@ -99,6 +103,7 @@ suite('GitMetadataService Test Suite', () => {
     );
 
     assert.strictEqual(result, null);
+    assert.ok(axiosGetStub.calledOnce);
   });
 
   test('getGitModuleMetadata should cache results', async () => {
@@ -183,6 +188,7 @@ suite('GitMetadataService Test Suite', () => {
 
     assert.deepStrictEqual(result, mockMetadata);
     assert.ok(axiosGetStub.calledTwice);
+    // Note: Console.warn is stubbed to prevent error messages during test execution
   });
 
   test('convertToRawUrl should handle URLs without .git extension', () => {

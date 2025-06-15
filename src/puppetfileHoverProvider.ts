@@ -205,87 +205,23 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 console.debug('Puppetfile parse errors:', parseResult.errors);
             }
 
-            // Show only newer versions if a version is specified
+            // Show versions based on whether a version is currently specified
+            let versionsToShow: Array<{version: string}> = [];
+            let versionSectionTitle = '';
+            
             if (module.version) {
-                const newerVersions = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
-                if (newerVersions.length > 0) {
-                    markdown.appendMarkdown(`**Available Updates:**\n`);
-                    
-                    // Check compatibility for each version
-                    let versionCompatibilities = new Map<string, VersionCompatibility>();
-                    try {
-                        versionCompatibilities = await this.checkVersionCompatibilities(module, newerVersions, allModules);
-                    } catch (error) {
-                        console.error(`Error checking version compatibilities for ${module.name}:`, error);
-                        // Continue without compatibility info rather than failing completely
-                    }
-                    
-                    // Group versions into rows of 5
-                    const versionsPerRow = 5;
-                    for (let i = 0; i < newerVersions.length; i += versionsPerRow) {
-                        const rowVersions = newerVersions.slice(i, i + versionsPerRow);
-                        
-                        // Create clickable version links with color indicators
-                        const versionLinks = rowVersions.map(rel => {
-                            const compatibility = versionCompatibilities.get(rel.version);
-                            const indicator = compatibility?.isCompatible ? '🟢' : '🟡';
-                            const args = JSON.stringify([{ line: module.line, version: rel.version }]);
-                            
-                            if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
-                                // Add conflict details to tooltip
-                                const conflictDetails = compatibility.conflicts
-                                    .map(c => `${c.moduleName} requires ${c.requirement}`)
-                                    .join(', ');
-                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version} - Conflicts: ${conflictDetails}")`;
-                            } else {
-                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
-                            }
-                        });
-                        
-                        markdown.appendMarkdown(versionLinks.join('  ') + '\n');
-                    }
-                    markdown.appendMarkdown('\n');
-                }
+                // Show only newer versions if a version is specified
+                versionsToShow = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
+                versionSectionTitle = '**Available Updates:**\n';
             } else {
-                // No version specified, show all versions with compatibility
-                if (allReleases.length > 0) {
-                    markdown.appendMarkdown(`**Available Versions:**\n`);
-                    
-                    // Check compatibility for each version
-                    let versionCompatibilities = new Map<string, VersionCompatibility>();
-                    try {
-                        versionCompatibilities = await this.checkVersionCompatibilities(module, allReleases, allModules);
-                    } catch (error) {
-                        console.error(`Error checking version compatibilities for ${module.name}:`, error);
-                        // Continue without compatibility info rather than failing completely
-                    }
-                    
-                    // Group versions into rows of 5
-                    const versionsPerRow = 5;
-                    for (let i = 0; i < allReleases.length; i += versionsPerRow) {
-                        const rowVersions = allReleases.slice(i, i + versionsPerRow);
-                        
-                        // Create clickable version links with color indicators
-                        const versionLinks = rowVersions.map(rel => {
-                            const compatibility = versionCompatibilities.get(rel.version);
-                            const indicator = compatibility?.isCompatible ? '🟢' : '🟡';
-                            const args = JSON.stringify([{ line: module.line, version: rel.version }]);
-                            
-                            if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
-                                // Add conflict details to tooltip
-                                const conflictDetails = compatibility.conflicts
-                                    .map(c => `${c.moduleName} requires ${c.requirement}`)
-                                    .join(', ');
-                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version} - Conflicts: ${conflictDetails}")`;
-                            } else {
-                                return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
-                            }
-                        });
-                        
-                        markdown.appendMarkdown(versionLinks.join('  ') + '\n');
-                    }
-                    markdown.appendMarkdown('\n');
-                }
+                // No version specified, show all versions
+                versionsToShow = allReleases;
+                versionSectionTitle = '**Available Versions:**\n';
+            }
+            
+            if (versionsToShow.length > 0) {
+                markdown.appendMarkdown(versionSectionTitle);
+                await this.appendVersionsWithCompatibility(markdown, module, versionsToShow, allModules);
             }
 
             // Dependencies for current version specified in Puppetfile
@@ -400,13 +336,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n`);
         }
 
-        if (module.gitTag) {
-            markdown.appendMarkdown(`**Tag:** \`${module.gitTag}\`\n`);
-        } else if (module.gitRef) {
-            markdown.appendMarkdown(`**Reference:** \`${module.gitRef}\`\n`);
-        } else {
-            markdown.appendMarkdown(`**Reference:** Default branch\n`);
-        }
+        this.appendGitReference(markdown, module);
 
         markdown.appendMarkdown('\n');
 
@@ -460,13 +390,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
         }
 
-        if (module.gitTag) {
-            markdown.appendMarkdown(`**Tag:** \`${module.gitTag}\`\n\n`);
-        } else if (module.gitRef) {
-            markdown.appendMarkdown(`**Reference:** \`${module.gitRef}\`\n\n`);
-        } else {
-            markdown.appendMarkdown(`**Reference:** Default branch\n\n`);
-        }
+        this.appendGitReference(markdown, module);
+        markdown.appendMarkdown('\n');
 
         markdown.appendMarkdown(`**Source:** Git repository\n\n`);
         markdown.appendMarkdown(`*Loading module information...*\n\n`);
@@ -498,11 +423,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
         } else if (module.gitUrl) {
             markdown.appendMarkdown(`**Repository:** [${module.gitUrl}](${module.gitUrl})\n\n`);
-            if (module.gitTag) {
-                markdown.appendMarkdown(`**Tag:** \`${module.gitTag}\`\n\n`);
-            } else if (module.gitRef) {
-                markdown.appendMarkdown(`**Reference:** \`${module.gitRef}\`\n\n`);
-            }
+            this.appendGitReference(markdown, module);
+            markdown.appendMarkdown('\n');
         }
 
         return markdown;
@@ -622,6 +544,70 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
         
         return compatibilityMap;
+    }
+    
+    /**
+     * Append Git reference information to markdown
+     * @param markdown The markdown string to append to
+     * @param module The module with Git information
+     */
+    private appendGitReference(markdown: vscode.MarkdownString, module: PuppetModule): void {
+        if (module.gitTag) {
+            markdown.appendMarkdown(`**Tag:** \`${module.gitTag}\`\n`);
+        } else if (module.gitRef) {
+            markdown.appendMarkdown(`**Reference:** \`${module.gitRef}\`\n`);
+        } else {
+            markdown.appendMarkdown(`**Reference:** Default branch\n`);
+        }
+    }
+    
+    /**
+     * Append versions with compatibility indicators to markdown
+     * @param markdown The markdown string to append to
+     * @param module The module being displayed
+     * @param versions Versions to display
+     * @param allModules All modules in the Puppetfile
+     */
+    private async appendVersionsWithCompatibility(
+        markdown: vscode.MarkdownString,
+        module: PuppetModule,
+        versions: Array<{version: string}>,
+        allModules: PuppetModule[]
+    ): Promise<void> {
+        // Check compatibility for each version
+        let versionCompatibilities = new Map<string, VersionCompatibility>();
+        try {
+            versionCompatibilities = await this.checkVersionCompatibilities(module, versions, allModules);
+        } catch (error) {
+            console.error(`Error checking version compatibilities for ${module.name}:`, error);
+            // Continue without compatibility info rather than failing completely
+        }
+        
+        // Group versions into rows of 5
+        const versionsPerRow = 5;
+        for (let i = 0; i < versions.length; i += versionsPerRow) {
+            const rowVersions = versions.slice(i, i + versionsPerRow);
+            
+            // Create clickable version links with color indicators
+            const versionLinks = rowVersions.map(rel => {
+                const compatibility = versionCompatibilities.get(rel.version);
+                const indicator = compatibility?.isCompatible ? '🟢' : '🟡';
+                const args = JSON.stringify([{ line: module.line, version: rel.version }]);
+                
+                if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
+                    // Add conflict details to tooltip
+                    const conflictDetails = compatibility.conflicts
+                        .map(c => `${c.moduleName} requires ${c.requirement}`)
+                        .join(', ');
+                    return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version} - Conflicts: ${conflictDetails}")`;
+                } else {
+                    return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                }
+            });
+            
+            markdown.appendMarkdown(versionLinks.join('  ') + '\n');
+        }
+        markdown.appendMarkdown('\n');
     }
 }
 
