@@ -896,6 +896,12 @@ describe('DependencyTreeService Test Suite', () => {
             // Should not crash and should assume no violation when parsing fails
             expect(result[0].children.length).toBe(1);
             expect(result[0].children[0].isConstraintViolated).toBe(false);
+            
+            // Should log the parsing error
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Could not parse version requirement'),
+                expect.any(Error)
+            );
         });
 
         test('findBestMatchingVersion should find optimal version', async () => {
