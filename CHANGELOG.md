@@ -107,6 +107,10 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Preserved beneficial test duplication for clarity and independence
   - Documented code quality priorities emphasizing maintainability over duplication metrics
   - Added SonarQube configuration to exclude test files from duplication checks
+- **GitHub Workflow Enhancement**: Improved CI pipeline to run comprehensive test coverage
+  - Updated GitHub Actions workflow to run both unit and integration tests via `npm run test:all`
+  - Ensures complete test coverage validation in CI/CD pipeline
+  - Maintains code quality by running all test suites on pull requests and pushes
 
 ## [0.0.2] - 2025-06-08
 ### Added
