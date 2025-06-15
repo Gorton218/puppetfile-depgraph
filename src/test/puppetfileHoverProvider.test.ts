@@ -3,6 +3,19 @@ import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
 import { PuppetForgeService, ForgeModule } from '../puppetForgeService';
 
 describe('PuppetfileHoverProvider Test Suite', () => {
+    let consoleWarnSpy: jest.SpyInstance;
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+        // Suppress console output during tests
+        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     // Test utilities and factories
     const createProvider = () => new PuppetfileHoverProvider();
     
