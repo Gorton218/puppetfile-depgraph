@@ -204,6 +204,87 @@ describe('CacheService', () => {
             // The test just verifies the method completes without errors during cancellation
             expect(CacheService.isCachingInProgress()).toBe(false);
         });
+
+        test('should handle cancellation before chunk processing', async () => {
+            const mockModules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', source: 'forge', version: '8.0.0', line: 1 }
+            ];
+
+            // Mock immediate cancellation
+            mockWithProgress.mockImplementation(async (options, callback) => {
+                const cancellableToken = {
+                    isCancellationRequested: true
+                };
+                
+                return await callback(mockProgress, cancellableToken);
+            });
+
+            await CacheService.cacheAllModules(mockModules, true);
+
+            // Should not attempt to cache any modules due to early cancellation
+            expect(mockGetModuleReleases).not.toHaveBeenCalled();
+            expect(CacheService.isCachingInProgress()).toBe(false);
+        });
+
+        test('should show cancellation message when showSuccessMessage is true', async () => {
+            const mockModules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', source: 'forge', version: '8.0.0', line: 1 },
+                { name: 'puppetlabs/concat', source: 'forge', version: '7.0.0', line: 2 }
+            ];
+
+            let callCount = 0;
+            // Mock cancellation that occurs during processing but after some work
+            mockWithProgress.mockImplementation(async (options, callback) => {
+                const cancellableToken = {
+                    get isCancellationRequested() {
+                        callCount++;
+                        // Allow first few checks to pass, then cancel
+                        return callCount > 3;
+                    }
+                };
+                
+                return await callback(mockProgress, cancellableToken);
+            });
+
+            await CacheService.cacheAllModules(mockModules, true);
+
+            // Should show cancellation message
+            expect(mockShowInformationMessage).toHaveBeenCalledWith(
+                expect.stringMatching(/Caching cancelled\. Cached \d+ of \d+ modules/)
+            );
+        });
+
+        test('should handle cancellation within individual module processing', async () => {
+            const mockModules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', source: 'forge', version: '8.0.0', line: 1 },
+                { name: 'puppetlabs/concat', source: 'forge', version: '7.0.0', line: 2 }
+            ];
+
+            let tokenCheckCount = 0;
+            // Mock slow processing to trigger cancellation within module map
+            mockGetModuleReleases.mockImplementation(async () => {
+                await new Promise(resolve => setTimeout(resolve, 10));
+                return [];
+            });
+
+            mockWithProgress.mockImplementation(async (options, callback) => {
+                const cancellableToken = {
+                    get isCancellationRequested() {
+                        tokenCheckCount++;
+                        // Cancel after several checks to hit the individual module cancellation
+                        return tokenCheckCount > 5;
+                    }
+                };
+                
+                return await callback(mockProgress, cancellableToken);
+            });
+
+            await CacheService.cacheAllModules(mockModules, false);
+
+            // Should complete without error
+            expect(CacheService.isCachingInProgress()).toBe(false);
+        });
+
     });
 
     describe('Error handling', () => {
