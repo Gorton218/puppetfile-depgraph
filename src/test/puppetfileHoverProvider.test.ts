@@ -107,14 +107,14 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
             
             // Verify these fields are NOT present
-            expect(markdownText.includes('**Owner:**')).toBe(false);
-            expect(markdownText.includes('**Downloads:**')).toBe(false);
-            expect(markdownText.includes('**Quality Score:**')).toBe(false);
+            expect(markdownText).not.toContain('**Owner:**');
+            expect(markdownText).not.toContain('**Downloads:**');
+            expect(markdownText).not.toContain('**Quality Score:**');
             
             // Verify other important fields are still present
-            expect(markdownText.includes('**Current Version:**')).toBe(true);
-            expect(markdownText.includes('**Latest Version:**')).toBe(true);
-            expect(markdownText.includes('**Dependencies:**')).toBe(true);
+            expect(markdownText).toContain('**Current Version:**');
+            expect(markdownText).toContain('**Latest Version:**');
+            expect(markdownText).toContain('**Dependencies:**');
         });
     });
 
@@ -142,13 +142,13 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const tooltip1 = 'Update to 1.1.0';
             const tooltip2 = 'Update to 1.2.0';
 
-            expect(markdownText.includes('**Available Updates:**')).toBe('Should show available updates');
-            expect(markdownText.includes(link1)).toBe('Should include link for 1.1.0');
-            expect(markdownText.includes(link2)).toBe('Should include link for 1.2.0');
-            expect(markdownText.includes(tooltip1)).toBe('Should include tooltip for 1.1.0');
-            expect(markdownText.includes(tooltip2)).toBe('Should include tooltip for 1.2.0');
-            expect(!markdownText.includes('**`1.0.0`**')).toBe('Current version should not appear in updates list');
-            expect(!markdownText.includes(' • ')).toBe('Versions should not be separated by bullets');
+            expect(markdownText).toContain('**Available Updates:**');
+            expect(markdownText).toContain(link1);
+            expect(markdownText).toContain(link2);
+            expect(markdownText).toContain(tooltip1);
+            expect(markdownText).toContain(tooltip2);
+            expect(markdownText).not.toContain('**`1.0.0`**');
+            expect(markdownText).not.toContain(' • ');
         });
     });
 
@@ -180,8 +180,8 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should NOT show dependencies since the specific version has no dependencies
-            expect(!markdownText.includes('**Dependencies:**')).toBe('Dependencies field should NOT be present when version has no dependencies');
-            expect(!markdownText.includes('puppetlabs/concat')).toBe('Dependencies from current_release should NOT be shown');
+            expect(markdownText).not.toContain('**Dependencies:**');
+            expect(markdownText).not.toContain('puppetlabs/concat');
         });
     });
 
@@ -205,11 +205,11 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should show dependencies
-            expect(markdownText.includes('**Dependencies:**')).toBe('Dependencies section should be present');
-            expect(markdownText.includes('puppetlabs/stdlib')).toBe('stdlib dependency should be shown');
-            expect(markdownText.includes('puppetlabs/concat')).toBe('concat dependency should be shown');
-            expect(markdownText.includes('>= 4.13.1 < 9.0.0')).toBe('stdlib version requirement should be shown');
-            expect(markdownText.includes('>= 1.1.1 < 8.0.0')).toBe('concat version requirement should be shown');
+            expect(markdownText).toContain('**Dependencies:**');
+            expect(markdownText).toContain('puppetlabs/stdlib');
+            expect(markdownText).toContain('puppetlabs/concat');
+            expect(markdownText).toContain('>= 4.13.1 < 9.0.0');
+            expect(markdownText).toContain('>= 1.1.1 < 8.0.0');
         });
     });
 
@@ -231,9 +231,9 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should show dependencies from current_release as fallback
-            expect(markdownText.includes('**Dependencies:**')).toBe('Dependencies field should be present');
-            expect(markdownText.includes('puppetlabs/concat')).toBe('Fallback dependency should be shown');
-            expect(markdownText.includes('>= 1.0.0')).toBe('Version requirement should be shown');
+            expect(markdownText).toContain('**Dependencies:**');
+            expect(markdownText).toContain('puppetlabs/concat');
+            expect(markdownText).toContain('>= 1.0.0');
         });
     });
 
@@ -265,16 +265,16 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Should show dependencies from version 10.0.0, NOT from latest (11.1.0)
-            expect(markdownText.includes('**Dependencies:**')).toBe('Dependencies section should be present');
-            expect(markdownText.includes('puppetlabs/stdlib')).toBe('stdlib dependency should be shown');
-            expect(markdownText.includes('puppetlabs/concat')).toBe('concat dependency should be shown from v10.0.0');
-            expect(markdownText.includes('>= 8.0.0 < 9.0.0')).toBe('stdlib version requirement from v10.0.0 should be shown');
-            expect(markdownText.includes('>= 6.0.0 < 7.0.0')).toBe('concat version requirement from v10.0.0 should be shown');
+            expect(markdownText).toContain('**Dependencies:**');
+            expect(markdownText).toContain('puppetlabs/stdlib');
+            expect(markdownText).toContain('puppetlabs/concat');
+            expect(markdownText).toContain('>= 8.0.0 < 9.0.0');
+            expect(markdownText).toContain('>= 6.0.0 < 7.0.0');
             
             // Should NOT show dependencies from latest version (11.1.0)
-            expect(!markdownText.includes('puppetlabs/systemd')).toBe('systemd dependency from latest should NOT be shown');
-            expect(!markdownText.includes('>= 9.0.0 < 10.0.0')).toBe('latest stdlib version requirement should NOT be shown');
-            expect(!markdownText.includes('>= 5.0.0 < 6.0.0')).toBe('latest systemd version requirement should NOT be shown');
+            expect(markdownText).not.toContain('puppetlabs/systemd');
+            expect(markdownText).not.toContain('>= 9.0.0 < 10.0.0');
+            expect(markdownText).not.toContain('>= 5.0.0 < 6.0.0');
         });
     });
 
@@ -301,13 +301,13 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             const markdownText = result.value;
 
             // Check that updates are displayed (only newer versions than 3.0.0)
-            expect(markdownText.includes('**Available Updates:**')).toBe('Should show available updates');
+            expect(markdownText).toContain('**Available Updates:**');
             
             // Check that current version (3.0.0) is not shown in updates
-            expect(!markdownText.includes('**`3.0.0`**')).toBe('Current version should not appear in updates');
+            expect(markdownText).not.toContain('**`3.0.0`**');
             
             // Check that versions are not separated by bullets
-            expect(!markdownText.includes(' • ')).toBe('Versions should not be separated by bullets');
+            expect(markdownText).not.toContain(' • ');
             
             // Check that multiple rows exist (should have newlines between rows)
             const versionSection = markdownText.substring(
@@ -368,7 +368,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
         const provider = createProvider();
         
         // Mock the parseActiveEditor to return test modules
-        const { PuppetfileParser } = await import('../puppetfileParser.js');
+        const { PuppetfileParser } = require('../puppetfileParser');
         const originalParseActiveEditor = PuppetfileParser.parseActiveEditor;
         PuppetfileParser.parseActiveEditor = () => ({
             modules: [
@@ -415,16 +415,16 @@ describe('PuppetfileHoverProvider Test Suite', () => {
                 const markdownText = result.value;
 
                 // Should contain green indicator for compatible version
-                expect(markdownText.includes('🟢')).toBe('Should show green indicator for compatible versions');
-                expect(markdownText.includes('🟢 [`8.5.0`]')).toBe('Version 8.5.0 should have green indicator');
+                expect(markdownText).toContain('🟢');
+                expect(markdownText).toContain('🟢 [`8.5.0`]');
 
                 // Should contain yellow indicator for incompatible version
-                expect(markdownText.includes('🟡')).toBe('Should show yellow indicator for incompatible versions');
-                expect(markdownText.includes('🟡 [`9.0.0`]')).toBe('Version 9.0.0 should have yellow indicator');
+                expect(markdownText).toContain('🟡');
+                expect(markdownText).toContain('🟡 [`9.0.0`]');
 
                 // Should show conflict details in tooltip
-                expect(markdownText.includes('Conflicts:')).toBe('Should show conflict details');
-                expect(markdownText.includes('puppetlabs/concat requires >= 4.13.1 < 9.0.0')).toBe('Should show specific conflict requirement');
+                expect(markdownText).toContain('Conflicts:');
+                expect(markdownText).toContain('puppetlabs/concat requires >= 4.13.1 < 9.0.0');
 
                 PuppetForgeService.getReleaseForVersion = originalGetReleaseForVersion;
             });
