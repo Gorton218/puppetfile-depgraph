@@ -4,6 +4,16 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
 
 ## [Unreleased]
 ### Added
+- **Upgrade Planner**: New comprehensive upgrade planning and visualization system
+  - New command "Show Upgrade Planner" available in command palette and Puppetfile context menu
+  - Analyzes all modules to identify safe upgrade opportunities
+  - Detects dependency conflicts preventing upgrades
+  - Interactive diff view showing current vs. proposed Puppetfile changes
+  - Summary view with upgrade statistics (upgradeable, blocked, unchanged modules)
+  - Detailed conflict analysis showing why specific modules cannot be upgraded
+  - Progress indication during analysis with cancellation support
+  - Supports both Forge and Git modules (Git modules shown as informational)
+  - Integrates with existing version compatibility and caching services
 - **Cache All Modules**: New context menu command "Cache info for all modules"
   - Pre-caches information for all Puppet Forge modules in the Puppetfile
   - Progress bar with cancellation support
@@ -120,6 +130,7 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Updated GitHub Actions workflow to run both unit and integration tests via `npm run test:all`
   - Ensures complete test coverage validation in CI/CD pipeline
   - Maintains code quality by running all test suites on pull requests and pushes
+  - Extended workflow to run on `release/*` branches in addition to `main`
 
 ## [0.0.2] - 2025-06-08
 ### Added
