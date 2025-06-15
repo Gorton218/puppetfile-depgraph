@@ -253,18 +253,19 @@ export function activate(context: vscode.ExtensionContext) {
                         cancellable: false
                 }, async (progress) => {
                         try {
-                                progress.report({ increment: 0, message: "Analyzing modules..." });
+                                progress.report({ increment: 0, message: "Preparing analysis..." });
                                 
-                                const upgradePlan = await UpgradePlannerService.createUpgradePlan(parseResult.modules);
-                                
-                                progress.report({ increment: 80, message: "Preparing diff view..." });
-                                
-                                // Get the current document content
+                                // Get the current document content first
                                 const activeEditor = vscode.window.activeTextEditor;
                                 if (!activeEditor) {
                                         throw new Error('No active Puppetfile editor found');
                                 }
                                 const originalContent = activeEditor.document.getText();
+                                
+                                progress.report({ increment: 20, message: "Checking module cache..." });
+                                
+                                // This will trigger caching with progress if needed
+                                const upgradePlan = await UpgradePlannerService.createUpgradePlan(parseResult.modules);
                                 
                                 progress.report({ increment: 100, message: "Opening upgrade planner..." });
                                 

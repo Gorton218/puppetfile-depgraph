@@ -2,6 +2,7 @@ import { PuppetModule } from '../puppetfileParser';
 import { PuppetForgeService, ForgeVersion } from '../puppetForgeService';
 import { VersionCompatibilityService, VersionCompatibility } from '../versionCompatibilityService';
 import { VersionParser } from '../utils/versionParser';
+import { CacheService } from '../cacheService';
 
 export interface UpgradeCandidate {
     module: PuppetModule;
@@ -17,7 +18,9 @@ export interface UpgradePlan {
     candidates: UpgradeCandidate[];
     totalUpgradeable: number;
     totalModules: number;
+    totalGitModules: number;
     hasConflicts: boolean;
+    gitModules: PuppetModule[];
 }
 
 /**
@@ -32,6 +35,11 @@ export class UpgradePlannerService {
      */
     public static async createUpgradePlan(modules: PuppetModule[]): Promise<UpgradePlan> {
         const forgeModules = modules.filter(m => m.source === 'forge' && m.version);
+        const gitModules = modules.filter(m => m.source === 'git');
+        
+        // Cache uncached modules first with progress indicator
+        await CacheService.cacheUncachedModules(forgeModules);
+        
         const candidates: UpgradeCandidate[] = [];
         let hasConflicts = false;
         
@@ -51,7 +59,9 @@ export class UpgradePlannerService {
             candidates,
             totalUpgradeable,
             totalModules: forgeModules.length,
-            hasConflicts
+            totalGitModules: gitModules.length,
+            hasConflicts,
+            gitModules
         };
     }
     
@@ -241,11 +251,28 @@ export class UpgradePlannerService {
         
         lines.push(`# Upgrade Plan Summary`);
         lines.push('');
-        lines.push(`**Total Modules:** ${plan.totalModules}`);
+        lines.push(`**Total Forge Modules:** ${plan.totalModules}`);
         lines.push(`**Upgradeable:** ${plan.totalUpgradeable}`);
         lines.push(`**Blocked:** ${plan.totalModules - plan.totalUpgradeable}`);
+        lines.push(`**Git Modules:** ${plan.totalGitModules}`);
         lines.push(`**Has Conflicts:** ${plan.hasConflicts ? 'Yes' : 'No'}`);
         lines.push('');
+        
+        // Git modules section
+        if (plan.totalGitModules > 0) {
+            lines.push(`## 📎 Git Modules (${plan.totalGitModules})`);
+            lines.push('');
+            lines.push('The following modules are sourced from Git repositories and cannot be automatically upgraded:');
+            lines.push('');
+            for (const gitModule of plan.gitModules) {
+                const ref = gitModule.gitRef || gitModule.gitTag;
+                const refStr = ref ? ` @ ${ref}` : '';
+                lines.push(`- **${gitModule.name}**${refStr} (${gitModule.gitUrl || 'git'})`);
+            }
+            lines.push('');
+            lines.push('💡 **Note:** Git modules must be manually updated by modifying their ref/tag/branch in the Puppetfile.');
+            lines.push('');
+        }
         
         // Upgradeable modules
         const upgradeableCandidates = plan.candidates.filter(c => c.isUpgradeable);
@@ -282,6 +309,7 @@ export class UpgradePlannerService {
             for (const candidate of upToDateCandidates) {
                 lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion}`);
             }
+            lines.push('');
         }
         
         return lines.join('\n');

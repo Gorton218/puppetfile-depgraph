@@ -118,6 +118,7 @@ export class UpgradeDiffProvider {
     ): Promise<void> {
         const upgradeableCount = upgradePlan.totalUpgradeable;
         const blockedCount = upgradePlan.totalModules - upgradePlan.totalUpgradeable;
+        const gitCount = upgradePlan.totalGitModules;
         
         // Show quick pick with options
         const options = [
@@ -128,7 +129,7 @@ export class UpgradeDiffProvider {
             },
             {
                 label: `$(info) Show Upgrade Summary`,
-                description: 'View detailed upgrade analysis in text format',
+                description: `View detailed analysis (${upgradePlan.totalModules} Forge${gitCount > 0 ? `, ${gitCount} Git` : ''})`,
                 action: 'summary'
             }
         ];
@@ -176,7 +177,7 @@ export class UpgradeDiffProvider {
             content: summary,
             language: 'markdown'
         });
-        await vscode.window.showTextDocument(doc);
+        await vscode.window.showTextDocument(doc, { preview: false });
     }
     
     /**

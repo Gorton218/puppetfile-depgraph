@@ -66,7 +66,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 }] as UpgradeCandidate[],
                 totalUpgradeable: 1,
                 totalModules: 1,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             await UpgradeDiffProvider.showUpgradeDiff(originalContent, upgradePlan);
@@ -90,7 +92,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 candidates: [],
                 totalUpgradeable: 0,
                 totalModules: 0,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             (mockVscode as any)._mockExecuteCommand.mockRejectedValue(new Error('Test error'));
@@ -126,7 +130,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 ] as UpgradeCandidate[],
                 totalUpgradeable: 1,
                 totalModules: 2,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             (mockVscode as any)._mockShowQuickPick.mockResolvedValue(undefined); // User cancels
@@ -157,7 +163,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 candidates: [],
                 totalUpgradeable: 1,
                 totalModules: 1,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             (mockVscode as any)._mockShowQuickPick.mockResolvedValue({
@@ -182,7 +190,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 candidates: [],
                 totalUpgradeable: 0,
                 totalModules: 0,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             (mockVscode as any)._mockShowQuickPick.mockResolvedValue({
@@ -218,7 +228,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 }] as UpgradeCandidate[],
                 totalUpgradeable: 0,
                 totalModules: 1,
-                hasConflicts: true
+                totalGitModules: 0,
+                hasConflicts: true,
+                gitModules: []
             };
 
             (mockVscode as any)._mockShowQuickPick.mockResolvedValue({
@@ -242,7 +254,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 candidates: [],
                 totalUpgradeable: 0,
                 totalModules: 0,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             (mockVscode as any)._mockShowQuickPick.mockResolvedValue({
@@ -278,7 +292,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 }] as UpgradeCandidate[],
                 totalUpgradeable: 1,
                 totalModules: 1,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             // Test the content provider registration

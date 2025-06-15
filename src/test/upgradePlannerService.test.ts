@@ -249,13 +249,15 @@ describe('UpgradePlannerService', () => {
                 ] as UpgradeCandidate[],
                 totalUpgradeable: 1,
                 totalModules: 2,
-                hasConflicts: true
+                totalGitModules: 0,
+                hasConflicts: true,
+                gitModules: []
             };
 
             const summary = UpgradePlannerService.generateUpgradeSummary(upgradePlan);
 
             expect(summary).toContain('# Upgrade Plan Summary');
-            expect(summary).toContain('**Total Modules:** 2');
+            expect(summary).toContain('**Total Forge Modules:** 2');
             expect(summary).toContain('**Upgradeable:** 1');
             expect(summary).toContain('**Blocked:** 1');
             expect(summary).toContain('**Has Conflicts:** Yes');
@@ -270,13 +272,42 @@ describe('UpgradePlannerService', () => {
                 candidates: [],
                 totalUpgradeable: 0,
                 totalModules: 0,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             const summary = UpgradePlannerService.generateUpgradeSummary(upgradePlan);
 
-            expect(summary).toContain('**Total Modules:** 0');
+            expect(summary).toContain('**Total Forge Modules:** 0');
             expect(summary).toContain('**Upgradeable:** 0');
+        });
+        
+        test('should include git modules in summary', () => {
+            const gitModule: PuppetModule = {
+                name: 'mycompany/custom',
+                source: 'git',
+                gitUrl: 'https://github.com/mycompany/custom.git',
+                gitRef: 'v1.0.0',
+                line: 1
+            };
+            
+            const upgradePlan = {
+                candidates: [],
+                totalUpgradeable: 0,
+                totalModules: 0,
+                totalGitModules: 1,
+                hasConflicts: false,
+                gitModules: [gitModule]
+            };
+
+            const summary = UpgradePlannerService.generateUpgradeSummary(upgradePlan);
+
+            expect(summary).toContain('**Git Modules:** 1');
+            expect(summary).toContain('📎 Git Modules (1)');
+            expect(summary).toContain('- **mycompany/custom** @ v1.0.0');
+            expect(summary).toContain('💡 **Note:** Git modules must be manually updated');
+            expect(summary).toContain('https://github.com/mycompany/custom.git');
             expect(summary).toContain('**Has Conflicts:** No');
         });
     });
@@ -315,7 +346,9 @@ mod 'puppetlabs/concat', '6.0.0'`;
                 ] as UpgradeCandidate[],
                 totalUpgradeable: 2,
                 totalModules: 3,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             const modifiedContent = UpgradePlannerService.applyUpgradesToContent(originalContent, upgradePlan);
@@ -339,7 +372,9 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 }] as UpgradeCandidate[],
                 totalUpgradeable: 0,
                 totalModules: 1,
-                hasConflicts: false
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
             };
 
             const modifiedContent = UpgradePlannerService.applyUpgradesToContent(originalContent, upgradePlan);
