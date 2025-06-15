@@ -278,4 +278,7 @@ Built with ❤️ for the Puppet community`;
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+	// Clean up HTTP agents to prevent hanging connections
+	PuppetForgeService.cleanupAgents();
+}
