@@ -344,11 +344,7 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showInformationMessage('Puppet Forge cache cleared successfully!');
         });
 
-      	const clearCache = vscode.commands.registerCommand('puppetfile-depgraph.clearCache', () => {
-		PuppetForgeService.clearCache();
-		GitMetadataService.clearCache();
-		vscode.window.showInformationMessage('All caches cleared successfully! (Puppet Forge + Git metadata)');
-	});
+
 
         const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (...args: any[]) => {
                 console.log('updateModuleVersion command called with args:', args);
