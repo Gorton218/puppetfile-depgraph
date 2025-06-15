@@ -563,8 +563,9 @@ describe('PuppetfileHoverProvider Test Suite', () => {
     // Test version compatibility error handling
     test('should handle version compatibility check errors', async () => {
         await withServiceMocks(async (restore) => {
-            // Stub console.error to suppress error output during test
+            // Stub console.error and console.warn to suppress error output during test
             const consoleErrorStub = sinon.stub(console, 'error');
+            const consoleWarnStub = sinon.stub(console, 'warn');
             
             PuppetForgeService.getModuleReleases = async () => {
                 throw new Error('Network error');
@@ -586,6 +587,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             expect(result instanceof Map);
             
             consoleErrorStub.restore();
+            consoleWarnStub.restore();
             restore();
         });
     });
