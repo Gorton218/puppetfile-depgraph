@@ -35,12 +35,12 @@ export class GitMetadataService {
      * @returns Promise with metadata or null if not found
      */
     public static async getGitModuleMetadata(gitUrl: string, ref?: string): Promise<GitModuleMetadata | null> {
-        const cacheKey = `${gitUrl}:${ref || 'default'}`;
+        const cacheKey = `${gitUrl}:${ref ?? 'default'}`;
         
         // Check cache first
         if (this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
-            return cached || null;
+            return cached ?? null;
         }
 
         try {
@@ -92,7 +92,7 @@ export class GitMetadataService {
         }
 
         // Determine the ref to use
-        const targetRef = ref || 'main'; // Default to main, will fall back to master if needed
+        const targetRef = ref ?? 'main'; // Default to main, will fall back to master if needed
         
         try {
             const url = new URL(cleanUrl);
@@ -156,7 +156,7 @@ export class GitMetadataService {
             
             return metadata;
         } catch (error) {
-            console.warn(`Failed to get metadata for ${gitUrl}:${ref || 'default'}:`, error);
+            console.warn(`Failed to get metadata for ${gitUrl}:${ref ?? 'default'}:`, error);
             return null;
         }
     }
@@ -179,7 +179,7 @@ export class GitMetadataService {
      * Check if a specific Git URL is cached
      */
     public static isCached(gitUrl: string, ref?: string): boolean {
-        const cacheKey = `${gitUrl}:${ref || 'default'}`;
+        const cacheKey = `${gitUrl}:${ref ?? 'default'}`;
         return this.cache.has(cacheKey);
     }
 }

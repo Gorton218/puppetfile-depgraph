@@ -153,7 +153,7 @@ export class DependencyTreeService {
                 gitRef: module.gitRef,
                 gitTag: module.gitTag,
                 versionRequirement,
-                conflict: circularConflict || undefined
+                conflict: circularConflict ?? undefined
             };
         }
 
@@ -177,7 +177,7 @@ export class DependencyTreeService {
         
         const node: DependencyNode = {
             name: module.name,
-            version: module.version || resolvedVersion,
+            version: module.version ?? resolvedVersion,
             source: module.source,
             children: [],
             depth,
@@ -186,7 +186,7 @@ export class DependencyTreeService {
             gitRef: module.gitRef,
             gitTag: module.gitTag,
             versionRequirement,
-            conflict: circularConflict || undefined,
+            conflict: circularConflict ?? undefined,
             displayVersion,
             isConstraintViolated
         };
@@ -258,7 +258,7 @@ export class DependencyTreeService {
                 if (depth > 0) {
                     progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`, 'tree');
                 }
-                const ref = module.gitTag || module.gitRef;
+                const ref = module.gitTag ?? module.gitRef;
                 const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 
                 if (gitMetadata?.dependencies) {
@@ -506,12 +506,11 @@ export class DependencyTreeService {
             try {
                 // Get available versions from Forge - use original name format for API call
                 // Convert back to slash format for API if it looks like an org/module pair
-                const forgeModule = await PuppetForgeService.getModule(
-                    moduleName.includes('-') && moduleName.split('-').length === 2 
-                        ? moduleName.replace('-', '/') 
-                        : moduleName
-                );
-                const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
+                const apiModuleName = moduleName.includes('-') && moduleName.split('-').length === 2 
+                    ? moduleName.replace('-', '/') 
+                    : moduleName;
+                const forgeModule = await PuppetForgeService.getModule(apiModuleName);
+                const availableVersions = forgeModule?.releases?.map(r => r.version) ?? [];
 
                 // Analyze for conflicts
                 const result = ConflictAnalyzer.analyzeModule(
@@ -612,7 +611,7 @@ export class DependencyTreeService {
         }
         
         // Fall back to resolved version or extracted version
-        return resolvedVersion || (versionRequirement ? this.extractVersionFromRequirement(versionRequirement) : undefined);
+        return resolvedVersion ?? (versionRequirement ? this.extractVersionFromRequirement(versionRequirement) : undefined);
     }
 
     /**
