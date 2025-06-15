@@ -146,7 +146,12 @@ export class PuppetForgeService {
                 feedback_score: 0 // Not available from releases API
             };
         } catch (error) {
-            return null; // Return null for any error when fetching module
+            // Handle network errors and API failures gracefully
+            // Programming errors in this method should still propagate
+            if (error instanceof Error && error.message.includes('Failed to fetch releases')) {
+                return null;
+            }
+            throw error;
         }
     }
 
@@ -238,8 +243,12 @@ export class PuppetForgeService {
             const module = await this.getModule(moduleName);
             return module?.current_release?.version ?? null;
         } catch (error) {
-            console.error(`Error fetching latest version for ${moduleName}:`, error);
-            return null;
+            // Handle network errors and API failures gracefully
+            // Programming errors in this method should still propagate
+            if (error instanceof Error && error.message.includes('Failed to fetch releases')) {
+                return null;
+            }
+            throw error;
         }
     }
 
@@ -265,8 +274,12 @@ export class PuppetForgeService {
             const safeReleases = releases.filter(release => this.isSafeVersion(release.version));
             return safeReleases.length > 0 ? safeReleases[0].version : null;
         } catch (error) {
-            console.error(`Error fetching latest safe version for ${moduleName}:`, error);
-            return null;
+            // Handle network errors and API failures gracefully
+            // Programming errors in this method should still propagate
+            if (error instanceof Error && error.message.includes('Failed to fetch releases')) {
+                return null;
+            }
+            throw error;
         }
     }
 
@@ -345,8 +358,12 @@ export class PuppetForgeService {
             const hasUpdate = this.compareVersions(latestVersion, currentVersion) > 0;
             return { hasUpdate, latestVersion, currentVersion };
         } catch (error) {
-            console.error(`Error checking for update for ${moduleName}:`, error);
-            return { hasUpdate: false, latestVersion: null, currentVersion };
+            // Handle network errors and API failures gracefully
+            // Programming errors in this method should still propagate
+            if (error instanceof Error && error.message.includes('Failed to fetch releases')) {
+                return { hasUpdate: false, latestVersion: null, currentVersion };
+            }
+            throw error;
         }
     }
 }
