@@ -4,7 +4,8 @@
   "description": "A VS Code extension for managing Puppet module dependencies with visual dependency analysis and safe update recommendations",
   "version": "0.0.2",
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.100.0",
+    "node": ">=24.0.0"
   },
   "categories": [
     "Other"
