@@ -8,6 +8,8 @@ import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
 import { PuppetForgeService } from './puppetForgeService';
 import { GitMetadataService } from './gitMetadataService';
 import { CacheService } from './cacheService';
+import { UpgradePlannerService } from './services/upgradePlannerService';
+import { UpgradeDiffProvider } from './services/upgradeDiffProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -231,6 +233,50 @@ export function activate(context: vscode.ExtensionContext) {
                 await CacheService.cacheAllModules(forgeModules, true);
         });
 
+        const showUpgradePlanner = vscode.commands.registerCommand('puppetfile-depgraph.showUpgradePlanner', async () => {
+                const parseResult = PuppetfileParser.parseActiveEditor();
+                if (parseResult.errors.length > 0) {
+                        vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
+                        return;
+                }
+
+                const forgeModules = parseResult.modules.filter(m => m.source === 'forge' && m.version);
+                if (forgeModules.length === 0) {
+                        vscode.window.showInformationMessage('No Puppet Forge modules with versions found in Puppetfile');
+                        return;
+                }
+
+                // Show progress indicator
+                await vscode.window.withProgress({
+                        location: vscode.ProgressLocation.Notification,
+                        title: "Analyzing upgrade opportunities",
+                        cancellable: false
+                }, async (progress) => {
+                        try {
+                                progress.report({ increment: 0, message: "Analyzing modules..." });
+                                
+                                const upgradePlan = await UpgradePlannerService.createUpgradePlan(parseResult.modules);
+                                
+                                progress.report({ increment: 80, message: "Preparing diff view..." });
+                                
+                                // Get the current document content
+                                const activeEditor = vscode.window.activeTextEditor;
+                                if (!activeEditor) {
+                                        throw new Error('No active Puppetfile editor found');
+                                }
+                                const originalContent = activeEditor.document.getText();
+                                
+                                progress.report({ increment: 100, message: "Opening upgrade planner..." });
+                                
+                                // Show the interactive upgrade planner
+                                await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+                                
+                        } catch (error) {
+                                vscode.window.showErrorMessage(`Failed to analyze upgrades: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        }
+                });
+        });
+
         const showAbout = vscode.commands.registerCommand('puppetfile-depgraph.showAbout', async () => {
                 const packageJSON = context.extension.packageJSON;
                 const aboutContent = `# ${packageJSON.displayName}
@@ -245,11 +291,13 @@ export function activate(context: vscode.ExtensionContext) {
 - 🌳 Dependency tree visualization
 - 💡 Hover tooltips with version information
 - ⚡ Batch module caching for performance
+- 📊 Upgrade planner with diff view
 
 ## Commands
 - Update all dependencies to safe versions
 - Update all dependencies to latest versions
 - Show dependency tree (tree/list view)
+- Show upgrade planner with safe upgrade analysis
 - Clear Puppet Forge cache
 - Cache info for all modules
 
@@ -267,7 +315,7 @@ Built with ❤️ for the Puppet community`;
         });
 
         // Add all commands to subscriptions
-        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, updateModuleVersion, cacheAllModules, showAbout);
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
