@@ -24,6 +24,15 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Automatic fallback between main/master branches and error handling
   - Caching for improved performance with network requests
 
+### Improved
+- **Test Coverage**: Enhanced branch coverage for dependency tree service
+  - Added comprehensive tests for version sorting algorithms and edge cases
+  - Improved error handling test coverage for constraint validation
+  - Added tests for transitive dependency resolution scenarios
+  - Enhanced coverage for Git modules without ref/tag specifications
+  - Branch coverage increased from 79.71% to 81.15% for dependencyTreeService
+  - Overall project branch coverage improved from 84.91% to 86.00%
+
 ### Fixed
 - **Line Number Bug**: Fixed issue where clicking version links always updated line 1
   - Hover provider now correctly preserves the actual line number from cursor position
