@@ -496,4 +496,179 @@ mod 'another-valid', '2.0.0'
         const validModules = result.modules.filter(m => m.name === 'valid-module' || m.name === 'another-valid');
         expect(validModules.length >= 2).toBe(true);
     });
+
+    test('should handle invalid module declaration syntax', () => {
+        const content = `mod bad-syntax-without-quotes`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.errors.length).toBe(1);
+        expect(result.errors[0]).toContain('Invalid module declaration syntax');
+        expect(result.modules.length).toBe(0);
+    });
+
+    test('should handle non-module lines that start with mod but are invalid', () => {
+        const content = `mod 'valid-module', '1.0.0'
+something else mod related but not a module`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        // Should successfully parse the valid module and skip the invalid line
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('valid-module');
+        expect(result.errors.length).toBe(0);
+    });
+
+    test('should handle complex module with parentheses and brackets', () => {
+        const content = `mod 'complex-module',
+    :git => 'https://github.com/user/repo.git',
+    :ref => 'main'
+    )`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('complex-module');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].gitRef).toBe('main');
+    });
+
+    test('should handle complex module with closing bracket', () => {
+        const content = `mod 'array-module',
+    :git => 'https://github.com/user/repo.git',
+    :ref => 'main'
+    ]`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('array-module');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].gitRef).toBe('main');
+    });
+
+    test('should handle multiline module with empty lines and comments', () => {
+        const content = `mod 'test-module',
+
+    # This is a comment within the module definition
+    
+    :git => 'https://github.com/user/repo.git',
+    
+    # Another comment
+    :ref => 'main'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('test-module');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].gitRef).toBe('main');
+    });
+
+    test('should handle forge module with complex syntax patterns', () => {
+        const content = `mod 'complex-forge', '1.0.0', some_option => 'value'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('complex-forge');
+        expect(result.modules[0].version).toBe('1.0.0');
+        expect(result.modules[0].source).toBe('forge');
+    });
+
+    test('should handle git module with version-like string that is actually git URL', () => {
+        const content = `mod 'git-module', :git => 'https://github.com/user/repo.git', '1.0.0'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('git-module');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].version).toBeUndefined();
+    });
+
+
+    test('should handle isPuppetfile method with various file patterns', () => {
+        // Test file ending with "puppetfile"
+        const mockDoc1 = { fileName: '/path/to/Puppetfile', languageId: 'text' };
+        const result1 = (PuppetfileParser as any).isPuppetfile(mockDoc1);
+        expect(result1).toBe(true);
+
+        // Test file containing "puppetfile"
+        const mockDoc2 = { fileName: '/path/to/my.puppetfile.local', languageId: 'text' };
+        const result2 = (PuppetfileParser as any).isPuppetfile(mockDoc2);
+        expect(result2).toBe(true);
+
+        // Test file with puppetfile language ID
+        const mockDoc3 = { fileName: '/path/to/somefile', languageId: 'puppetfile' };
+        const result3 = (PuppetfileParser as any).isPuppetfile(mockDoc3);
+        expect(result3).toBe(true);
+
+        // Test file that is not a Puppetfile
+        const mockDoc4 = { fileName: '/path/to/other.txt', languageId: 'text' };
+        const result4 = (PuppetfileParser as any).isPuppetfile(mockDoc4);
+        expect(result4).toBe(false);
+    });
+
+    test('getActivePuppetfileDocument should return document for valid Puppetfile', () => {
+        const originalGetPropertyDescriptor = Object.getOwnPropertyDescriptor;
+
+        try {
+            const mockEditor = {
+                document: {
+                    fileName: 'Puppetfile',
+                    languageId: 'puppetfile'
+                }
+            };
+
+            Object.defineProperty(vscode.window, 'activeTextEditor', {
+                value: mockEditor,
+                configurable: true
+            });
+
+            const result = PuppetfileParser.getActivePuppetfileDocument();
+
+            expect(result).toBe(mockEditor.document);
+        } finally {
+            Object.getOwnPropertyDescriptor = originalGetPropertyDescriptor;
+        }
+    });
+
+    test('should handle multiline module that never finds proper end', () => {
+        const content = `mod 'endless-module',
+    :git => 'https://github.com/user/repo.git',
+    :ref => 'main',
+    :some_option => 'value',
+    :another_option => 'value2',`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        // Should still parse as a single line since multiline parsing fails
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('endless-module');
+    });
+
+    test('should handle tag extraction in extractGitRef method', () => {
+        const content = `mod 'tag-module', :git => 'https://github.com/user/repo.git', :tag => 'v2.0.0'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].gitTag).toBe('v2.0.0');
+        expect(result.modules[0].gitRef).toBeUndefined();
+    });
+
+    test('should handle ref extraction in extractGitRef method', () => {
+        const content = `mod 'ref-module', :git => 'https://github.com/user/repo.git', :ref => 'develop'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].gitRef).toBe('develop');
+        expect(result.modules[0].gitTag).toBeUndefined();
+    });
 });
