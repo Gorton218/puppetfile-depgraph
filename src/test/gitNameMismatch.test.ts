@@ -1,7 +1,6 @@
-import * as assert from 'assert';
 import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
 
-suite('Git Module Name Mismatch Test Suite', () => {
+describe('Git Module Name Mismatch Test Suite', () => {
     
     test('should handle Git module name mismatch gracefully', async () => {
         const hoverProvider = new PuppetfileHoverProvider();
@@ -29,23 +28,21 @@ suite('Git Module Name Mismatch Test Suite', () => {
         const result = (hoverProvider as any).formatGitModuleWithMetadata(module, mockMetadata);
         
         // The result should be a MarkdownString
-        assert.strictEqual(typeof result, 'object');
-        assert.strictEqual(typeof result.appendMarkdown, 'function');
+        expect(typeof result).toBe('object');
+        expect(typeof result.appendMarkdown).toBe('function');
         
         // Convert to string to check content
         const markdownValue = result.value || '';
         
         // Should display the Puppetfile name in the header
-        assert.ok(markdownValue.includes('echocat/graphite'), 
-            'Should display Puppetfile declared name in header');
+        expect(markdownValue).toContain('echocat/graphite'); // Should display Puppetfile declared name in header
         
         // Should show the metadata name as repository name
-        assert.ok(markdownValue.includes('Repository name: `dwerder-graphite`'), 
-            'Should show metadata name as repository name when different');
+        expect(markdownValue).toContain('Repository name: `dwerder-graphite`'); // Should show metadata name as repository name when different
         
         // Should include other metadata
-        assert.ok(markdownValue.includes('Test Author'), 'Should include author');
-        assert.ok(markdownValue.includes('Test module'), 'Should include summary');
+        expect(markdownValue).toContain('Test Author'); // Should include author
+        expect(markdownValue).toContain('Test module'); // Should include summary
     });
     
     test('should not show repository name when names match', async () => {
@@ -77,12 +74,10 @@ suite('Git Module Name Mismatch Test Suite', () => {
         const markdownValue = result.value || '';
         
         // Should display the name in the header
-        assert.ok(markdownValue.includes('puppetlabs/apache'), 
-            'Should display module name in header');
+        expect(markdownValue).toContain('puppetlabs/apache'); // Should display module name in header
         
         // Should NOT show repository name since they match
-        assert.ok(!markdownValue.includes('Repository name:'), 
-            'Should not show repository name when names match');
+        expect(markdownValue).not.toContain('Repository name:'); // Should not show repository name when names match
     });
     
     test('should handle errors in formatGitModuleWithMetadata gracefully', async () => {
@@ -107,11 +102,11 @@ suite('Git Module Name Mismatch Test Suite', () => {
         
         // Should not throw, should return fallback
         let result;
-        assert.doesNotThrow(() => {
+        expect(() => {
             result = (hoverProvider as any).formatGitModuleWithMetadata(module, problematicMetadata);
-        });
+        }).not.toThrow();
         
         // Should return some kind of markdown
-        assert.strictEqual(typeof result, 'object');
+        expect(typeof result).toBe('object');
     });
 });

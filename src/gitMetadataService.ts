@@ -54,7 +54,8 @@ export class GitMetadataService {
                 timeout: this.TIMEOUT,
                 headers: {
                     'Accept': 'application/json',
-                    'User-Agent': 'Puppetfile-DepGraph-VSCode-Extension'
+                    'User-Agent': 'Puppetfile-DepGraph-VSCode-Extension',
+                    'Connection': 'close'  // Ensure connections are closed after requests
                 },
                 validateStatus: (status) => status < 500 // Don't throw on 404s
             });

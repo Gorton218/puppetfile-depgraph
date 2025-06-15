@@ -55,20 +55,27 @@ export class PuppetForgeService {
 
     // Two-level cache: module name -> (version -> version data)
     private static moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
+    
+    // Keep a single agent instance for reuse
+    private static proxyAgent: HttpsProxyAgent<string> | null = null;
 
     private static getAxiosOptions(): AxiosRequestConfig {
         const options: AxiosRequestConfig = {
             timeout: 10000,
             headers: {
-                'User-Agent': `VSCode-Puppetfile-DepGraph/${pkg.version}`
+                'User-Agent': `VSCode-Puppetfile-DepGraph/${pkg.version}`,
+                'Connection': 'close'  // Ensure connections are closed after requests
             }
         };
 
         const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
-        if (proxyUrl) {
-            const agent = new HttpsProxyAgent(proxyUrl);
-            options.httpAgent = agent;
-            options.httpsAgent = agent;
+        if (proxyUrl && !this.proxyAgent) {
+            this.proxyAgent = new HttpsProxyAgent(proxyUrl);
+        }
+        
+        if (this.proxyAgent) {
+            options.httpAgent = this.proxyAgent;
+            options.httpsAgent = this.proxyAgent;
             options.proxy = false;
         }
         return options;
@@ -79,6 +86,16 @@ export class PuppetForgeService {
      */
     public static clearCache(): void {
         this.moduleVersionCache.clear();
+    }
+    
+    /**
+     * Cleanup all HTTP agents to prevent hanging connections
+     */
+    public static cleanupAgents(): void {
+        if (this.proxyAgent) {
+            this.proxyAgent.destroy();
+            this.proxyAgent = null;
+        }
     }
 
     /**

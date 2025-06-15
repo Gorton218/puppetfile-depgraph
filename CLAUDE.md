@@ -16,7 +16,14 @@ Puppetfile Dependency Manager is a VS Code extension for managing Puppet module 
 - `npm run vscode:prepublish` - Prepare for publication
 
 ### Testing
-Tests use Mocha framework with the VS Code test runner. Test files are in `src/test/` and use `suite()` and `test()` functions.
+The project uses a dual testing approach:
+
+- **Unit Tests**: Jest framework in `src/test/` using `describe()` and `test()` functions
+  - Run with: `npm test` or `npm run test:unit`
+  - Coverage: `npm run test:coverage`
+- **Integration Tests**: VS Code test runner with Mocha in `src/integration-test/` using `suite()` and `test()` functions  
+  - Run with: `npm run test:integration`
+- **All Tests**: `npm run test:all` (runs both unit and integration tests)
 
 ## Architecture
 
@@ -82,6 +89,16 @@ The project is actively being enhanced with improvements to hover tooltips, cach
 - Follow existing code patterns and conventions
 - Add tests for new functionality
 - Do not update the `CHANGELOG.md` file unless explicitly instructed
+- Always use LF (Line Feed) line endings for all files
+
+### Code Quality Priorities
+When evaluating code improvements, prioritize in this order:
+1. **Maintainability** - Code should be easy to understand and modify
+2. **Reliability** - Code should work correctly and consistently
+3. **Code Coverage** - Tests should cover important functionality
+4. **Code Duplication** - Some duplication is acceptable if it improves clarity
+
+Note: Test code duplication is often beneficial for test clarity and independence. Each test should be self-contained and easy to understand without excessive abstraction.
 
 ### Misc
 - Do not analyze `.private` folder unless the file from there explicitly mentioned in the conversation

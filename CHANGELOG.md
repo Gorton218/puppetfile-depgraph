@@ -93,13 +93,24 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Enhanced hover provider test coverage
   - Added Git module name mismatch test coverage
   - Command registration validation
-  - Reduced test code duplication from 24% to ~10% through refactoring
-  - Introduced helper functions and factory patterns for cleaner test structure
 - **Code Quality**: Improved error handling and user experience
   - Better progress reporting and cancellation support
   - More robust API integration with proper timeout handling
   - Enhanced documentation and code comments
-  - Improved test maintainability with reusable utilities
+  - Added code quality priorities documentation to CLAUDE.md
+- **Reduced Code Duplication**: Strategic refactoring to improve maintainability
+  - Reduced parser duplication by extracting common comment stripping logic
+  - Refactored test files with helper functions and utilities:
+    - dependencyTreeConflicts.test.ts: Added helper functions for module creation and test setup
+    - puppetfileUpdateService.test.ts: Extracted common test patterns and mock data
+    - versionParser.test.ts: Consolidated test cases using data-driven approach
+  - Preserved beneficial test duplication for clarity and independence
+  - Documented code quality priorities emphasizing maintainability over duplication metrics
+  - Added SonarQube configuration to exclude test files from duplication checks
+- **GitHub Workflow Enhancement**: Improved CI pipeline to run comprehensive test coverage
+  - Updated GitHub Actions workflow to run both unit and integration tests via `npm run test:all`
+  - Ensures complete test coverage validation in CI/CD pipeline
+  - Maintains code quality by running all test suites on pull requests and pushes
 
 ## [0.0.2] - 2025-06-08
 ### Added

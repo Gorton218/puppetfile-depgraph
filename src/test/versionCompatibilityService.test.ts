@@ -1,10 +1,8 @@
-import * as assert from 'assert';
-import { suite, test } from 'mocha';
 import { VersionCompatibilityService } from '../versionCompatibilityService';
 import { PuppetForgeService } from '../puppetForgeService';
 import { PuppetModule } from '../puppetfileParser';
 
-suite('VersionCompatibilityService', () => {
+describe('VersionCompatibilityService', () => {
     
     // Mock release data
     const mockReleases: Record<string, Record<string, any>> = {
@@ -44,7 +42,7 @@ suite('VersionCompatibilityService', () => {
     const originalGetReleaseForVersion = PuppetForgeService.getReleaseForVersion;
     const originalGetModuleReleases = PuppetForgeService.getModuleReleases;
     
-    setup(() => {
+    beforeEach(() => {
         // Mock PuppetForgeService methods
         PuppetForgeService.getReleaseForVersion = async (moduleName: string, version: string) => {
             const moduleReleases = mockReleases[moduleName];
@@ -63,7 +61,7 @@ suite('VersionCompatibilityService', () => {
         };
     });
     
-    teardown(() => {
+    afterEach(() => {
         // Restore original methods
         PuppetForgeService.getReleaseForVersion = originalGetReleaseForVersion;
         PuppetForgeService.getModuleReleases = originalGetModuleReleases;
@@ -93,9 +91,9 @@ suite('VersionCompatibilityService', () => {
             allModules
         );
         
-        assert.strictEqual(result.version, '8.5.0');
-        assert.strictEqual(result.isCompatible, true);
-        assert.strictEqual(result.conflicts, undefined);
+        expect(result.version).toBe('8.5.0');
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
     });
     
     test('should detect conflicting version when dependency constraint is violated', async () => {
@@ -122,13 +120,13 @@ suite('VersionCompatibilityService', () => {
             allModules
         );
         
-        assert.strictEqual(result.version, '9.0.0');
-        assert.strictEqual(result.isCompatible, false);
-        assert.ok(result.conflicts);
-        assert.strictEqual(result.conflicts.length, 1);
-        assert.strictEqual(result.conflicts[0].moduleName, 'puppetlabs/concat');
-        assert.strictEqual(result.conflicts[0].currentVersion, '7.0.0');
-        assert.strictEqual(result.conflicts[0].requirement, '>= 4.13.1 < 9.0.0');
+        expect(result.version).toBe('9.0.0');
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
+        expect(result.conflicts![0].moduleName).toBe('puppetlabs/concat');
+        expect(result.conflicts![0].currentVersion).toBe('7.0.0');
+        expect(result.conflicts![0].requirement).toBe('>= 4.13.1 < 9.0.0');
     });
     
     test('should handle modules with no dependencies', async () => {
@@ -147,8 +145,8 @@ suite('VersionCompatibilityService', () => {
             allModules
         );
         
-        assert.strictEqual(result.isCompatible, true);
-        assert.strictEqual(result.conflicts, undefined);
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
     });
     
     test('should handle git modules (skip them)', async () => {
@@ -175,8 +173,8 @@ suite('VersionCompatibilityService', () => {
             allModules
         );
         
-        assert.strictEqual(result.isCompatible, true);
-        assert.strictEqual(result.conflicts, undefined);
+        expect(result.isCompatible).toBe(true);
+        expect(result.conflicts).toBeUndefined();
     });
     
     test('should normalize module names correctly', async () => {
@@ -215,8 +213,8 @@ suite('VersionCompatibilityService', () => {
             allModules
         );
         
-        assert.strictEqual(result.isCompatible, false);
-        assert.ok(result.conflicts);
-        assert.strictEqual(result.conflicts.length, 1);
+        expect(result.isCompatible).toBe(false);
+        expect(result.conflicts).toBeTruthy();
+        expect(result.conflicts!.length).toBe(1);
     });
 });

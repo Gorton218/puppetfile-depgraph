@@ -1,122 +1,122 @@
-import * as assert from 'assert';
-import { suite, test } from 'mocha';
 import { VersionParser } from '../utils/versionParser';
 import { VersionRequirement } from '../types/dependencyTypes';
 
-suite('VersionParser Test Suite', () => {
+interface ParseTestCase {
+  input: string;
+  expected: VersionRequirement[];
+}
+
+interface SatisfiesTestCase {
+  version: string;
+  requirement: VersionRequirement;
+  expected: boolean;
+}
+
+interface CompareTestCase {
+  v1: string;
+  v2: string;
+  expectedSign: number; // -1, 0, or 1
+}
+
+describe('VersionParser Test Suite', () => {
   
-  suite('parse()', () => {
-    test('should parse single >= constraint', () => {
-      const result = VersionParser.parse('>= 1.0.0');
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].operator, '>=');
-      assert.strictEqual(result[0].version, '1.0.0');
-    });
-    
-    test('should parse single < constraint', () => {
-      const result = VersionParser.parse('< 2.0.0');
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].operator, '<');
-      assert.strictEqual(result[0].version, '2.0.0');
-    });
-    
-    test('should parse compound constraint', () => {
-      const result = VersionParser.parse('>= 1.0.0 < 2.0.0');
-      assert.strictEqual(result.length, 2);
-      assert.strictEqual(result[0].operator, '>=');
-      assert.strictEqual(result[0].version, '1.0.0');
-      assert.strictEqual(result[1].operator, '<');
-      assert.strictEqual(result[1].version, '2.0.0');
-    });
-    
-    test('should parse pessimistic constraint', () => {
-      const result = VersionParser.parse('~> 1.2.0');
-      assert.strictEqual(result.length, 2);
-      assert.strictEqual(result[0].operator, '>=');
-      assert.strictEqual(result[0].version, '1.2.0');
-      assert.strictEqual(result[1].operator, '<');
-      assert.strictEqual(result[1].version, '1.3.0');
-    });
-    
-    test('should parse wildcard constraint 1.x', () => {
-      const result = VersionParser.parse('1.x');
-      assert.strictEqual(result.length, 2);
-      assert.strictEqual(result[0].operator, '>=');
-      assert.strictEqual(result[0].version, '1.0.0');
-      assert.strictEqual(result[1].operator, '<');
-      assert.strictEqual(result[1].version, '2.0.0');
-    });
-    
-    test('should parse wildcard constraint 1.2.x', () => {
-      const result = VersionParser.parse('1.2.x');
-      assert.strictEqual(result.length, 2);
-      assert.strictEqual(result[0].operator, '>=');
-      assert.strictEqual(result[0].version, '1.2.0');
-      assert.strictEqual(result[1].operator, '<');
-      assert.strictEqual(result[1].version, '1.3.0');
-    });
-    
-    test('should parse exact version constraint', () => {
-      const result = VersionParser.parse('= 1.2.3');
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].operator, '=');
-      assert.strictEqual(result[0].version, '1.2.3');
-    });
-    
-    test('should parse version without operator as exact', () => {
-      const result = VersionParser.parse('1.2.3');
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].operator, '=');
-      assert.strictEqual(result[0].version, '1.2.3');
-    });
-    
-    test('should handle pre-release versions', () => {
-      const result = VersionParser.parse('>= 1.0.0-beta');
-      assert.strictEqual(result.length, 1);
-      assert.strictEqual(result[0].operator, '>=');
-      assert.strictEqual(result[0].version, '1.0.0-beta');
+  describe('parse()', () => {
+    const parseTestCases: ParseTestCase[] = [
+      {
+        input: '>= 1.0.0',
+        expected: [{ operator: '>=', version: '1.0.0' }]
+      },
+      {
+        input: '< 2.0.0',
+        expected: [{ operator: '<', version: '2.0.0' }]
+      },
+      {
+        input: '>= 1.0.0 < 2.0.0',
+        expected: [
+          { operator: '>=', version: '1.0.0' },
+          { operator: '<', version: '2.0.0' }
+        ]
+      },
+      {
+        input: '~> 1.2.0',
+        expected: [
+          { operator: '>=', version: '1.2.0' },
+          { operator: '<', version: '1.3.0' }
+        ]
+      },
+      {
+        input: '1.x',
+        expected: [
+          { operator: '>=', version: '1.0.0' },
+          { operator: '<', version: '2.0.0' }
+        ]
+      },
+      {
+        input: '1.2.x',
+        expected: [
+          { operator: '>=', version: '1.2.0' },
+          { operator: '<', version: '1.3.0' }
+        ]
+      },
+      {
+        input: '= 1.2.3',
+        expected: [{ operator: '=', version: '1.2.3' }]
+      },
+      {
+        input: '1.2.3',
+        expected: [{ operator: '=', version: '1.2.3' }]
+      },
+      {
+        input: '>= 1.0.0-beta',
+        expected: [{ operator: '>=', version: '1.0.0-beta' }]
+      }
+    ];
+
+    parseTestCases.forEach(({ input, expected }) => {
+      test(`should parse '${input}'`, () => {
+        const result = VersionParser.parse(input);
+        expect(result.length).toBe(expected.length);
+        expected.forEach((exp, i) => {
+          expect(result[i].operator).toBe(exp.operator);
+          expect(result[i].version).toBe(exp.version);
+        });
+      });
     });
   });
   
-  suite('satisfies()', () => {
-    test('should check >= constraint', () => {
-      const req: VersionRequirement = { operator: '>=', version: '1.0.0' };
-      assert.strictEqual(VersionParser.satisfies('1.0.0', req), true);
-      assert.strictEqual(VersionParser.satisfies('1.0.1', req), true);
-      assert.strictEqual(VersionParser.satisfies('2.0.0', req), true);
-      assert.strictEqual(VersionParser.satisfies('0.9.9', req), false);
-    });
-    
-    test('should check > constraint', () => {
-      const req: VersionRequirement = { operator: '>', version: '1.0.0' };
-      assert.strictEqual(VersionParser.satisfies('1.0.0', req), false);
-      assert.strictEqual(VersionParser.satisfies('1.0.1', req), true);
-      assert.strictEqual(VersionParser.satisfies('2.0.0', req), true);
-      assert.strictEqual(VersionParser.satisfies('0.9.9', req), false);
-    });
-    
-    test('should check < constraint', () => {
-      const req: VersionRequirement = { operator: '<', version: '2.0.0' };
-      assert.strictEqual(VersionParser.satisfies('1.9.9', req), true);
-      assert.strictEqual(VersionParser.satisfies('2.0.0', req), false);
-      assert.strictEqual(VersionParser.satisfies('2.0.1', req), false);
-    });
-    
-    test('should check = constraint', () => {
-      const req: VersionRequirement = { operator: '=', version: '1.2.3' };
-      assert.strictEqual(VersionParser.satisfies('1.2.3', req), true);
-      assert.strictEqual(VersionParser.satisfies('1.2.2', req), false);
-      assert.strictEqual(VersionParser.satisfies('1.2.4', req), false);
-    });
-    
-    test('should handle pre-release versions correctly', () => {
-      const req: VersionRequirement = { operator: '>=', version: '1.0.0' };
-      assert.strictEqual(VersionParser.satisfies('1.0.0-beta', req), false);
-      assert.strictEqual(VersionParser.satisfies('1.0.0', req), true);
+  describe('satisfies()', () => {
+    const satisfiesTestCases: SatisfiesTestCase[] = [
+      // >= constraint tests
+      { version: '1.0.0', requirement: { operator: '>=', version: '1.0.0' }, expected: true },
+      { version: '1.0.1', requirement: { operator: '>=', version: '1.0.0' }, expected: true },
+      { version: '2.0.0', requirement: { operator: '>=', version: '1.0.0' }, expected: true },
+      { version: '0.9.9', requirement: { operator: '>=', version: '1.0.0' }, expected: false },
+      // > constraint tests
+      { version: '1.0.0', requirement: { operator: '>', version: '1.0.0' }, expected: false },
+      { version: '1.0.1', requirement: { operator: '>', version: '1.0.0' }, expected: true },
+      { version: '2.0.0', requirement: { operator: '>', version: '1.0.0' }, expected: true },
+      { version: '0.9.9', requirement: { operator: '>', version: '1.0.0' }, expected: false },
+      // < constraint tests
+      { version: '1.9.9', requirement: { operator: '<', version: '2.0.0' }, expected: true },
+      { version: '2.0.0', requirement: { operator: '<', version: '2.0.0' }, expected: false },
+      { version: '2.0.1', requirement: { operator: '<', version: '2.0.0' }, expected: false },
+      // = constraint tests
+      { version: '1.2.3', requirement: { operator: '=', version: '1.2.3' }, expected: true },
+      { version: '1.2.2', requirement: { operator: '=', version: '1.2.3' }, expected: false },
+      { version: '1.2.4', requirement: { operator: '=', version: '1.2.3' }, expected: false },
+      // pre-release tests
+      { version: '1.0.0-beta', requirement: { operator: '>=', version: '1.0.0' }, expected: false },
+      { version: '1.0.0', requirement: { operator: '>=', version: '1.0.0' }, expected: true }
+    ];
+
+    satisfiesTestCases.forEach(({ version, requirement, expected }) => {
+      test(`should check '${version}' ${requirement.operator} '${requirement.version}' = ${expected}`, () => {
+        expect(VersionParser.satisfies(version, requirement)).toBe(expected);
+      });
     });
   });
   
-  suite('intersect()', () => {
+  describe('intersect()', () => {
     test('should find intersection of overlapping ranges', () => {
       const requirements: VersionRequirement[] = [
         { operator: '>=', version: '4.0.0' },
@@ -125,11 +125,11 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.ok(range);
-      assert.strictEqual(range.min?.version, '8.0.0');
-      assert.strictEqual(range.min?.inclusive, true);
-      assert.strictEqual(range.max?.version, '9.0.0');
-      assert.strictEqual(range.max?.inclusive, false);
+      expect(range).toBeTruthy();
+      expect(range!.min?.version).toBe('8.0.0');
+      expect(range!.min?.inclusive).toBe(true);
+      expect(range!.max?.version).toBe('9.0.0');
+      expect(range!.max?.inclusive).toBe(false);
     });
     
     test('should return null for non-overlapping ranges', () => {
@@ -140,7 +140,7 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.strictEqual(range, null);
+      expect(range).toBeNull();
     });
     
     test('should handle exact version constraints', () => {
@@ -151,11 +151,11 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.ok(range);
-      assert.strictEqual(range.min?.version, '1.2.3');
-      assert.strictEqual(range.min?.inclusive, true);
-      assert.strictEqual(range.max?.version, '1.2.3');
-      assert.strictEqual(range.max?.inclusive, true);
+      expect(range).toBeTruthy();
+      expect(range!.min?.version).toBe('1.2.3');
+      expect(range!.min?.inclusive).toBe(true);
+      expect(range!.max?.version).toBe('1.2.3');
+      expect(range!.max?.inclusive).toBe(true);
     });
     
     test('should handle multiple >= constraints', () => {
@@ -166,10 +166,10 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.ok(range);
-      assert.strictEqual(range.min?.version, '1.5.0');
-      assert.strictEqual(range.min?.inclusive, true);
-      assert.strictEqual(range.max, undefined);
+      expect(range).toBeTruthy();
+      expect(range!.min?.version).toBe('1.5.0');
+      expect(range!.min?.inclusive).toBe(true);
+      expect(range!.max).toBeUndefined();
     });
 
     // Test cases for the exact version intersection bug fix
@@ -181,7 +181,7 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.strictEqual(range, null, 'Should return null when exact version violates upper bound');
+      expect(range).toBeNull(); // Should return null when exact version violates upper bound
     });
     
     test('should reject exact version that violates lower bound', () => {
@@ -192,7 +192,7 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.strictEqual(range, null, 'Should return null when exact version violates lower bound');
+      expect(range).toBeNull(); // Should return null when exact version violates lower bound
     });
     
     test('should accept exact version within bounds', () => {
@@ -203,11 +203,11 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.ok(range, 'Should return valid range when exact version is within bounds');
-      assert.strictEqual(range.min?.version, '5.0.0');
-      assert.strictEqual(range.max?.version, '5.0.0');
-      assert.strictEqual(range.min?.inclusive, true);
-      assert.strictEqual(range.max?.inclusive, true);
+      expect(range).toBeTruthy(); // Should return valid range when exact version is within bounds
+      expect(range!.min?.version).toBe('5.0.0');
+      expect(range!.max?.version).toBe('5.0.0');
+      expect(range!.min?.inclusive).toBe(true);
+      expect(range!.max?.inclusive).toBe(true);
     });
     
     test('should accept exact version at inclusive lower boundary', () => {
@@ -218,9 +218,9 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.ok(range, 'Should accept exact version at inclusive lower boundary');
-      assert.strictEqual(range.min?.version, '4.13.1');
-      assert.strictEqual(range.max?.version, '4.13.1');
+      expect(range).toBeTruthy(); // Should accept exact version at inclusive lower boundary
+      expect(range!.min?.version).toBe('4.13.1');
+      expect(range!.max?.version).toBe('4.13.1');
     });
     
     test('should reject exact version at exclusive upper boundary', () => {
@@ -231,7 +231,7 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.strictEqual(range, null, 'Should reject exact version at exclusive upper boundary');
+      expect(range).toBeNull(); // Should reject exact version at exclusive upper boundary
     });
     
     test('should reject exact version at exclusive lower boundary', () => {
@@ -242,11 +242,11 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const range = VersionParser.intersect(requirements);
-      assert.strictEqual(range, null, 'Should reject exact version at exclusive lower boundary');
+      expect(range).toBeNull(); // Should reject exact version at exclusive lower boundary
     });
   });
   
-  suite('findSatisfyingVersions()', () => {
+  describe('findSatisfyingVersions()', () => {
     test('should find versions satisfying all requirements', () => {
       const availableVersions = ['4.0.0', '5.0.0', '6.0.0', '7.0.0', '8.0.0', '8.5.0', '9.0.0', '10.0.0'];
       const requirements: VersionRequirement[] = [
@@ -256,7 +256,7 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const satisfying = VersionParser.findSatisfyingVersions(availableVersions, requirements);
-      assert.deepStrictEqual(satisfying, ['8.0.0', '8.5.0']);
+      expect(satisfying).toEqual(['8.0.0', '8.5.0']);
     });
     
     test('should return empty array when no versions satisfy', () => {
@@ -267,41 +267,49 @@ suite('VersionParser Test Suite', () => {
       ];
       
       const satisfying = VersionParser.findSatisfyingVersions(availableVersions, requirements);
-      assert.deepStrictEqual(satisfying, []);
+      expect(satisfying).toEqual([]);
     });
   });
   
-  suite('compareVersions()', () => {
-    test('should compare major versions', () => {
-      assert.ok(VersionParser['compareVersions']('2.0.0', '1.0.0') > 0);
-      assert.ok(VersionParser['compareVersions']('1.0.0', '2.0.0') < 0);
-      assert.strictEqual(VersionParser['compareVersions']('1.0.0', '1.0.0'), 0);
-    });
-    
-    test('should compare minor versions', () => {
-      assert.ok(VersionParser['compareVersions']('1.2.0', '1.1.0') > 0);
-      assert.ok(VersionParser['compareVersions']('1.1.0', '1.2.0') < 0);
-    });
-    
-    test('should compare patch versions', () => {
-      assert.ok(VersionParser['compareVersions']('1.0.2', '1.0.1') > 0);
-      assert.ok(VersionParser['compareVersions']('1.0.1', '1.0.2') < 0);
-    });
-    
-    test('should handle pre-release versions', () => {
-      assert.ok(VersionParser['compareVersions']('1.0.0', '1.0.0-beta') > 0);
-      assert.ok(VersionParser['compareVersions']('1.0.0-beta', '1.0.0') < 0);
-      assert.ok(VersionParser['compareVersions']('1.0.0-beta2', '1.0.0-beta1') > 0);
+  describe('compareVersions()', () => {
+    const compareTestCases: CompareTestCase[] = [
+      // Major version comparisons
+      { v1: '2.0.0', v2: '1.0.0', expectedSign: 1 },
+      { v1: '1.0.0', v2: '2.0.0', expectedSign: -1 },
+      { v1: '1.0.0', v2: '1.0.0', expectedSign: 0 },
+      // Minor version comparisons
+      { v1: '1.2.0', v2: '1.1.0', expectedSign: 1 },
+      { v1: '1.1.0', v2: '1.2.0', expectedSign: -1 },
+      // Patch version comparisons
+      { v1: '1.0.2', v2: '1.0.1', expectedSign: 1 },
+      { v1: '1.0.1', v2: '1.0.2', expectedSign: -1 },
+      // Pre-release comparisons
+      { v1: '1.0.0', v2: '1.0.0-beta', expectedSign: 1 },
+      { v1: '1.0.0-beta', v2: '1.0.0', expectedSign: -1 },
+      { v1: '1.0.0-beta2', v2: '1.0.0-beta1', expectedSign: 1 }
+    ];
+
+    compareTestCases.forEach(({ v1, v2, expectedSign }) => {
+      test(`should compare '${v1}' ${expectedSign > 0 ? '>' : expectedSign < 0 ? '<' : '='} '${v2}'`, () => {
+        const result = VersionParser['compareVersions'](v1, v2);
+        if (expectedSign > 0) {
+          expect(result).toBeGreaterThan(0);
+        } else if (expectedSign < 0) {
+          expect(result).toBeLessThan(0);
+        } else {
+          expect(result).toBe(0);
+        }
+      });
     });
   });
   
-  suite('formatRange()', () => {
+  describe('formatRange()', () => {
     test('should format simple range', () => {
       const range = {
         min: { version: '1.0.0', inclusive: true },
         max: { version: '2.0.0', inclusive: false }
       };
-      assert.strictEqual(VersionParser.formatRange(range), '>= 1.0.0 < 2.0.0');
+      expect(VersionParser.formatRange(range)).toBe('>= 1.0.0 < 2.0.0');
     });
     
     test('should format exact version', () => {
@@ -309,14 +317,14 @@ suite('VersionParser Test Suite', () => {
         min: { version: '1.2.3', inclusive: true },
         max: { version: '1.2.3', inclusive: true }
       };
-      assert.strictEqual(VersionParser.formatRange(range), '= 1.2.3');
+      expect(VersionParser.formatRange(range)).toBe('= 1.2.3');
     });
     
     test('should format open-ended range', () => {
       const range = {
         min: { version: '1.0.0', inclusive: true }
       };
-      assert.strictEqual(VersionParser.formatRange(range), '>= 1.0.0');
+      expect(VersionParser.formatRange(range)).toBe('>= 1.0.0');
     });
   });
 });
