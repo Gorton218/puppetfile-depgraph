@@ -39,11 +39,9 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
 
-    - name: Run tests with coverage
+    - name: Run all tests with coverage
       run: |
-        npm run test:coverage
-        ls -l
-        ls -l coverage
+        npm run test:all
 
     - name: SonarQube Scan
       uses: SonarSource/sonarqube-scan-action@v5
