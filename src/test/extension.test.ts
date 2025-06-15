@@ -59,8 +59,9 @@ describe('Extension', () => {
         jest.clearAllMocks();
         registeredCommands = new Map();
 
-        // Mock console
+        // Mock console - suppress all console output during tests
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+        jest.spyOn(console, 'error').mockImplementation();
 
         // Mock VS Code extension context
         mockContext = {
@@ -443,7 +444,7 @@ describe('Extension', () => {
             // Arrange
             activate(mockContext);
             const command = registeredCommands.get('puppetfile-depgraph.updateModuleVersion');
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
             // Act
             await command!('invalid');
@@ -456,11 +457,11 @@ describe('Extension', () => {
 
         test('should handle update errors', async () => {
             // Arrange
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
             activate(mockContext);
             const command = registeredCommands.get('puppetfile-depgraph.updateModuleVersion');
             const error = new Error('Update failed');
             (PuppetfileUpdateService.updateModuleVersionAtLine as jest.Mock).mockRejectedValue(error);
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
             // Act
             await command!({ line: 5, version: '1.2.3' });
