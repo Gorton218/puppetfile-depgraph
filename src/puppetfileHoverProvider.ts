@@ -27,7 +27,6 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
 
         const line = document.lineAt(position).text;
-        const lineNumber = position.line + 1;
 
         // Try to parse the module from this line (including multi-line modules)
         const module = this.parseModuleFromPosition(document, position);
