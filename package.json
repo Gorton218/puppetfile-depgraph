@@ -67,6 +67,21 @@
         "command": "puppetfile-depgraph.showAbout",
         "title": "About Puppetfile Dependency Manager",
         "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.applyAllUpgrades",
+        "title": "Apply all safe upgrades",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.applySelectedUpgrades",
+        "title": "Apply selected upgrades",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.applySingleUpgrade",
+        "title": "Apply single module upgrade",
+        "category": "Puppetfile"
       }
     ],
     "menus": {

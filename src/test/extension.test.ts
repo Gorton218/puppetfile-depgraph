@@ -17,7 +17,8 @@ jest.mock('vscode', () => ({
         registerCommand: jest.fn()
     },
     languages: {
-        registerHoverProvider: jest.fn()
+        registerHoverProvider: jest.fn(),
+        registerCodeLensProvider: jest.fn()
     },
     window: {
         showErrorMessage: jest.fn(),
@@ -33,7 +34,11 @@ jest.mock('vscode', () => ({
     },
     ProgressLocation: {
         Notification: 'notification'
-    }
+    },
+    EventEmitter: jest.fn().mockImplementation(() => ({
+        fire: jest.fn(),
+        event: jest.fn()
+    }))
 }));
 
 jest.mock('../puppetfileParser');
@@ -45,6 +50,7 @@ jest.mock('../gitMetadataService');
 jest.mock('../cacheService');
 jest.mock('../services/upgradePlannerService');
 jest.mock('../services/upgradeDiffProvider');
+jest.mock('../puppetfileCodeLensProvider');
 
 const mockedVSCode = vscode as jest.Mocked<typeof vscode>;
 
@@ -92,6 +98,7 @@ describe('Extension', () => {
         });
 
         (mockedVSCode.languages.registerHoverProvider as jest.Mock).mockReturnValue({ dispose: jest.fn() } as any);
+        (mockedVSCode.languages.registerCodeLensProvider as jest.Mock).mockReturnValue({ dispose: jest.fn() } as any);
         (mockedVSCode.window as any).activeTextEditor = mockActiveEditor;
         (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
             const progress = { report: jest.fn() };
@@ -128,7 +135,7 @@ describe('Extension', () => {
             activate(mockContext);
 
             // Assert
-            expect(mockedVSCode.commands.registerCommand as jest.Mock).toHaveBeenCalledTimes(9);
+            expect(mockedVSCode.commands.registerCommand as jest.Mock).toHaveBeenCalledTimes(12);
             expect(registeredCommands.has('puppetfile-depgraph.updateAllToSafe')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.updateAllToLatest')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showDependencyTree')).toBe(true);
@@ -138,6 +145,9 @@ describe('Extension', () => {
             expect(registeredCommands.has('puppetfile-depgraph.cacheAllModules')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showUpgradePlanner')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showAbout')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applyAllUpgrades')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applySelectedUpgrades')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applySingleUpgrade')).toBe(true);
         });
 
         test('should register hover provider', () => {
@@ -156,7 +166,7 @@ describe('Extension', () => {
             activate(mockContext);
 
             // Assert
-            expect(mockContext.subscriptions.length).toBe(10); // 9 commands + 1 hover provider
+            expect(mockContext.subscriptions.length).toBe(14); // 12 commands + 1 hover provider + 1 codelens provider
         });
     });
 

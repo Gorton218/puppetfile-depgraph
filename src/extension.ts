@@ -10,6 +10,7 @@ import { GitMetadataService } from './gitMetadataService';
 import { CacheService } from './cacheService';
 import { UpgradePlannerService } from './services/upgradePlannerService';
 import { UpgradeDiffProvider } from './services/upgradeDiffProvider';
+import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -476,8 +477,20 @@ Built with ❤️ for the Puppet community`;
                 await vscode.window.showTextDocument(doc);
         });
 
+        const applyAllUpgrades = vscode.commands.registerCommand('puppetfile-depgraph.applyAllUpgrades', async () => {
+                await UpgradeDiffProvider.applyAllUpgrades();
+        });
+
+        const applySelectedUpgrades = vscode.commands.registerCommand('puppetfile-depgraph.applySelectedUpgrades', async () => {
+                await UpgradeDiffProvider.applySelectedUpgrades();
+        });
+
+        const applySingleUpgrade = vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async (args) => {
+                await PuppetfileCodeLensProvider.applySingleUpgrade(args);
+        });
+
         // Add all commands to subscriptions
-        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, clearCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout);
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, clearCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout, applyAllUpgrades, applySelectedUpgrades, applySingleUpgrade);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
@@ -485,6 +498,15 @@ Built with ❤️ for the Puppet community`;
 		new PuppetfileHoverProvider()
 	);
 	context.subscriptions.push(hoverProvider);
+
+	// Register CodeLens provider for Puppetfile inline upgrade actions
+	const codeLensProvider = new PuppetfileCodeLensProvider();
+	PuppetfileCodeLensProvider.setInstance(codeLensProvider);
+	const codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
+		{ pattern: '**/Puppetfile' },
+		codeLensProvider
+	);
+	context.subscriptions.push(codeLensProviderDisposable);
 }
 
 // This method is called when your extension is deactivated

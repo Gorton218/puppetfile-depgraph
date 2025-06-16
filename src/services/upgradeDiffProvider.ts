@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import { UpgradePlan, UpgradePlannerService } from './upgradePlannerService';
+import { PuppetfileUpdateService, UpdateResult } from '../puppetfileUpdateService';
+import { PuppetfileParser } from '../puppetfileParser';
+import { PuppetfileCodeLensProvider } from '../puppetfileCodeLensProvider';
 
 export interface DiffOptions {
     showUpgradeableLonly?: boolean;
@@ -43,6 +46,9 @@ export class UpgradeDiffProvider {
                 { preview: true }
             );
             
+            // Show action buttons for applying changes
+            await this.showUpgradeActions(upgradePlan, options);
+            
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
                 disposable.dispose();
@@ -50,6 +56,16 @@ export class UpgradeDiffProvider {
             
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to show upgrade diff: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+        
+        // Refresh CodeLenses to show inline upgrade buttons
+        try {
+            const codeLensProvider = PuppetfileCodeLensProvider.getInstance();
+            if (codeLensProvider) {
+                codeLensProvider.refresh();
+            }
+        } catch (error) {
+            // CodeLens provider not available, continue without it
         }
     }
     
@@ -231,6 +247,194 @@ export class UpgradeDiffProvider {
             language: 'markdown'
         });
         await vscode.window.showTextDocument(doc);
+    }
+    
+    /**
+     * Show action buttons for applying upgrades
+     * @param upgradePlan The upgrade plan
+     * @param options The diff options used
+     */
+    private static async showUpgradeActions(
+        upgradePlan: UpgradePlan,
+        options: DiffOptions
+    ): Promise<void> {
+        const upgradeableCount = upgradePlan.totalUpgradeable;
+        if (upgradeableCount === 0) {
+            return;
+        }
+        
+        // Store the upgrade plan for the commands to use
+        (global as any).__currentUpgradePlan = upgradePlan;
+        (global as any).__currentUpgradeOptions = options;
+        
+        // Show notification with action buttons
+        const message = `Found ${upgradeableCount} module${upgradeableCount > 1 ? 's' : ''} with safe upgrades available`;
+        const result = await vscode.window.showInformationMessage(
+            message,
+            'Apply All',
+            'Select Modules...',
+            'Dismiss'
+        );
+        
+        if (result === 'Apply All') {
+            await vscode.commands.executeCommand('puppetfile-depgraph.applyAllUpgrades');
+        } else if (result === 'Select Modules...') {
+            await vscode.commands.executeCommand('puppetfile-depgraph.applySelectedUpgrades');
+        }
+    }
+    
+    /**
+     * Apply all upgrades from the current upgrade plan
+     */
+    public static async applyAllUpgrades(): Promise<void> {
+        const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+        if (!upgradePlan) {
+            vscode.window.showErrorMessage('No upgrade plan available. Please run the upgrade planner first.');
+            return;
+        }
+        
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.languageId !== 'puppetfile') {
+            vscode.window.showErrorMessage('Please open a Puppetfile to apply upgrades.');
+            return;
+        }
+        
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Applying upgrades',
+            cancellable: false
+        }, async (progress) => {
+            try {
+                // Get upgradeable candidates
+                const upgradeableCandidates = upgradePlan.candidates.filter(c => c.isUpgradeable && c.maxSafeVersion);
+                
+                if (upgradeableCandidates.length === 0) {
+                    vscode.window.showInformationMessage('No upgrades to apply.');
+                    return;
+                }
+                
+                progress.report({ increment: 0, message: `Preparing ${upgradeableCandidates.length} upgrades...` });
+                
+                // Convert to update results format
+                const updates: UpdateResult[] = upgradeableCandidates.map(candidate => ({
+                    moduleName: candidate.module.name,
+                    currentVersion: candidate.currentVersion,
+                    newVersion: candidate.maxSafeVersion!,
+                    success: true,
+                    line: candidate.module.line
+                }));
+                
+                progress.report({ increment: 50, message: 'Applying changes to Puppetfile...' });
+                
+                // Apply the updates
+                await PuppetfileUpdateService.applyUpdates(editor, updates);
+                
+                progress.report({ increment: 100, message: 'Complete!' });
+                
+                // Generate summary
+                const summary = updates.map(u => 
+                    `• ${u.moduleName}: ${u.currentVersion || 'unversioned'} → ${u.newVersion}`
+                ).join('\n');
+                
+                vscode.window.showInformationMessage(
+                    `Successfully applied ${updates.length} module upgrade${updates.length > 1 ? 's' : ''}:\n${summary}`,
+                    { modal: true }
+                );
+                
+            } catch (error) {
+                vscode.window.showErrorMessage(
+                    `Failed to apply upgrades: ${error instanceof Error ? error.message : 'Unknown error'}`
+                );
+            }
+        });
+    }
+    
+    /**
+     * Apply selected upgrades from the current upgrade plan
+     */
+    public static async applySelectedUpgrades(): Promise<void> {
+        const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+        if (!upgradePlan) {
+            vscode.window.showErrorMessage('No upgrade plan available. Please run the upgrade planner first.');
+            return;
+        }
+        
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.languageId !== 'puppetfile') {
+            vscode.window.showErrorMessage('Please open a Puppetfile to apply upgrades.');
+            return;
+        }
+        
+        try {
+            // Get upgradeable candidates
+            const upgradeableCandidates = upgradePlan.candidates.filter(c => c.isUpgradeable && c.maxSafeVersion);
+            
+            if (upgradeableCandidates.length === 0) {
+                vscode.window.showInformationMessage('No upgrades available to apply.');
+                return;
+            }
+            
+            // Create quick pick items
+            const items = upgradeableCandidates.map(candidate => ({
+                label: `$(package) ${candidate.module.name}`,
+                description: `${candidate.currentVersion || 'unversioned'} → ${candidate.maxSafeVersion}`,
+                detail: candidate.availableVersions[0] !== candidate.maxSafeVersion 
+                    ? `Latest: ${candidate.availableVersions[0]} (using safe version)`
+                    : undefined,
+                candidate: candidate,
+                picked: true // Default to selected
+            }));
+            
+            // Show multi-select quick pick
+            const selected = await vscode.window.showQuickPick(items, {
+                canPickMany: true,
+                title: 'Select Modules to Upgrade',
+                placeHolder: 'Choose which modules to upgrade (Space to toggle, Enter to confirm)'
+            });
+            
+            if (!selected || selected.length === 0) {
+                return;
+            }
+            
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: 'Applying selected upgrades',
+                cancellable: false
+            }, async (progress) => {
+                progress.report({ increment: 0, message: `Preparing ${selected.length} upgrades...` });
+                
+                // Convert to update results format
+                const updates: UpdateResult[] = selected.map(item => ({
+                    moduleName: item.candidate.module.name,
+                    currentVersion: item.candidate.currentVersion,
+                    newVersion: item.candidate.maxSafeVersion!,
+                    success: true,
+                    line: item.candidate.module.line
+                }));
+                
+                progress.report({ increment: 50, message: 'Applying changes to Puppetfile...' });
+                
+                // Apply the updates
+                await PuppetfileUpdateService.applyUpdates(editor, updates);
+                
+                progress.report({ increment: 100, message: 'Complete!' });
+                
+                // Generate summary
+                const summary = updates.map(u => 
+                    `• ${u.moduleName}: ${u.currentVersion || 'unversioned'} → ${u.newVersion}`
+                ).join('\n');
+                
+                vscode.window.showInformationMessage(
+                    `Successfully applied ${updates.length} module upgrade${updates.length > 1 ? 's' : ''}:\n${summary}`,
+                    { modal: true }
+                );
+            });
+            
+        } catch (error) {
+            vscode.window.showErrorMessage(
+                `Failed to apply upgrades: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        }
     }
 }
 

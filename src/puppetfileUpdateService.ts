@@ -141,7 +141,7 @@ export class PuppetfileUpdateService {
      * @param editor The active text editor
      * @param updates Array of update results to apply
      */
-    private static async applyUpdates(editor: vscode.TextEditor, updates: UpdateResult[]): Promise<void> {
+    public static async applyUpdates(editor: vscode.TextEditor, updates: UpdateResult[]): Promise<void> {
         if (updates.length === 0) {
             return;
         }
