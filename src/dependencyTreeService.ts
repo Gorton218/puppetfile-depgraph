@@ -38,13 +38,13 @@ export class DependencyTreeService {
     /**
      * Build a dependency tree from parsed Puppetfile modules
      * @param modules Array of PuppetModule objects from parser
-     * @param progressCallback Optional callback for progress updates
+     * @param progressCallback Optional callback for progress updates with phase info
      * @param cancellationToken Optional VS Code cancellation token
      * @returns Promise with the root dependency tree
      */
     public static async buildDependencyTree(
         modules: PuppetModule[], 
-        progressCallback?: (message: string, increment?: number) => void,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
         cancellationToken?: { isCancellationRequested: boolean }
     ): Promise<DependencyNode[]> {
         this.visitedModules.clear();
@@ -54,7 +54,7 @@ export class DependencyTreeService {
         const rootNodes: DependencyNode[] = [];
 
         // Store direct dependencies for reference
-        progressCallback?.("Preparing dependency analysis...");
+        progressCallback?.("Preparing dependency analysis...", 'tree');
         for (const module of modules) {
             if (cancellationToken?.isCancellationRequested) {
                 return [];
@@ -71,14 +71,14 @@ export class DependencyTreeService {
             }
         }
 
-        // First pass: build the tree and collect requirements
-        progressCallback?.("Building dependency tree...");
+        // First pass: build the tree and collect requirements (Phase 2)
+        progressCallback?.("Building dependency tree...", 'tree');
         for (let i = 0; i < modules.length; i++) {
             if (cancellationToken?.isCancellationRequested) {
                 return [];
             }
             const module = modules[i];
-            progressCallback?.(`Processing ${module.name} (${i + 1}/${modules.length})...`);
+            progressCallback?.(`Processing ${module.name} (${i + 1}/${modules.length})...`, 'tree');
             const node = await this.buildNodeTree(module, 0, true, undefined, undefined, progressCallback, cancellationToken);
             if (node) {
                 rootNodes.push(node);
@@ -90,8 +90,9 @@ export class DependencyTreeService {
             return [];
         }
 
-        // Second pass: analyze conflicts
-        progressCallback?.("Analyzing dependency conflicts...");
+        // Second pass: analyze conflicts (Phase 3)
+        const conflictModuleCount = Object.keys(this.dependencyGraph).length;
+        progressCallback?.("Starting conflict analysis...", 'conflicts', 0, conflictModuleCount);
         await this.analyzeConflicts(progressCallback, cancellationToken);
 
         // Check for cancellation before final steps
@@ -100,7 +101,7 @@ export class DependencyTreeService {
         }
 
         // Third pass: annotate nodes with conflict information
-        progressCallback?.("Finalizing dependency tree...");
+        progressCallback?.("Finalizing dependency tree...", 'conflicts', conflictModuleCount, conflictModuleCount);
         this.annotateNodesWithConflicts(rootNodes);
 
         return rootNodes;
@@ -121,7 +122,7 @@ export class DependencyTreeService {
         isDirectDependency: boolean,
         imposedBy?: string,
         versionRequirement?: string,
-        progressCallback?: (message: string) => void,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
         cancellationToken?: { isCancellationRequested: boolean }
     ): Promise<DependencyNode | null> {
         // Check for cancellation at the start
@@ -194,7 +195,7 @@ export class DependencyTreeService {
         if (module.source === 'forge') {
             try {
                 if (depth > 0) {
-                    progressCallback?.(`  ↳ Fetching dependencies for ${module.name}...`);
+                    progressCallback?.(`  ↳ Fetching dependencies for ${module.name}...`, 'tree');
                 }
                 const forgeModule = await PuppetForgeService.getModule(module.name);
                 let releaseToUse = forgeModule?.current_release;
@@ -255,7 +256,7 @@ export class DependencyTreeService {
             // Fetch dependencies for Git modules
             try {
                 if (depth > 0) {
-                    progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`);
+                    progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`, 'tree');
                 }
                 const ref = module.gitTag || module.gitRef;
                 const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
@@ -482,7 +483,7 @@ export class DependencyTreeService {
      * Analyze conflicts in the dependency graph
      */
     private static async analyzeConflicts(
-        progressCallback?: (message: string) => void,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
         cancellationToken?: { isCancellationRequested: boolean }
     ): Promise<void> {
         const modules = Object.entries(this.dependencyGraph);
@@ -499,7 +500,7 @@ export class DependencyTreeService {
                 continue;
             }
             
-            progressCallback?.(`Analyzing conflicts for ${moduleName} (${analyzed + 1}/${modules.length})...`);
+            progressCallback?.(`Analyzing conflicts for ${moduleName} (${analyzed + 1}/${modules.length})...`, 'conflicts', analyzed, modules.length);
 
             try {
                 // Get available versions from Forge - use original name format for API call

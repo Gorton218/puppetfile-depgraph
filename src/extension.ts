@@ -127,22 +127,41 @@ export function activate(context: vscode.ExtensionContext) {
 			cancellable: true
 		}, async (progress, token) => {
 			try {
-				progress.report({ increment: 0, message: "Parsing dependencies..." });
+				// Three-phase progress system:
+				// Phase 1 (0-30%): Direct module caching
+				// Phase 2 (30-70%): Transitive dependency resolution  
+				// Phase 3 (70-100%): Conflict analysis
+				
+				progress.report({ increment: 0, message: "Phase 1: Preparing direct modules..." });
 				
 				// Check for cancellation
 				if (token.isCancellationRequested) {
 					return;
 				}
 				
-				// Cache uncached forge modules first to improve performance
+				// Phase 1: Cache direct modules (0-30%)
 				const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
 				const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
 				
 				if (uncachedModules.length > 0) {
-					progress.report({ increment: 10, message: `Caching ${uncachedModules.length} uncached modules...` });
-					await CacheService.cacheUncachedModulesWithToken(forgeModules, token);
+					// Progressive caching with incremental updates from 0% to 30%
+					await CacheService.cacheUncachedModulesWithProgressiveUpdates(
+						forgeModules, 
+						token,
+						(completed: number, total: number) => {
+							if (!token.isCancellationRequested) {
+								const phaseProgress = Math.round((completed / total) * 30);
+								progress.report({ 
+									increment: phaseProgress, 
+									message: `Phase 1: Cached ${completed}/${total} direct modules...` 
+								});
+							}
+						}
+					);
 				} else if (forgeModules.length > 0) {
-					progress.report({ increment: 10, message: "All modules already cached, proceeding..." });
+					progress.report({ increment: 30, message: "Phase 1: All direct modules already cached" });
+				} else {
+					progress.report({ increment: 30, message: "Phase 1: No forge modules to cache" });
 				}
 				
 				// Check for cancellation after caching
@@ -150,13 +169,24 @@ export function activate(context: vscode.ExtensionContext) {
 					return;
 				}
 				
-				progress.report({ increment: 30, message: "Analyzing transitive dependencies..." });
+				// Phase 2: Transitive dependency resolution (30-70%)
+				progress.report({ increment: 30, message: "Phase 2: Resolving transitive dependencies..." });
 				
 				const dependencyTree = await DependencyTreeService.buildDependencyTree(
 					parseResult.modules,
-					(message: string) => {
+					(message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => {
 						if (!token.isCancellationRequested) {
-							progress.report({ message });
+							if (phase === 'conflicts' && moduleCount !== undefined && totalModules !== undefined) {
+								// Phase 3: Conflict analysis (70-100%)
+								const conflictProgress = 70 + Math.round((moduleCount / totalModules) * 30);
+								progress.report({ 
+									increment: conflictProgress, 
+									message: `Phase 3: ${message}` 
+								});
+							} else {
+								// Still in Phase 2: Keep at 70% until tree building is complete
+								progress.report({ increment: 70, message: `Phase 2: ${message}` });
+							}
 						}
 					},
 					token
@@ -167,7 +197,7 @@ export function activate(context: vscode.ExtensionContext) {
 					return;
 				}
 				
-				progress.report({ increment: 80, message: "Generating view..." });
+				progress.report({ increment: 100, message: "Generating view..." });
 				
 				let content = '';
 				if (viewOption.value === 'tree') {
