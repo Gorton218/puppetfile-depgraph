@@ -79,6 +79,15 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Added comprehensive error handling throughout hover provider chain
   - Improved name display showing both Puppetfile name and repository name when different
   - Added graceful fallbacks for all Git module processing stages
+- **Upgrade Planner Support for Unversioned Modules**: Fixed missing analysis for modules without versions
+  - Upgrade planner now includes Forge modules without version constraints (e.g., `mod 'puppetlabs-nginx'`)
+  - Shows version suggestions for unversioned modules similar to Librarian-puppet behavior
+  - Fixed extension filter that was excluding unversioned modules from upgrade analysis
+  - Properly generates version additions in diff view for unversioned modules
+- **Empty Diff Window**: Fixed upgrade planner showing blank comparison window
+  - Corrected URI parsing in content provider (checking authority instead of path)
+  - Diff view now properly displays current vs proposed Puppetfile content
+  - Fixed content provider to handle puppetfile-diff:// URI scheme correctly
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
