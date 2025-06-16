@@ -210,6 +210,33 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             });
         });
 
+        test('should not show safe upgrades option when no modules are upgradeable', async () => {
+            const originalContent = 'test content';
+            const upgradePlan: UpgradePlan = {
+                candidates: [],
+                totalUpgradeable: 0,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+
+            (mockVscode as any)._mockShowQuickPick.mockResolvedValue(undefined);
+
+            await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+
+            expect((mockVscode as any)._mockShowQuickPick).toHaveBeenCalledWith(
+                expect.not.arrayContaining([
+                    expect.objectContaining({
+                        label: expect.stringContaining('Show All Safe Upgrades')
+                    })
+                ]),
+                expect.objectContaining({
+                    title: 'Puppetfile Upgrade Planner'
+                })
+            );
+        });
+
         test('should handle "blocked" action selection', async () => {
             const originalContent = 'test content';
             const upgradePlan: UpgradePlan = {

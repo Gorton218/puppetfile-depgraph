@@ -121,18 +121,21 @@ export class UpgradeDiffProvider {
         const gitCount = upgradePlan.totalGitModules;
         
         // Show quick pick with options
-        const options = [
-            {
+        const options = [];
+        
+        if (upgradeableCount > 0) {
+            options.push({
                 label: `$(arrow-up) Show All Safe Upgrades (${upgradeableCount})`,
                 description: 'Show diff with all modules that can be safely upgraded',
                 action: 'all'
-            },
-            {
-                label: `$(info) Show Upgrade Summary`,
-                description: `View detailed analysis (${upgradePlan.totalModules} Forge${gitCount > 0 ? `, ${gitCount} Git` : ''})`,
-                action: 'summary'
-            }
-        ];
+            });
+        }
+        
+        options.push({
+            label: `$(info) Show Upgrade Summary`,
+            description: `View detailed analysis (${upgradePlan.totalModules} Forge${gitCount > 0 ? `, ${gitCount} Git` : ''})`,
+            action: 'summary'
+        });
         
         if (blockedCount > 0) {
             options.push({

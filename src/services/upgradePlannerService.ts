@@ -34,11 +34,12 @@ export class UpgradePlannerService {
      * @returns Promise with the upgrade plan
      */
     public static async createUpgradePlan(modules: PuppetModule[]): Promise<UpgradePlan> {
-        const forgeModules = modules.filter(m => m.source === 'forge' && m.version);
+        const forgeModules = modules.filter(m => m.source === 'forge');
         const gitModules = modules.filter(m => m.source === 'git');
         
-        // Cache uncached modules first with progress indicator
-        await CacheService.cacheUncachedModules(forgeModules);
+        // Cache uncached modules first with progress indicator (only versioned ones need caching)
+        const versionedForgeModules = forgeModules.filter(m => m.version);
+        await CacheService.cacheUncachedModules(versionedForgeModules);
         
         const candidates: UpgradeCandidate[] = [];
         let hasConflicts = false;
@@ -75,15 +76,8 @@ export class UpgradePlannerService {
         module: PuppetModule, 
         allModules: PuppetModule[]
     ): Promise<UpgradeCandidate> {
-        if (!module.version) {
-            return {
-                module,
-                currentVersion: 'unknown',
-                maxSafeVersion: 'unknown',
-                availableVersions: [],
-                isUpgradeable: false
-            };
-        }
+        // Handle unversioned modules by treating them as having no current version
+        const currentVersion = module.version || 'unversioned';
         
         try {
             // Get all available versions for this module
@@ -93,8 +87,8 @@ export class UpgradePlannerService {
             if (availableVersions.length === 0) {
                 return {
                     module,
-                    currentVersion: module.version,
-                    maxSafeVersion: module.version,
+                    currentVersion,
+                    maxSafeVersion: currentVersion,
                     availableVersions: [],
                     isUpgradeable: false
                 };
@@ -102,7 +96,10 @@ export class UpgradePlannerService {
             
             // Find the maximum safe version
             const maxSafeVersion = await this.findMaxSafeVersion(module, allModules, availableVersions);
-            const isUpgradeable = this.isVersionNewer(maxSafeVersion, module.version);
+            
+            // For unversioned modules, any compatible version is an upgrade
+            const isUpgradeable = !module.version ? true : this.isVersionNewer(maxSafeVersion, module.version);
+            
             
             // If not upgradeable, check what's blocking it
             let blockedBy: string[] | undefined;
@@ -110,7 +107,7 @@ export class UpgradePlannerService {
             
             if (!isUpgradeable) {
                 const latestVersion = availableVersions[0]; // Assuming sorted desc
-                if (this.isVersionNewer(latestVersion, module.version)) {
+                if (module.version && this.isVersionNewer(latestVersion, module.version)) {
                     // There are newer versions, but they're not compatible
                     const compatibility = await VersionCompatibilityService.checkVersionCompatibility(
                         module, latestVersion, allModules
@@ -124,7 +121,7 @@ export class UpgradePlannerService {
             
             return {
                 module,
-                currentVersion: module.version,
+                currentVersion,
                 maxSafeVersion,
                 availableVersions,
                 isUpgradeable,
@@ -136,8 +133,8 @@ export class UpgradePlannerService {
             console.warn(`Failed to analyze upgrade for ${module.name}:`, error);
             return {
                 module,
-                currentVersion: module.version,
-                maxSafeVersion: module.version,
+                currentVersion,
+                maxSafeVersion: currentVersion,
                 availableVersions: [],
                 isUpgradeable: false
             };
@@ -156,17 +153,14 @@ export class UpgradePlannerService {
         allModules: PuppetModule[],
         availableVersions: string[]
     ): Promise<string> {
-        if (!module.version) {
-            return availableVersions[0] || 'unknown';
-        }
-        
         // Sort versions in descending order to check from newest to oldest
         const sortedVersions = this.sortVersionsDescending(availableVersions);
         
         // Test each version starting from the newest
         for (const version of sortedVersions) {
-            // Skip if this version is older than or equal to current
-            if (!this.isVersionNewer(version, module.version)) {
+            // For unversioned modules, test all versions starting from newest
+            // For versioned modules, skip if this version is older than or equal to current
+            if (module.version && !this.isVersionNewer(version, module.version)) {
                 continue;
             }
             
@@ -180,8 +174,8 @@ export class UpgradePlannerService {
             }
         }
         
-        // No safe upgrade found, return current version
-        return module.version;
+        // No safe upgrade found, return current version or 'unversioned' for unversioned modules
+        return module.version || 'unversioned';
     }
     
     /**
@@ -334,10 +328,24 @@ export class UpgradePlannerService {
             const lineIndex = candidate.module.line - 1; // Convert to 0-based index
             if (lineIndex >= 0 && lineIndex < lines.length) {
                 const originalLine = lines[lineIndex];
-                const updatedLine = originalLine.replace(
-                    candidate.currentVersion,
-                    candidate.maxSafeVersion
-                );
+                let updatedLine: string;
+                
+                if (candidate.currentVersion === 'unversioned') {
+                    // For unversioned modules, add the version after the module name
+                    updatedLine = originalLine.replace(
+                        `mod '${candidate.module.name}'`,
+                        `mod '${candidate.module.name}', '${candidate.maxSafeVersion}'`
+                    ).replace(
+                        `mod "${candidate.module.name}"`,
+                        `mod "${candidate.module.name}", "${candidate.maxSafeVersion}"`
+                    );
+                } else {
+                    // For versioned modules, replace the version
+                    updatedLine = originalLine.replace(
+                        candidate.currentVersion,
+                        candidate.maxSafeVersion
+                    );
+                }
                 lines[lineIndex] = updatedLine;
             }
         }

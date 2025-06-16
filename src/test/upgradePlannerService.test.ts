@@ -204,10 +204,41 @@ describe('UpgradePlannerService', () => {
                 { name: 'puppetlabs/stdlib', source: 'forge', line: 1 } // No version
             ];
 
+            // Mock Forge service to return available versions
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                name: 'puppetlabs-stdlib',
+                slug: 'puppetlabs-stdlib',
+                owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+                downloads: 1000,
+                feedback_score: 5,
+                releases: [
+                    { 
+                        version: '9.0.0', 
+                        created_at: '2023-01-01',
+                        updated_at: '2023-01-01',
+                        downloads: 100,
+                        file_size: 1000,
+                        file_md5: 'abc123',
+                        file_uri: 'http://example.com',
+                        metadata: {} 
+                    }
+                ]
+            });
+
+            // Mock version compatibility to always return compatible
+            mockVersionCompatibilityService.checkVersionCompatibility.mockResolvedValue({
+                version: '9.0.0',
+                isCompatible: true,
+                conflicts: []
+            });
+
             const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
 
-            expect(upgradePlan.totalModules).toBe(0); // Filtered out
-            expect(upgradePlan.candidates).toHaveLength(0);
+            expect(upgradePlan.totalModules).toBe(1); // Now included in analysis
+            expect(upgradePlan.candidates).toHaveLength(1);
+            expect(upgradePlan.candidates[0].currentVersion).toBe('unversioned');
+            expect(upgradePlan.candidates[0].isUpgradeable).toBe(true); // Can be upgraded to a specific version
+            expect(upgradePlan.candidates[0].maxSafeVersion).toBe('9.0.0');
         });
 
         test('should skip git modules', async () => {
