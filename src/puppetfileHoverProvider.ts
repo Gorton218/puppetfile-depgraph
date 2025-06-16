@@ -144,21 +144,9 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
 
         // Check if we need to trigger caching for all modules
-        const needsCaching = await this.checkAndInitializeCache();
-        if (needsCaching) {
-            const markdown = new vscode.MarkdownString();
-            markdown.isTrusted = true;
-            markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
-            
-            if (CacheService.isCachingInProgress()) {
-                markdown.appendMarkdown(`*Module cache is currently being initialized. Check the progress notification.*\n\n`);
-                markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
-            } else {
-                markdown.appendMarkdown(`*Module cache is being initialized in the background.*\n\n`);
-                markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
-                markdown.appendMarkdown(`💡 **Tip:** You can also manually run **Cache All Modules** command to pre-cache module information.`);
-            }
-            return markdown;
+        const cachingInfo = await this.checkAndInitializeCache();
+        if (cachingInfo) {
+            return this.createCachingStatusMarkdown(module.name);
         }
 
         try {
@@ -168,95 +156,11 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 return this.getBasicModuleInfo(module);
             }
 
-            // Check for updates
             const updateInfo = await PuppetForgeService.checkForUpdate(module.name, module.version);
-
             const allReleases = await PuppetForgeService.getModuleReleases(module.name);
-
-            const markdown = new vscode.MarkdownString();
-            markdown.isTrusted = true;
-            markdown.supportThemeIcons = true;
-
-            // Module header
-            markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
-
-            // Current version info
-            if (module.version) {
-                markdown.appendMarkdown(`**Current Version:** \`${module.version}\`\n\n`);
-            } else {
-                markdown.appendMarkdown(`**Version:** Latest available\n\n`);
-            }
-
-            // Latest version info
-            if (updateInfo.latestVersion) {
-                if (updateInfo.hasUpdate) {
-                    markdown.appendMarkdown(`**Latest Version:** \`${updateInfo.latestVersion}\` ⬆️ **Update Available**\n\n`);
-                } else {
-                    markdown.appendMarkdown(`**Latest Version:** \`${updateInfo.latestVersion}\` ✅ **Up to date**\n\n`);
-                }
-            }
-
-            // Get all modules for compatibility checking
             const parseResult = PuppetfileParser.parseActiveEditor();
-            const allModules = parseResult.modules;
-            
-            // Log parse errors if any (only for debugging)
-            if (parseResult.errors.length > 0) {
-                console.debug('Puppetfile parse errors:', parseResult.errors);
-            }
 
-            // Show versions based on whether a version is currently specified
-            let versionsToShow: Array<{version: string}> = [];
-            let versionSectionTitle = '';
-            
-            if (module.version) {
-                // Show only newer versions if a version is specified
-                versionsToShow = allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0);
-                versionSectionTitle = '**Available Updates:**\n';
-            } else {
-                // No version specified, show all versions
-                versionsToShow = allReleases;
-                versionSectionTitle = '**Available Versions:**\n';
-            }
-            
-            if (versionsToShow.length > 0) {
-                markdown.appendMarkdown(versionSectionTitle);
-                await this.appendVersionsWithCompatibility(markdown, module, versionsToShow, allModules);
-            }
-
-            // Dependencies for current version specified in Puppetfile
-            let dependencies: Array<{name: string; version_requirement: string}> | undefined;
-            
-            if (module.version) {
-                // Get dependencies from the specific version
-                const release = allReleases.find(r => r.version === module.version);
-                if (release && release.metadata) {
-                    dependencies = release.metadata.dependencies;
-                }
-                
-                // Only fall back to current_release if the specific version wasn't found in releases
-                // Do NOT fall back if the version exists but has no dependencies
-                if (!release) {
-                    dependencies = forgeModule.current_release?.metadata?.dependencies;
-                }
-            } else {
-                // No version specified, use latest (current_release)
-                dependencies = forgeModule.current_release?.metadata?.dependencies;
-            }
-
-            if (dependencies && dependencies.length > 0) {
-                markdown.appendMarkdown(`**Dependencies:**\n`);
-                for (const dep of dependencies) {
-                    markdown.appendMarkdown(`- \`${dep.name}\` ${dep.version_requirement}\n`);
-                }
-                markdown.appendMarkdown('\n');
-            }
-
-            // Actions
-            const forgeUrl = this.getForgeModuleUrl(module, forgeModule, module.version);
-            markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
-
-            return markdown;
+            return this.buildForgeModuleMarkdown(module, forgeModule, updateInfo, allReleases, parseResult);
 
         } catch (error) {
             console.warn(`Error fetching module info for ${module.name}:`, error);
@@ -609,6 +513,175 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             markdown.appendMarkdown(versionLinks.join('  ') + '\n');
         }
         markdown.appendMarkdown('\n');
+    }
+    
+    /**
+     * Create markdown showing caching status
+     * @param moduleName The module name
+     * @returns Markdown string with caching status
+     */
+    private createCachingStatusMarkdown(moduleName: string): vscode.MarkdownString {
+        const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
+        markdown.appendMarkdown(`## 📦 ${moduleName}\n\n`);
+        
+        if (CacheService.isCachingInProgress()) {
+            markdown.appendMarkdown(`*Module cache is currently being initialized. Check the progress notification.*\n\n`);
+            markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
+        } else {
+            markdown.appendMarkdown(`*Module cache is being initialized in the background.*\n\n`);
+            markdown.appendMarkdown(`*Please wait for the caching to complete and then hover again to see version compatibility information.*\n\n`);
+            markdown.appendMarkdown(`💡 **Tip:** You can also manually run **Cache All Modules** command to pre-cache module information.`);
+        }
+        return markdown;
+    }
+    
+    /**
+     * Build comprehensive markdown for a Forge module
+     * @param module The Puppet module
+     * @param forgeModule The forge module data
+     * @param updateInfo Update information
+     * @param allReleases All available releases
+     * @param parseResult Parse result containing all modules
+     * @returns Formatted markdown string
+     */
+    private async buildForgeModuleMarkdown(
+        module: PuppetModule, 
+        forgeModule: ForgeModule, 
+        updateInfo: any, 
+        allReleases: Array<{version: string; metadata?: any}>,
+        parseResult: any
+    ): Promise<vscode.MarkdownString> {
+        const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
+        markdown.supportThemeIcons = true;
+
+        // Module header and version info
+        this.appendModuleHeader(markdown, module);
+        this.appendVersionInfo(markdown, module, updateInfo);
+
+        // Log parse errors if any (only for debugging)
+        if (parseResult.errors.length > 0) {
+            console.debug('Puppetfile parse errors:', parseResult.errors);
+        }
+
+        // Available versions section
+        const versionsData = this.getVersionsToShow(module, allReleases);
+        if (versionsData.versionsToShow.length > 0) {
+            markdown.appendMarkdown(versionsData.versionSectionTitle);
+            await this.appendVersionsWithCompatibility(markdown, module, versionsData.versionsToShow, parseResult.modules);
+        }
+
+        // Dependencies section
+        const dependencies = this.getDependenciesForModule(module, allReleases, forgeModule);
+        this.appendDependencies(markdown, dependencies);
+
+        // Actions
+        const forgeUrl = this.getForgeModuleUrl(module, forgeModule, module.version);
+        markdown.appendMarkdown(`[View on Puppet Forge](${forgeUrl})`);
+
+        return markdown;
+    }
+    
+    /**
+     * Append module header to markdown
+     * @param markdown The markdown string to append to
+     * @param module The module
+     */
+    private appendModuleHeader(markdown: vscode.MarkdownString, module: PuppetModule): void {
+        markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
+    }
+    
+    /**
+     * Append version information to markdown
+     * @param markdown The markdown string to append to
+     * @param module The module
+     * @param updateInfo Update information
+     */
+    private appendVersionInfo(markdown: vscode.MarkdownString, module: PuppetModule, updateInfo: any): void {
+        // Current version info
+        if (module.version) {
+            markdown.appendMarkdown(`**Current Version:** \`${module.version}\`\n\n`);
+        } else {
+            markdown.appendMarkdown(`**Version:** Latest available\n\n`);
+        }
+
+        // Latest version info
+        if (updateInfo.latestVersion) {
+            if (updateInfo.hasUpdate) {
+                markdown.appendMarkdown(`**Latest Version:** \`${updateInfo.latestVersion}\` ⬆️ **Update Available**\n\n`);
+            } else {
+                markdown.appendMarkdown(`**Latest Version:** \`${updateInfo.latestVersion}\` ✅ **Up to date**\n\n`);
+            }
+        }
+    }
+    
+    /**
+     * Get versions to show based on module's current version
+     * @param module The module
+     * @param allReleases All available releases
+     * @returns Object containing versions to show and section title
+     */
+    private getVersionsToShow(module: PuppetModule, allReleases: Array<{version: string}>): {versionsToShow: Array<{version: string}>, versionSectionTitle: string} {
+        if (module.version) {
+            // Show only newer versions if a version is specified
+            return {
+                versionsToShow: allReleases.filter(r => PuppetForgeService.compareVersions(r.version, module.version!) > 0),
+                versionSectionTitle: '**Available Updates:**\n'
+            };
+        } else {
+            // No version specified, show all versions
+            return {
+                versionsToShow: allReleases,
+                versionSectionTitle: '**Available Versions:**\n'
+            };
+        }
+    }
+    
+    /**
+     * Get dependencies for the module based on its version
+     * @param module The module
+     * @param allReleases All available releases
+     * @param forgeModule The forge module data
+     * @returns Dependencies array or undefined
+     */
+    private getDependenciesForModule(
+        module: PuppetModule, 
+        allReleases: Array<{version: string; metadata?: any}>, 
+        forgeModule: ForgeModule
+    ): Array<{name: string; version_requirement: string}> | undefined {
+        if (module.version) {
+            // Get dependencies from the specific version
+            const release = allReleases.find(r => r.version === module.version);
+            if (release && release.metadata) {
+                return release.metadata.dependencies;
+            }
+            
+            // Only fall back to current_release if the specific version wasn't found in releases
+            // Do NOT fall back if the version exists but has no dependencies
+            if (!release) {
+                return forgeModule.current_release?.metadata?.dependencies;
+            }
+        } else {
+            // No version specified, use latest (current_release)
+            return forgeModule.current_release?.metadata?.dependencies;
+        }
+        return undefined;
+    }
+    
+    /**
+     * Append dependencies to markdown
+     * @param markdown The markdown string to append to
+     * @param dependencies Dependencies array
+     */
+    private appendDependencies(markdown: vscode.MarkdownString, dependencies: Array<{name: string; version_requirement: string}> | undefined): void {
+        if (dependencies && dependencies.length > 0) {
+            markdown.appendMarkdown(`**Dependencies:**\n`);
+            for (const dep of dependencies) {
+                markdown.appendMarkdown(`- \`${dep.name}\` ${dep.version_requirement}\n`);
+            }
+            markdown.appendMarkdown('\n');
+        }
     }
 }
 
