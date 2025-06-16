@@ -563,13 +563,12 @@ describe('Extension', () => {
             );
         });
 
-        test('should handle no forge modules with versions', async () => {
+        test('should handle no forge modules', async () => {
             // Arrange
             activate(mockContext);
             const command = registeredCommands.get('puppetfile-depgraph.showUpgradePlanner');
             (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
                 modules: [
-                    { name: 'puppetlabs/stdlib', source: 'forge' }, // No version
                     { name: 'mymodule', source: 'git', url: 'https://github.com/example/mymodule' }
                 ],
                 errors: []
@@ -579,8 +578,52 @@ describe('Extension', () => {
             await command!();
 
             // Assert
-            expect(mockedVSCode.window.showInformationMessage as jest.Mock).toHaveBeenCalledWith('No Puppet Forge modules with versions found in Puppetfile');
+            expect(mockedVSCode.window.showInformationMessage as jest.Mock).toHaveBeenCalledWith('No Puppet Forge modules found in Puppetfile');
             expect(UpgradePlannerService.createUpgradePlan).not.toHaveBeenCalled();
+        });
+
+        test('should handle unversioned forge modules', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showUpgradePlanner');
+            const mockUpgradePlan = {
+                candidates: [
+                    {
+                        module: { name: 'puppetlabs/stdlib', source: 'forge' },
+                        currentVersion: 'unversioned',
+                        maxSafeVersion: '9.0.0',
+                        isUpgradeable: true
+                    }
+                ],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+
+            // Mock the document content for unversioned module
+            mockActiveEditor.document.getText = jest.fn().mockReturnValue('mod "puppetlabs/stdlib"');
+
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [
+                    { name: 'puppetlabs/stdlib', source: 'forge' } // No version
+                ],
+                errors: []
+            });
+            (UpgradePlannerService.createUpgradePlan as jest.Mock).mockResolvedValue(mockUpgradePlan);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(UpgradePlannerService.createUpgradePlan).toHaveBeenCalledWith([
+                { name: 'puppetlabs/stdlib', source: 'forge' }
+            ]);
+            expect(UpgradeDiffProvider.showInteractiveUpgradePlanner).toHaveBeenCalledWith(
+                'mod "puppetlabs/stdlib"',
+                mockUpgradePlan
+            );
         });
 
         test('should handle no active editor', async () => {

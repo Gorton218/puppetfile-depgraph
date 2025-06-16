@@ -23,8 +23,15 @@ export class UpgradeDiffProvider {
         options: DiffOptions = {}
     ): Promise<void> {
         try {
+            console.log('=== showUpgradeDiff DEBUG ===');
+            console.log('Original content length:', originalContent.length);
+            console.log('Upgrade plan:', { totalUpgradeable: upgradePlan.totalUpgradeable, candidates: upgradePlan.candidates.length });
+            
             // Create the proposed content with upgrades
             const proposedContent = this.createProposedContent(originalContent, upgradePlan, options);
+            
+            console.log('Proposed content length:', proposedContent.length);
+            console.log('Content equal?', originalContent === proposedContent);
             
             // Create temporary documents for the diff view
             const originalUri = vscode.Uri.parse('puppetfile-diff://current/Puppetfile');
@@ -45,8 +52,9 @@ export class UpgradeDiffProvider {
             
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
+                console.log('Disposing content provider after 30 seconds');
                 disposable.dispose();
-            }, 5000);
+            }, 30000); // Increased to 30 seconds for debugging
             
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to show upgrade diff: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -247,11 +255,20 @@ class PuppetfileDiffContentProvider implements vscode.TextDocumentContentProvide
     }
     
     provideTextDocumentContent(uri: vscode.Uri): string {
-        if (uri.path.includes('current')) {
+        console.log('=== PuppetfileDiffContentProvider.provideTextDocumentContent ===');
+        console.log('URI:', uri.toString());
+        console.log('URI authority:', uri.authority);
+        console.log('URI path:', uri.path);
+        
+        // Check the authority part of the URI, not the path
+        if (uri.authority === 'current') {
+            console.log('Returning original content, length:', this.originalContent.length);
             return this.originalContent;
-        } else if (uri.path.includes('proposed')) {
+        } else if (uri.authority === 'proposed') {
+            console.log('Returning proposed content, length:', this.proposedContent.length);
             return this.proposedContent;
         }
+        console.log('Returning empty content');
         return '';
     }
 }

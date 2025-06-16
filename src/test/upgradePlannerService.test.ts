@@ -412,6 +412,42 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
 
             expect(modifiedContent).toBe(originalContent); // No changes
         });
+
+        test('should handle unversioned modules', () => {
+            const originalContent = `forge 'https://forgeapi.puppet.com'
+
+mod 'puppetlabs/stdlib'
+mod 'puppetlabs/apache', '5.0.0'`;
+
+            const upgradePlan = {
+                candidates: [
+                    {
+                        module: { name: 'puppetlabs/stdlib', source: 'forge', line: 3 } as PuppetModule,
+                        currentVersion: 'unversioned',
+                        maxSafeVersion: '9.0.0',
+                        availableVersions: ['9.0.0'],
+                        isUpgradeable: true
+                    },
+                    {
+                        module: { name: 'puppetlabs/apache', version: '5.0.0', source: 'forge', line: 4 } as PuppetModule,
+                        currentVersion: '5.0.0',
+                        maxSafeVersion: '5.5.0',
+                        availableVersions: [],
+                        isUpgradeable: true
+                    }
+                ] as UpgradeCandidate[],
+                totalUpgradeable: 2,
+                totalModules: 2,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+
+            const modifiedContent = UpgradePlannerService.applyUpgradesToContent(originalContent, upgradePlan);
+
+            expect(modifiedContent).toContain("mod 'puppetlabs/stdlib', '9.0.0'"); // Version added
+            expect(modifiedContent).toContain("mod 'puppetlabs/apache', '5.5.0'"); // Version updated
+        });
     });
 
     describe('version comparison utilities', () => {

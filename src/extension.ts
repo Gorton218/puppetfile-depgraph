@@ -240,9 +240,9 @@ export function activate(context: vscode.ExtensionContext) {
                         return;
                 }
 
-                const forgeModules = parseResult.modules.filter(m => m.source === 'forge' && m.version);
+                const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
                 if (forgeModules.length === 0) {
-                        vscode.window.showInformationMessage('No Puppet Forge modules with versions found in Puppetfile');
+                        vscode.window.showInformationMessage('No Puppet Forge modules found in Puppetfile');
                         return;
                 }
 
