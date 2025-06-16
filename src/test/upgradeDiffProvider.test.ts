@@ -16,6 +16,11 @@ jest.mock('vscode', () => {
         Uri: {
             parse: jest.fn((uri: string) => ({ scheme: 'puppetfile-diff', path: uri.split('/').pop() }))
         },
+        EventEmitter: jest.fn().mockImplementation(() => ({
+            event: jest.fn(),
+            fire: jest.fn(),
+            dispose: jest.fn()
+        })),
         workspace: {
             registerTextDocumentContentProvider: jest.fn(() => ({ dispose: jest.fn() })),
             openTextDocument: mockOpenTextDocument

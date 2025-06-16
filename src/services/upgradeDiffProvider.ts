@@ -39,9 +39,10 @@ export class UpgradeDiffProvider {
             const provider = new PuppetfileDiffContentProvider(originalContent, proposedContent);
             const disposable = vscode.workspace.registerTextDocumentContentProvider('puppetfile-diff', provider);
             
-            // Store upgrade plan and options for later use
+            // Store upgrade plan, options, and content provider for later use
             (global as any).__currentUpgradePlan = upgradePlan;
             (global as any).__currentUpgradeOptions = options;
+            (global as any).__currentContentProvider = provider;
             
             // Open the diff editor
             await vscode.commands.executeCommand(
@@ -69,6 +70,10 @@ export class UpgradeDiffProvider {
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
                 disposable.dispose();
+                if ((global as any).__currentContentProvider) {
+                    (global as any).__currentContentProvider.dispose();
+                    (global as any).__currentContentProvider = null;
+                }
             }, 10000); // Longer delay to account for decorations
             
         } catch (error) {
@@ -690,14 +695,23 @@ export class UpgradeDiffProvider {
                 return;
             }
             
-            // Get the current document content
-            const activeEditor = vscode.window.activeTextEditor;
-            if (!activeEditor) {
+            // Find the Puppetfile document (not the diff view)
+            const puppetfileDoc = vscode.workspace.textDocuments.find(doc => 
+                (doc.languageId === 'puppetfile' || 
+                 doc.languageId === 'ruby' || 
+                 doc.languageId === 'plaintext') &&
+                (doc.uri.path.endsWith('/Puppetfile') || 
+                 doc.uri.path.endsWith('\\Puppetfile') ||
+                 doc.fileName === 'Puppetfile') &&
+                !doc.uri.scheme.includes('puppetfile-diff')
+            );
+            
+            if (!puppetfileDoc) {
                 return;
             }
             
             // Re-parse the updated content
-            const parseResult = PuppetfileParser.parseActiveEditor();
+            const parseResult = PuppetfileParser.parseContent(puppetfileDoc.getText());
             if (parseResult.errors.length > 0) {
                 return;
             }
@@ -708,9 +722,14 @@ export class UpgradeDiffProvider {
             // Update the global upgrade plan
             (global as any).__currentUpgradePlan = updatedUpgradePlan;
             
-            // Re-show the diff with updated content
-            const originalContent = activeEditor.document.getText();
-            await this.showUpgradeDiff(originalContent, updatedUpgradePlan, upgradeOptions);
+            // Update the content provider with new content instead of opening a new diff
+            const originalContent = puppetfileDoc.getText();
+            const proposedContent = this.createProposedContent(originalContent, updatedUpgradePlan, { ...upgradeOptions, showInlineActions: true });
+            
+            // Update the global content provider reference if it exists
+            if ((global as any).__currentContentProvider) {
+                (global as any).__currentContentProvider.updateContent(originalContent, proposedContent);
+            }
             
             // Refresh the CodeLens provider with the updated plan
             UpgradeDiffCodeLensProvider.setUpgradePlan(updatedUpgradePlan);
@@ -733,9 +752,21 @@ class PuppetfileDiffContentProvider implements vscode.TextDocumentContentProvide
     private originalContent: string;
     private proposedContent: string;
     
+    private _onDidChange = new vscode.EventEmitter<vscode.Uri>();
+    readonly onDidChange = this._onDidChange.event;
+    
     constructor(originalContent: string, proposedContent: string) {
         this.originalContent = originalContent;
         this.proposedContent = proposedContent;
+    }
+    
+    updateContent(originalContent: string, proposedContent: string): void {
+        this.originalContent = originalContent;
+        this.proposedContent = proposedContent;
+        
+        // Notify VS Code that the content has changed
+        this._onDidChange.fire(vscode.Uri.parse('puppetfile-diff://current/Puppetfile'));
+        this._onDidChange.fire(vscode.Uri.parse('puppetfile-diff://proposed/Puppetfile'));
     }
     
     provideTextDocumentContent(uri: vscode.Uri): string {
@@ -746,5 +777,9 @@ class PuppetfileDiffContentProvider implements vscode.TextDocumentContentProvide
             return this.proposedContent;
         }
         return '';
+    }
+    
+    dispose(): void {
+        this._onDidChange.dispose();
     }
 }
