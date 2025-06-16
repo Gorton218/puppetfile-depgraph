@@ -561,6 +561,9 @@ describe('Extension', () => {
 
             // Act
             await command!();
+            
+            // Wait for the setTimeout to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
 
             // Assert
             expect(UpgradePlannerService.createUpgradePlan).toHaveBeenCalledWith([
@@ -625,6 +628,9 @@ describe('Extension', () => {
 
             // Act
             await command!();
+            
+            // Wait for the setTimeout to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
 
             // Assert
             expect(UpgradePlannerService.createUpgradePlan).toHaveBeenCalledWith([

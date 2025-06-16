@@ -409,7 +409,8 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 // Show progress indicator
-                await vscode.window.withProgress({
+                let progressResolve: (() => void) | null = null;
+                const progressPromise = vscode.window.withProgress({
                         location: vscode.ProgressLocation.Notification,
                         title: "Analyzing upgrade opportunities",
                         cancellable: false
@@ -431,13 +432,20 @@ export function activate(context: vscode.ExtensionContext) {
                                 
                                 progress.report({ increment: 100, message: "Opening upgrade planner..." });
                                 
-                                // Show the interactive upgrade planner
-                                await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+                                // Wait a brief moment to let the user see the "Opening upgrade planner..." message
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                
+                                // Show the interactive upgrade planner after progress closes
+                                setTimeout(async () => {
+                                        await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+                                }, 100);
                                 
                         } catch (error) {
                                 vscode.window.showErrorMessage(`Failed to analyze upgrades: ${error instanceof Error ? error.message : 'Unknown error'}`);
                         }
                 });
+                
+                await progressPromise;
         });
 
         const showAbout = vscode.commands.registerCommand('puppetfile-depgraph.showAbout', async () => {
