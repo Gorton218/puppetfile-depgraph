@@ -54,7 +54,7 @@ export class PuppetForgeService {
     private static readonly API_VERSION = 'v3';
 
     // Two-level cache: module name -> (version -> version data)
-    private static moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
+    private static readonly moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
     
     // Keep a single agent instance for reuse
     private static proxyAgent: HttpsProxyAgent<string> | null = null;
