@@ -10,7 +10,7 @@ mod 'puppetlabs-postgresql', '6.4.0'
 mod 'theforeman-foreman', '22.1.1'
 mod 'theforeman-foreman_proxy', '25.1.0'
 
-# Example of a git-based module with a specific tag
+# Example of a git-based module with a specific tag but without coma
 mod 'theforeman-puppet'
     :git => 'https://github.com/theforeman/puppet-foreman.git',
     :ref => '24.2-stable'

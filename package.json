@@ -59,6 +59,11 @@
         "category": "Puppetfile"
       },
       {
+        "command": "puppetfile-depgraph.showUpgradePlanner",
+        "title": "Show upgrade planner",
+        "category": "Puppetfile"
+      },
+      {
         "command": "puppetfile-depgraph.showAbout",
         "title": "About Puppetfile Dependency Manager",
         "category": "Puppetfile"
@@ -79,6 +84,11 @@
         {
           "when": "resourceFilename == Puppetfile",
           "command": "puppetfile-depgraph.cacheAllModules",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceFilename == Puppetfile",
+          "command": "puppetfile-depgraph.showUpgradePlanner",
           "group": "navigation"
         }
       ]

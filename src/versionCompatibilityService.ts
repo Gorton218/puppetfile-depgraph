@@ -1,6 +1,7 @@
 import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
 import { VersionParser } from './utils/versionParser';
+import { GitMetadataService } from './gitMetadataService';
 
 export interface VersionCompatibility {
     version: string;
@@ -56,22 +57,29 @@ export class VersionCompatibilityService {
         
         // Also check if any other module depends on the target module
         for (const module of allModules) {
-            if (module.source !== 'forge' || module.name === targetModule.name) {
+            if (module.name === targetModule.name) {
                 continue;
             }
             
             // Get the module's dependencies
             let dependencies: Array<{name: string; version_requirement: string}> | undefined;
             
-            if (module.version) {
-                const release = await PuppetForgeService.getReleaseForVersion(module.name, module.version);
-                dependencies = release?.metadata?.dependencies;
-            } else {
-                // If no version specified, get latest
-                const releases = await PuppetForgeService.getModuleReleases(module.name);
-                if (releases.length > 0) {
-                    dependencies = releases[0].metadata?.dependencies;
+            if (module.source === 'forge') {
+                if (module.version) {
+                    const release = await PuppetForgeService.getReleaseForVersion(module.name, module.version);
+                    dependencies = release?.metadata?.dependencies;
+                } else {
+                    // If no version specified, get latest
+                    const releases = await PuppetForgeService.getModuleReleases(module.name);
+                    if (releases.length > 0) {
+                        dependencies = releases[0].metadata?.dependencies;
+                    }
                 }
+            } else if (module.source === 'git' && module.gitUrl) {
+                // Get dependencies from git module metadata
+                const ref = module.gitTag || module.gitRef;
+                const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
+                dependencies = gitMetadata?.dependencies;
             }
             
             if (!dependencies) {
@@ -91,7 +99,7 @@ export class VersionCompatibilityService {
                 if (!VersionParser.satisfiesAll(targetVersion, requirements)) {
                     conflicts.push({
                         moduleName: module.name,
-                        currentVersion: module.version || 'latest',
+                        currentVersion: module.source === 'git' ? (module.gitTag || module.gitRef || 'git') : (module.version || 'latest'),
                         requirement: targetDep.version_requirement
                     });
                 }

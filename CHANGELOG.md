@@ -4,6 +4,16 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
 
 ## [Unreleased]
 ### Added
+- **Upgrade Planner**: New comprehensive upgrade planning and visualization system
+  - New command "Show Upgrade Planner" available in command palette and Puppetfile context menu
+  - Analyzes all modules to identify safe upgrade opportunities
+  - Detects dependency conflicts preventing upgrades
+  - Interactive diff view showing current vs. proposed Puppetfile changes
+  - Summary view with upgrade statistics (upgradeable, blocked, unchanged modules)
+  - Detailed conflict analysis showing why specific modules cannot be upgraded
+  - Progress indication during analysis with cancellation support
+  - Supports both Forge and Git modules (Git modules shown as informational)
+  - Integrates with existing version compatibility and caching services
 - **Cache All Modules**: New context menu command "Cache info for all modules"
   - Pre-caches information for all Puppet Forge modules in the Puppetfile
   - Progress bar with cancellation support
@@ -69,6 +79,15 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Added comprehensive error handling throughout hover provider chain
   - Improved name display showing both Puppetfile name and repository name when different
   - Added graceful fallbacks for all Git module processing stages
+- **Upgrade Planner Support for Unversioned Modules**: Fixed missing analysis for modules without versions
+  - Upgrade planner now includes Forge modules without version constraints (e.g., `mod 'puppetlabs-nginx'`)
+  - Shows version suggestions for unversioned modules similar to Librarian-puppet behavior
+  - Fixed extension filter that was excluding unversioned modules from upgrade analysis
+  - Properly generates version additions in diff view for unversioned modules
+- **Empty Diff Window**: Fixed upgrade planner showing blank comparison window
+  - Corrected URI parsing in content provider (checking authority instead of path)
+  - Diff view now properly displays current vs proposed Puppetfile content
+  - Fixed content provider to handle puppetfile-diff:// URI scheme correctly
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
@@ -120,6 +139,7 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Updated GitHub Actions workflow to run both unit and integration tests via `npm run test:all`
   - Ensures complete test coverage validation in CI/CD pipeline
   - Maintains code quality by running all test suites on pull requests and pushes
+  - Extended workflow to run on `release/*` branches in addition to `main`
 
 ## [0.0.2] - 2025-06-08
 ### Added
