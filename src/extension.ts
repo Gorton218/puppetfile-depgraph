@@ -124,10 +124,15 @@ export function activate(context: vscode.ExtensionContext) {
 		await vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
 			title: "Building dependency tree",
-			cancellable: false
-		}, async (progress) => {
+			cancellable: true
+		}, async (progress, token) => {
 			try {
 				progress.report({ increment: 0, message: "Parsing dependencies..." });
+				
+				// Check for cancellation
+				if (token.isCancellationRequested) {
+					return;
+				}
 				
 				// Cache uncached forge modules first to improve performance
 				const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
@@ -135,9 +140,14 @@ export function activate(context: vscode.ExtensionContext) {
 				
 				if (uncachedModules.length > 0) {
 					progress.report({ increment: 10, message: `Caching ${uncachedModules.length} uncached modules...` });
-					await CacheService.cacheUncachedModules(forgeModules);
+					await CacheService.cacheUncachedModulesWithToken(forgeModules, token);
 				} else if (forgeModules.length > 0) {
 					progress.report({ increment: 10, message: "All modules already cached, proceeding..." });
+				}
+				
+				// Check for cancellation after caching
+				if (token.isCancellationRequested) {
+					return;
 				}
 				
 				progress.report({ increment: 30, message: "Analyzing transitive dependencies..." });
@@ -145,9 +155,17 @@ export function activate(context: vscode.ExtensionContext) {
 				const dependencyTree = await DependencyTreeService.buildDependencyTree(
 					parseResult.modules,
 					(message: string) => {
-						progress.report({ message });
-					}
+						if (!token.isCancellationRequested) {
+							progress.report({ message });
+						}
+					},
+					token
 				);
+				
+				// Check for cancellation after building tree
+				if (token.isCancellationRequested) {
+					return;
+				}
 				
 				progress.report({ increment: 80, message: "Generating view..." });
 				
@@ -177,6 +195,11 @@ export function activate(context: vscode.ExtensionContext) {
 					for (const conflict of conflicts) {
 						content += `- ${conflict}\n`;
 					}
+				}
+				
+				// Final cancellation check before showing results
+				if (token.isCancellationRequested) {
+					return;
 				}
 				
 				progress.report({ increment: 100, message: "Complete!" });

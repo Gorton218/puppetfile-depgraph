@@ -39,11 +39,13 @@ export class DependencyTreeService {
      * Build a dependency tree from parsed Puppetfile modules
      * @param modules Array of PuppetModule objects from parser
      * @param progressCallback Optional callback for progress updates
+     * @param cancellationToken Optional VS Code cancellation token
      * @returns Promise with the root dependency tree
      */
     public static async buildDependencyTree(
         modules: PuppetModule[], 
-        progressCallback?: (message: string, increment?: number) => void
+        progressCallback?: (message: string, increment?: number) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
     ): Promise<DependencyNode[]> {
         this.visitedModules.clear();
         this.dependencyGraph = {};
@@ -54,6 +56,9 @@ export class DependencyTreeService {
         // Store direct dependencies for reference
         progressCallback?.("Preparing dependency analysis...");
         for (const module of modules) {
+            if (cancellationToken?.isCancellationRequested) {
+                return [];
+            }
             if (module.version && module.source === 'forge') {
                 const normalizedName = this.normalizeModuleName(module.name);
                 this.directDependencies.set(normalizedName, module.version);
@@ -69,17 +74,30 @@ export class DependencyTreeService {
         // First pass: build the tree and collect requirements
         progressCallback?.("Building dependency tree...");
         for (let i = 0; i < modules.length; i++) {
+            if (cancellationToken?.isCancellationRequested) {
+                return [];
+            }
             const module = modules[i];
             progressCallback?.(`Processing ${module.name} (${i + 1}/${modules.length})...`);
-            const node = await this.buildNodeTree(module, 0, true, undefined, undefined, progressCallback);
+            const node = await this.buildNodeTree(module, 0, true, undefined, undefined, progressCallback, cancellationToken);
             if (node) {
                 rootNodes.push(node);
             }
         }
 
+        // Check for cancellation before analyzing conflicts
+        if (cancellationToken?.isCancellationRequested) {
+            return [];
+        }
+
         // Second pass: analyze conflicts
         progressCallback?.("Analyzing dependency conflicts...");
-        await this.analyzeConflicts(progressCallback);
+        await this.analyzeConflicts(progressCallback, cancellationToken);
+
+        // Check for cancellation before final steps
+        if (cancellationToken?.isCancellationRequested) {
+            return [];
+        }
 
         // Third pass: annotate nodes with conflict information
         progressCallback?.("Finalizing dependency tree...");
@@ -94,6 +112,7 @@ export class DependencyTreeService {
      * @param depth Current depth in the tree
      * @param isDirectDependency Whether this is a direct dependency
      * @param progressCallback Optional callback for progress updates
+     * @param cancellationToken Optional cancellation token
      * @returns Promise with the dependency node
      */
     private static async buildNodeTree(
@@ -102,8 +121,14 @@ export class DependencyTreeService {
         isDirectDependency: boolean,
         imposedBy?: string,
         versionRequirement?: string,
-        progressCallback?: (message: string) => void
+        progressCallback?: (message: string) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
     ): Promise<DependencyNode | null> {
+        // Check for cancellation at the start
+        if (cancellationToken?.isCancellationRequested) {
+            return null;
+        }
+
         // Add current module to path
         this.currentPath.push(module.name);
 
@@ -194,6 +219,11 @@ export class DependencyTreeService {
                 
                 if (releaseToUse?.metadata?.dependencies) {
                     for (const dep of releaseToUse.metadata.dependencies) {
+                        // Check for cancellation before processing each dependency
+                        if (cancellationToken?.isCancellationRequested) {
+                            break;
+                        }
+                        
                         const normalizedDepName = this.normalizeModuleName(dep.name);
                         
                         // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
@@ -210,7 +240,8 @@ export class DependencyTreeService {
                             false,
                             module.name,
                             dep.version_requirement,
-                            progressCallback
+                            progressCallback,
+                            cancellationToken
                         );
                         if (childNode) {
                             node.children.push(childNode);
@@ -231,6 +262,11 @@ export class DependencyTreeService {
                 
                 if (gitMetadata?.dependencies) {
                     for (const dep of gitMetadata.dependencies) {
+                        // Check for cancellation before processing each dependency
+                        if (cancellationToken?.isCancellationRequested) {
+                            break;
+                        }
+                        
                         const normalizedDepName = this.normalizeModuleName(dep.name);
                         
                         // Git module dependencies are typically Forge modules
@@ -247,7 +283,8 @@ export class DependencyTreeService {
                             false,
                             module.name,
                             dep.version_requirement,
-                            progressCallback
+                            progressCallback,
+                            cancellationToken
                         );
                         if (childNode) {
                             node.children.push(childNode);
@@ -444,11 +481,19 @@ export class DependencyTreeService {
     /**
      * Analyze conflicts in the dependency graph
      */
-    private static async analyzeConflicts(progressCallback?: (message: string) => void): Promise<void> {
+    private static async analyzeConflicts(
+        progressCallback?: (message: string) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
+    ): Promise<void> {
         const modules = Object.entries(this.dependencyGraph);
         let analyzed = 0;
         
         for (const [moduleName, info] of modules) {
+            // Check for cancellation before processing each module
+            if (cancellationToken?.isCancellationRequested) {
+                return;
+            }
+            
             if (info.requirements.length === 0) {
                 analyzed++;
                 continue;

@@ -143,6 +143,95 @@ export class CacheService {
     }
     
     /**
+     * Cache only uncached modules with progress indicator and cancellation support
+     * @param forgeModules Array of all forge modules
+     * @param cancellationToken VS Code cancellation token
+     * @returns Promise that resolves when caching is complete or cancelled
+     */
+    public static async cacheUncachedModulesWithToken(
+        forgeModules: PuppetModule[], 
+        cancellationToken: vscode.CancellationToken
+    ): Promise<void> {
+        // Filter to only uncached modules
+        const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
+        
+        if (uncachedModules.length === 0 || cancellationToken.isCancellationRequested) {
+            return;
+        }
+        
+        // If caching is already in progress, return the existing promise
+        if (this.isCaching && this.cachingPromise) {
+            return this.cachingPromise;
+        }
+
+        // Mark as caching and store the promise
+        this.isCaching = true;
+        this.cachingPromise = this.performCachingWithToken(uncachedModules, cancellationToken);
+        
+        try {
+            await this.cachingPromise;
+        } finally {
+            this.isCaching = false;
+            this.cachingPromise = null;
+        }
+    }
+
+    /**
+     * Internal method that performs the actual caching with cancellation support
+     * @param forgeModules Array of forge modules to cache
+     * @param cancellationToken VS Code cancellation token
+     * @returns Promise that resolves when caching is complete or cancelled
+     */
+    private static async performCachingWithToken(
+        forgeModules: PuppetModule[], 
+        cancellationToken: vscode.CancellationToken
+    ): Promise<void> {
+        // The caching operation uses VS Code's built-in progress dialog with cancellation
+        // Since we're being called from within a withProgress context, we just need to
+        // respect the cancellation token and process modules efficiently
+        
+        let completed = 0;
+        
+        // Process modules in parallel but with limited concurrency to avoid rate limiting
+        const concurrencyLimit = 5;
+        const moduleChunks: typeof forgeModules[] = [];
+        
+        for (let i = 0; i < forgeModules.length; i += concurrencyLimit) {
+            moduleChunks.push(forgeModules.slice(i, i + concurrencyLimit));
+        }
+        
+        for (const chunk of moduleChunks) {
+            // Check for cancellation before processing each chunk
+            if (cancellationToken.isCancellationRequested) {
+                return;
+            }
+            
+            // Process chunk in parallel
+            const chunkPromises = chunk.map(async (module) => {
+                if (cancellationToken.isCancellationRequested) {
+                    return;
+                }
+                
+                try {
+                    // Cache module releases (this will populate the cache)
+                    await PuppetForgeService.getModuleReleases(module.name);
+                    completed++;
+                } catch (error) {
+                    console.warn(`Failed to cache module ${module.name}:`, error);
+                    completed++;
+                }
+            });
+            
+            await Promise.all(chunkPromises);
+            
+            // Small delay between chunks to be respectful to the API
+            if (!cancellationToken.isCancellationRequested && moduleChunks.indexOf(chunk) < moduleChunks.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+    }
+    
+    /**
      * Check if caching is currently in progress
      * @returns True if caching is in progress
      */
