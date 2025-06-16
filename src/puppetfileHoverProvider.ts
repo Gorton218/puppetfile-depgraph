@@ -113,6 +113,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             }
             return null;
         } catch (error) {
+            console.debug('Failed to parse module from position:', error);
             return null;
         }
     }
