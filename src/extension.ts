@@ -120,18 +120,168 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		// Show progress indicator
+		// Show progress indicator with more detailed progress reporting
 		await vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
 			title: "Building dependency tree",
-			cancellable: false
-		}, async (progress) => {
+			cancellable: true
+		}, async (progress, token) => {
+			// Animation variables for Phase 2 (scoped to entire progress function)
+			let phase2AnimationActive = false;
+			let phase2Animation: NodeJS.Timeout | null = null;
+			
 			try {
-				progress.report({ increment: 0, message: "Parsing dependencies..." });
+				// Three-phase progress system:
+				// Phase 1 (0-30%): Direct module caching
+				// Phase 2 (30-70%): Transitive dependency resolution  
+				// Phase 3 (70-100%): Conflict analysis
 				
-				const dependencyTree = await DependencyTreeService.buildDependencyTree(parseResult.modules);
+				progress.report({ increment: 0, message: "Phase 1: Preparing direct modules..." });
 				
-				progress.report({ increment: 70, message: "Generating view..." });
+				// Check for cancellation
+				if (token.isCancellationRequested) {
+					return;
+				}
+				
+				// Phase 1: Cache direct modules (0-30%)
+				const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
+				const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
+				
+				if (uncachedModules.length > 0) {
+					// Progressive caching with incremental updates from 0% to 30%
+					let lastPhase1Progress = 0;
+					await CacheService.cacheUncachedModulesWithProgressiveUpdates(
+						forgeModules, 
+						token,
+						(completed: number, total: number) => {
+							if (!token.isCancellationRequested) {
+								const targetProgress = Math.round((completed / total) * 30);
+								const incrementAmount = targetProgress - lastPhase1Progress;
+								if (incrementAmount > 0) {
+									progress.report({ 
+										increment: incrementAmount, 
+										message: `Phase 1: Cached ${completed}/${total} direct modules...` 
+									});
+									lastPhase1Progress = targetProgress;
+								}
+							}
+						}
+					);
+					// Ensure we reach exactly 30%
+					const finalIncrement = 30 - lastPhase1Progress;
+					if (finalIncrement > 0) {
+						progress.report({ increment: finalIncrement, message: "Phase 1: Caching complete" });
+					}
+				} else {
+					progress.report({ increment: 30, message: "Phase 1: All direct modules already cached" });
+				}
+				
+				// Check for cancellation after caching
+				if (token.isCancellationRequested) {
+					return;
+				}
+				
+				// Phase 2: Transitive dependency resolution (30-70%) with animated progress
+				// Note: We're already at 30% from Phase 1, so Phase 2 animates the remaining 40%
+				let currentTotalProgress = 30; // Track absolute progress
+				let phase2BaseProgress = 30; // Start of Phase 2
+				const phase2Range = 40; // 30% to 70% = 40% range
+				let animationPosition = 0; // Position within the 40% range (0-1)
+				let animationDirection = 1; // 1 for increasing, -1 for decreasing
+				let lastMessageUpdate = Date.now();
+				let currentPhase2Message = "Phase 2: Resolving transitive dependencies...";
+				
+				progress.report({ increment: 0, message: currentPhase2Message });
+				
+				// Start animated progress for Phase 2
+				phase2AnimationActive = true;
+				
+				phase2Animation = setInterval(() => {
+					if (!phase2AnimationActive || token.isCancellationRequested) {
+						if (phase2Animation) {clearInterval(phase2Animation);}
+						return;
+					}
+					
+					// Only animate if we haven't had a recent message update
+					const timeSinceLastMessage = Date.now() - lastMessageUpdate;
+					if (timeSinceLastMessage > 500) { // 500ms pause after message updates
+						// Update animation position (0 to 1)
+						animationPosition += animationDirection * 0.05; // 5% of range per update
+						
+						if (animationPosition >= 1) {
+							animationPosition = 1;
+							animationDirection = -1;
+						} else if (animationPosition <= 0) {
+							animationPosition = 0;
+							animationDirection = 1;
+						}
+						
+						// Calculate target progress (30% + (0-40% based on animation position))
+						const targetProgress = phase2BaseProgress + (animationPosition * phase2Range);
+						const incrementNeeded = targetProgress - currentTotalProgress;
+						
+						if (Math.abs(incrementNeeded) > 0.5) { // Only update if change is significant
+							progress.report({ increment: incrementNeeded, message: currentPhase2Message });
+							currentTotalProgress = targetProgress;
+						}
+					}
+				}, 200); // Update every 200ms for smooth animation
+				
+				const dependencyTree = await DependencyTreeService.buildDependencyTree(
+					parseResult.modules,
+					(message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => {
+						if (!token.isCancellationRequested) {
+							if (phase === 'conflicts' && moduleCount !== undefined && totalModules !== undefined) {
+								// Stop Phase 2 animation and start Phase 3
+								phase2AnimationActive = false;
+								if (phase2Animation) {clearInterval(phase2Animation);}
+								
+								// Ensure we're at 70% before starting Phase 3
+								const progressTo70 = 70 - currentTotalProgress;
+								if (progressTo70 > 0) {
+									progress.report({ increment: progressTo70, message: "Phase 3: Starting conflict analysis..." });
+									currentTotalProgress = 70;
+								}
+								
+								// Phase 3: Conflict analysis (70-100%) - incremental progress
+								const targetPhase3Progress = 70 + Math.round((moduleCount / totalModules) * 30);
+								const phase3Increment = targetPhase3Progress - currentTotalProgress;
+								if (phase3Increment > 0) {
+									progress.report({ 
+										increment: phase3Increment, 
+										message: `Phase 3: ${message}` 
+									});
+									currentTotalProgress = targetPhase3Progress;
+								} else {
+									// Just update message without changing progress
+									progress.report({ increment: 0, message: `Phase 3: ${message}` });
+								}
+							} else {
+								// Still in Phase 2: Update message and pause animation briefly
+								currentPhase2Message = `Phase 2: ${message}`;
+								lastMessageUpdate = Date.now();
+								progress.report({ increment: 0, message: currentPhase2Message });
+							}
+						}
+					},
+					token
+				);
+				
+				// Ensure animation is stopped when tree building completes
+				phase2AnimationActive = false;
+				if (phase2Animation) {clearInterval(phase2Animation);}
+				
+				// Check for cancellation after building tree
+				if (token.isCancellationRequested) {
+					// Ensure animation cleanup on cancellation
+					phase2AnimationActive = false;
+					if (phase2Animation) {clearInterval(phase2Animation);}
+					return;
+				}
+				
+				// Ensure we reach 100% for final steps
+				const finalIncrement = 100 - currentTotalProgress;
+				progress.report({ increment: finalIncrement, message: "Generating view..." });
 				
 				let content = '';
 				if (viewOption.value === 'tree') {
@@ -161,6 +311,14 @@ export function activate(context: vscode.ExtensionContext) {
 					}
 				}
 				
+				// Final cancellation check before showing results
+				if (token.isCancellationRequested) {
+					// Final animation cleanup
+					phase2AnimationActive = false;
+					if (phase2Animation) {clearInterval(phase2Animation);}
+					return;
+				}
+				
 				progress.report({ increment: 100, message: "Complete!" });
 				
 				// Show results in a new document
@@ -171,6 +329,9 @@ export function activate(context: vscode.ExtensionContext) {
 				await vscode.window.showTextDocument(doc);
 				
 			} catch (error) {
+				// Cleanup animation on error
+				phase2AnimationActive = false;
+				if (phase2Animation) {clearInterval(phase2Animation);}
 				vscode.window.showErrorMessage(`Failed to build dependency tree: ${error instanceof Error ? error.message : 'Unknown error'}`);
 			}
                 });
