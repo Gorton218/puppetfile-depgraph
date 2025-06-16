@@ -4,6 +4,19 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
 
 ## [Unreleased]
 ### Added
+- **Three-Phase Progress System**: Enhanced dependency tree building with intelligent progress indicators
+  - Phase 1 (0-30%): Direct module caching with real-time incremental progress
+  - Phase 2 (30-70%): Transitive dependency resolution with smooth animated progress
+  - Phase 3 (70-100%): Conflict analysis with incremental progress tracking
+  - Animated "breathing" progress bar during Phase 2 to show active work
+  - Smart progress coordination ensures smooth transitions between phases
+  - Proper incremental progress updates using VS Code's progress API correctly
+  - Enhanced user experience with clear phase identification and progress visibility
+- **Cancellation Support**: Full cancellation capability for dependency tree operations
+  - Cancel button available during all phases of dependency tree building
+  - Graceful cleanup of animations, network requests, and partial operations
+  - Immediate response to user cancellation requests with proper state cleanup
+  - Prevents hanging operations and memory leaks during cancellation
 - **Upgrade Planner**: New comprehensive upgrade planning and visualization system
   - New command "Show Upgrade Planner" available in command palette and Puppetfile context menu
   - Analyzes all modules to identify safe upgrade opportunities
@@ -35,6 +48,17 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Caching for improved performance with network requests
 
 ### Improved
+- **CacheService Architecture**: Refactored caching system to eliminate code duplication
+  - Consolidated multiple caching methods into a single core implementation
+  - Added dual progress modes: internal VS Code dialogs and external progress callbacks
+  - Maintained backward compatibility while enabling new three-phase progress system
+  - Improved maintainability with single source of truth for caching logic
+  - Enhanced flexibility for future progress mechanism additions
+- **Dependency Tree Performance**: Optimized dependency tree building with proactive caching
+  - Added automatic detection and caching of uncached modules before tree building
+  - Progressive updates show exact caching progress for better user feedback
+  - Reduced API calls during tree building through intelligent pre-caching
+  - Enhanced progress reporting with detailed module-by-module updates
 - **Test Coverage**: Enhanced branch coverage for dependency tree service
   - Added comprehensive tests for version sorting algorithms and edge cases
   - Improved error handling test coverage for constraint validation
