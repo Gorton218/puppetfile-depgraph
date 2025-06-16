@@ -120,7 +120,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		// Show progress indicator
+		// Show progress indicator with more detailed progress reporting
 		await vscode.window.withProgress({
 			location: vscode.ProgressLocation.Notification,
 			title: "Building dependency tree",
@@ -129,9 +129,27 @@ export function activate(context: vscode.ExtensionContext) {
 			try {
 				progress.report({ increment: 0, message: "Parsing dependencies..." });
 				
-				const dependencyTree = await DependencyTreeService.buildDependencyTree(parseResult.modules);
+				// Cache uncached forge modules first to improve performance
+				const forgeModules = parseResult.modules.filter(m => m.source === 'forge');
+				const uncachedModules = forgeModules.filter(m => !PuppetForgeService.hasModuleCached(m.name));
 				
-				progress.report({ increment: 70, message: "Generating view..." });
+				if (uncachedModules.length > 0) {
+					progress.report({ increment: 10, message: `Caching ${uncachedModules.length} uncached modules...` });
+					await CacheService.cacheUncachedModules(forgeModules);
+				} else if (forgeModules.length > 0) {
+					progress.report({ increment: 10, message: "All modules already cached, proceeding..." });
+				}
+				
+				progress.report({ increment: 30, message: "Analyzing transitive dependencies..." });
+				
+				const dependencyTree = await DependencyTreeService.buildDependencyTree(
+					parseResult.modules,
+					(message: string) => {
+						progress.report({ message });
+					}
+				);
+				
+				progress.report({ increment: 80, message: "Generating view..." });
 				
 				let content = '';
 				if (viewOption.value === 'tree') {

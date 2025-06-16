@@ -38,9 +38,13 @@ export class DependencyTreeService {
     /**
      * Build a dependency tree from parsed Puppetfile modules
      * @param modules Array of PuppetModule objects from parser
+     * @param progressCallback Optional callback for progress updates
      * @returns Promise with the root dependency tree
      */
-    public static async buildDependencyTree(modules: PuppetModule[]): Promise<DependencyNode[]> {
+    public static async buildDependencyTree(
+        modules: PuppetModule[], 
+        progressCallback?: (message: string, increment?: number) => void
+    ): Promise<DependencyNode[]> {
         this.visitedModules.clear();
         this.dependencyGraph = {};
         this.currentPath = [];
@@ -48,6 +52,7 @@ export class DependencyTreeService {
         const rootNodes: DependencyNode[] = [];
 
         // Store direct dependencies for reference
+        progressCallback?.("Preparing dependency analysis...");
         for (const module of modules) {
             if (module.version && module.source === 'forge') {
                 const normalizedName = this.normalizeModuleName(module.name);
@@ -62,17 +67,22 @@ export class DependencyTreeService {
         }
 
         // First pass: build the tree and collect requirements
-        for (const module of modules) {
-            const node = await this.buildNodeTree(module, 0, true);
+        progressCallback?.("Building dependency tree...");
+        for (let i = 0; i < modules.length; i++) {
+            const module = modules[i];
+            progressCallback?.(`Processing ${module.name} (${i + 1}/${modules.length})...`);
+            const node = await this.buildNodeTree(module, 0, true, undefined, undefined, progressCallback);
             if (node) {
                 rootNodes.push(node);
             }
         }
 
         // Second pass: analyze conflicts
-        await this.analyzeConflicts();
+        progressCallback?.("Analyzing dependency conflicts...");
+        await this.analyzeConflicts(progressCallback);
 
         // Third pass: annotate nodes with conflict information
+        progressCallback?.("Finalizing dependency tree...");
         this.annotateNodesWithConflicts(rootNodes);
 
         return rootNodes;
@@ -83,6 +93,7 @@ export class DependencyTreeService {
      * @param module The module to build tree for
      * @param depth Current depth in the tree
      * @param isDirectDependency Whether this is a direct dependency
+     * @param progressCallback Optional callback for progress updates
      * @returns Promise with the dependency node
      */
     private static async buildNodeTree(
@@ -90,7 +101,8 @@ export class DependencyTreeService {
         depth: number, 
         isDirectDependency: boolean,
         imposedBy?: string,
-        versionRequirement?: string
+        versionRequirement?: string,
+        progressCallback?: (message: string) => void
     ): Promise<DependencyNode | null> {
         // Add current module to path
         this.currentPath.push(module.name);
@@ -156,6 +168,9 @@ export class DependencyTreeService {
         // Fetch dependencies based on module source
         if (module.source === 'forge') {
             try {
+                if (depth > 0) {
+                    progressCallback?.(`  ↳ Fetching dependencies for ${module.name}...`);
+                }
                 const forgeModule = await PuppetForgeService.getModule(module.name);
                 let releaseToUse = forgeModule?.current_release;
                 
@@ -194,7 +209,8 @@ export class DependencyTreeService {
                             depth + 1, 
                             false,
                             module.name,
-                            dep.version_requirement
+                            dep.version_requirement,
+                            progressCallback
                         );
                         if (childNode) {
                             node.children.push(childNode);
@@ -207,6 +223,9 @@ export class DependencyTreeService {
         } else if (module.source === 'git' && module.gitUrl) {
             // Fetch dependencies for Git modules
             try {
+                if (depth > 0) {
+                    progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`);
+                }
                 const ref = module.gitTag || module.gitRef;
                 const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 
@@ -227,7 +246,8 @@ export class DependencyTreeService {
                             depth + 1, 
                             false,
                             module.name,
-                            dep.version_requirement
+                            dep.version_requirement,
+                            progressCallback
                         );
                         if (childNode) {
                             node.children.push(childNode);
@@ -424,9 +444,17 @@ export class DependencyTreeService {
     /**
      * Analyze conflicts in the dependency graph
      */
-    private static async analyzeConflicts(): Promise<void> {
-        for (const [moduleName, info] of Object.entries(this.dependencyGraph)) {
-            if (info.requirements.length === 0) {continue;}
+    private static async analyzeConflicts(progressCallback?: (message: string) => void): Promise<void> {
+        const modules = Object.entries(this.dependencyGraph);
+        let analyzed = 0;
+        
+        for (const [moduleName, info] of modules) {
+            if (info.requirements.length === 0) {
+                analyzed++;
+                continue;
+            }
+            
+            progressCallback?.(`Analyzing conflicts for ${moduleName} (${analyzed + 1}/${modules.length})...`);
 
             try {
                 // Get available versions from Forge - use original name format for API call
@@ -451,6 +479,8 @@ export class DependencyTreeService {
             } catch (error) {
                 console.warn(`Could not analyze conflicts for ${moduleName}:`, error);
             }
+            
+            analyzed++;
         }
     }
 
