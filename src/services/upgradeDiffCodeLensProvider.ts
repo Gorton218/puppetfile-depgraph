@@ -35,38 +35,28 @@ export class UpgradeDiffCodeLensProvider implements vscode.CodeLensProvider {
         document: vscode.TextDocument,
         token: vscode.CancellationToken
     ): Promise<vscode.CodeLens[]> {
-        console.log('UpgradeDiffCodeLensProvider: provideCodeLenses called for URI:', document.uri.toString());
-        
         // Only provide CodeLenses for our diff documents
         if (!document.uri.scheme.includes('puppetfile-diff')) {
-            console.log('UpgradeDiffCodeLensProvider: Not a puppetfile-diff scheme, skipping');
             return [];
         }
 
         if (!UpgradeDiffCodeLensProvider.currentUpgradePlan) {
-            console.log('UpgradeDiffCodeLensProvider: No current upgrade plan available');
             return [];
         }
 
         const codeLenses: vscode.CodeLens[] = [];
         const upgradePlan = UpgradeDiffCodeLensProvider.currentUpgradePlan;
         const upgradeableCandidates = upgradePlan.candidates.filter(c => c.isUpgradeable);
-        
-        console.log('UpgradeDiffCodeLensProvider: Found', upgradeableCandidates.length, 'upgradeable candidates');
 
         // Find lines that contain upgrade comments
         const documentText = document.getText();
         const lines = documentText.split('\n');
-        
-        console.log('UpgradeDiffCodeLensProvider: Document has', lines.length, 'lines');
-        console.log('UpgradeDiffCodeLensProvider: Looking for upgrade comments in document...');
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
             
             // Look for upgrade comment lines
             if (line.includes('# ↑ UPGRADE:')) {
-                console.log('UpgradeDiffCodeLensProvider: Found upgrade comment on line', lineIndex + 1, ':', line);
                 // Extract module name from the comment
                 const match = line.match(/# ↑ UPGRADE: ([^\s]+)/);
                 if (match) {
@@ -75,23 +65,24 @@ export class UpgradeDiffCodeLensProvider implements vscode.CodeLensProvider {
                     // Find the corresponding upgrade candidate
                     const candidate = upgradeableCandidates.find(c => c.module.name === moduleName);
                     if (candidate) {
-                        const range = new vscode.Range(lineIndex, 0, lineIndex, line.length);
+                        // Create separate ranges for Apply and Skip to avoid interference
+                        const applyRange = new vscode.Range(lineIndex, 0, lineIndex, Math.floor(line.length / 2));
+                        const skipRange = new vscode.Range(lineIndex, Math.floor(line.length / 2), lineIndex, line.length);
                         
                         // Create Apply CodeLens
-                        const applyCodeLens = new vscode.CodeLens(range, {
+                        const applyCodeLens = new vscode.CodeLens(applyRange, {
                             title: `$(arrow-up) Apply`,
                             tooltip: `Apply upgrade: ${candidate.module.name} ${candidate.currentVersion} → ${candidate.maxSafeVersion}`,
                             command: 'puppetfile-depgraph.applySingleUpgradeFromDiff',
                             arguments: [{
                                 moduleName: candidate.module.name,
                                 currentVersion: candidate.currentVersion,
-                                newVersion: candidate.maxSafeVersion,
-                                line: candidate.module.line
+                                newVersion: candidate.maxSafeVersion
                             }]
                         });
                         
                         // Create Skip CodeLens
-                        const skipCodeLens = new vscode.CodeLens(range, {
+                        const skipCodeLens = new vscode.CodeLens(skipRange, {
                             title: `$(x) Skip`,
                             tooltip: `Skip upgrade for ${candidate.module.name}`,
                             command: 'puppetfile-depgraph.skipSingleUpgradeFromDiff',
@@ -101,13 +92,11 @@ export class UpgradeDiffCodeLensProvider implements vscode.CodeLensProvider {
                         });
                         
                         codeLenses.push(applyCodeLens, skipCodeLens);
-                        console.log('UpgradeDiffCodeLensProvider: Added CodeLenses for', moduleName);
                     }
                 }
             }
         }
 
-        console.log('UpgradeDiffCodeLensProvider: Returning', codeLenses.length, 'CodeLenses');
         return codeLenses;
     }
 

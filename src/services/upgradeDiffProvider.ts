@@ -517,16 +517,10 @@ export class UpgradeDiffProvider {
         }
         
         const upgradeInfo = args[0];
-        const { moduleName, currentVersion, newVersion, line } = upgradeInfo;
+        const { moduleName, currentVersion, newVersion } = upgradeInfo;
         
-        if (!moduleName || !newVersion || !line) {
+        if (!moduleName || !newVersion) {
             vscode.window.showErrorMessage('Missing upgrade information');
-            return;
-        }
-        
-        const editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.languageId !== 'puppetfile') {
-            vscode.window.showErrorMessage('Please open a Puppetfile to apply upgrades.');
             return;
         }
         
@@ -541,8 +535,104 @@ export class UpgradeDiffProvider {
                     message: `${currentVersion || 'unversioned'} → ${newVersion}` 
                 });
                 
-                // Apply the update to the original Puppetfile
-                await PuppetfileUpdateService.updateModuleVersionAtLine(line, newVersion);
+                // Helper function to check if a document is a Puppetfile
+                const isPuppetfile = (doc: vscode.TextDocument): boolean => {
+                    return (
+                        // Check language ID
+                        (doc.languageId === 'puppetfile' || 
+                         doc.languageId === 'ruby' || 
+                         doc.languageId === 'plaintext') &&
+                        // Check filename
+                        (doc.uri.path.endsWith('/Puppetfile') || 
+                         doc.uri.path.endsWith('\\Puppetfile') ||
+                         doc.fileName === 'Puppetfile') &&
+                        // Not a diff view
+                        !doc.uri.scheme.includes('puppetfile-diff')
+                    );
+                };
+                
+                // Find the original Puppetfile editor (not the diff view)
+                // First try visible editors
+                let puppetfileEditor = vscode.window.visibleTextEditors.find(editor => 
+                    isPuppetfile(editor.document)
+                );
+                
+                // Find the Puppetfile document even if no editor is visible
+                let puppetfileDocument: vscode.TextDocument | undefined;
+                if (puppetfileEditor) {
+                    puppetfileDocument = puppetfileEditor.document;
+                } else {
+                    puppetfileDocument = vscode.workspace.textDocuments.find(isPuppetfile);
+                }
+                
+                if (!puppetfileDocument) {
+                    // Debug information to help diagnose the issue
+                    const availableEditors = vscode.window.visibleTextEditors.map(e => 
+                        `${e.document.languageId} (${e.document.uri.scheme}): ${e.document.uri.toString()}`
+                    );
+                    const availableDocs = vscode.workspace.textDocuments.map(d => 
+                        `${d.languageId} (${d.uri.scheme}): ${d.uri.toString()}`
+                    );
+                    
+                    console.error('Debug info - Available editors:', availableEditors);
+                    console.error('Debug info - Available documents:', availableDocs);
+                    
+                    throw new Error(`Could not find the original Puppetfile document. Available editors: ${availableEditors.join(', ')}. Available docs: ${availableDocs.join(', ')}`);
+                }
+                
+                // Find the line containing this module in the original Puppetfile
+                const content = puppetfileDocument.getText();
+                const lines = content.split('\n');
+                let targetLineNumber = -1;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line.includes(`mod '${moduleName}'`) || line.includes(`mod "${moduleName}"`)) {
+                        targetLineNumber = i + 1; // Convert to 1-based line number
+                        break;
+                    }
+                }
+                
+                if (targetLineNumber === -1) {
+                    throw new Error(`Could not find module ${moduleName} in the Puppetfile`);
+                }
+                
+                progress.report({ increment: 50, message: 'Updating Puppetfile...' });
+                
+                // Apply the update to the original Puppetfile at the found line
+                // Use workspace edit if no editor is available
+                if (puppetfileEditor) {
+                    await PuppetfileUpdateService.updateModuleVersionAtLine(targetLineNumber, newVersion);
+                } else {
+                    // Use workspace edit to modify the document
+                    const lineIndex = targetLineNumber - 1;
+                    const line = puppetfileDocument.lineAt(lineIndex);
+                    const lineText = line.text;
+                    
+                    // Replace the version in the line
+                    let updatedLine: string;
+                    if (currentVersion === 'unversioned') {
+                        // For unversioned modules, add the version
+                        updatedLine = lineText.replace(
+                            `mod '${moduleName}'`,
+                            `mod '${moduleName}', '${newVersion}'`
+                        ).replace(
+                            `mod "${moduleName}"`,
+                            `mod "${moduleName}", "${newVersion}"`
+                        );
+                    } else {
+                        // For versioned modules, replace the version
+                        updatedLine = lineText.replace(currentVersion, newVersion);
+                    }
+                    
+                    // Apply the edit using workspace API
+                    const edit = new vscode.WorkspaceEdit();
+                    edit.replace(puppetfileDocument.uri, line.range, updatedLine);
+                    await vscode.workspace.applyEdit(edit);
+                    
+                    // Save the document
+                    await puppetfileDocument.save();
+                }
                 
                 progress.report({ increment: 100, message: 'Complete!' });
             });
