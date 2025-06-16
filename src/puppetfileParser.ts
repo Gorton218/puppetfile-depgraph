@@ -71,8 +71,16 @@ export class PuppetfileParser {
                     const cleanLine = this.stripInlineComment(line);
                     
                     // Check if this might be a multi-line module definition
-                    // A multi-line module definition typically ends with a comma and doesn't have a complete definition
-                    if (cleanLine.endsWith(',') && !cleanLine.includes(';')) {
+                    // A multi-line module definition typically:
+                    // 1. Ends with a comma, OR
+                    // 2. Is just a module name (no version or git options) and the next line has git options as continuation
+                    const isJustModuleName = /^mod\s*['"][^'"]+['"]\s*$/.test(cleanLine);
+                    const nextLineHasGitOptions = i + 1 < lines.length && 
+                        lines[i + 1].trim().match(/^\s*:git\s*=>/); // Must start with :git, not just contain it
+                    
+                    
+                    if ((cleanLine.endsWith(',') && !cleanLine.includes(';')) || 
+                        (isJustModuleName && nextLineHasGitOptions)) {
                         // This might be a multi-line module definition
                         const multiLineModule = this.parseMultiLineModule(lines, i);
                         if (multiLineModule.module) {
@@ -129,8 +137,8 @@ export class PuppetfileParser {
 
             // Check if this line ends the module definition
             // A module definition ends when we find a line that doesn't end with a comma
-            // or when we encounter a closing parenthesis/bracket
-            if (!cleanLine.endsWith(',') || cleanLine.includes(')') || cleanLine.includes(']')) {
+            // BUT we need to continue for the first line (module name) even if it doesn't have a comma
+            if (currentIndex > startIndex && (!cleanLine.endsWith(',') || cleanLine.includes(')') || cleanLine.includes(']'))) {
                 foundEnd = true;
             }
 
