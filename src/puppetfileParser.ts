@@ -260,7 +260,7 @@ export class PuppetfileParser {
             const tagMatch = /:tag\s*=>\s*['"]([^'"]+)['"]/s.exec(line);
             const refMatch = /:ref\s*=>\s*['"]([^'"]+)['"]/s.exec(line);
 
-            this.extractGitRef(line, tagMatch?.[1] || refMatch?.[1], module, tagMatch ? 'tag' : 'ref');
+            this.extractGitRef(line, tagMatch?.[1] ?? refMatch?.[1], module, tagMatch ? 'tag' : 'ref');
         } else {
             // Look for version - check if it's the second quoted string after the module name
             // But make sure it's not part of a git configuration
