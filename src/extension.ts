@@ -11,6 +11,7 @@ import { CacheService } from './cacheService';
 import { UpgradePlannerService } from './services/upgradePlannerService';
 import { UpgradeDiffProvider } from './services/upgradeDiffProvider';
 import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
+import { UpgradeDiffCodeLensProvider } from './services/upgradeDiffCodeLensProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -497,8 +498,16 @@ Built with ❤️ for the Puppet community`;
                 await PuppetfileCodeLensProvider.applySingleUpgrade(args);
         });
 
+        const applySingleUpgradeFromDiff = vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgradeFromDiff', async (...args) => {
+                await UpgradeDiffProvider.applySingleUpgradeFromDiff(args);
+        });
+
+        const skipSingleUpgradeFromDiff = vscode.commands.registerCommand('puppetfile-depgraph.skipSingleUpgradeFromDiff', async (...args) => {
+                await UpgradeDiffProvider.skipSingleUpgradeFromDiff(args);
+        });
+
         // Add all commands to subscriptions
-        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, clearCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout, applyAllUpgrades, applySelectedUpgrades, applySingleUpgrade);
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, clearCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout, applyAllUpgrades, applySelectedUpgrades, applySingleUpgrade, applySingleUpgradeFromDiff, skipSingleUpgradeFromDiff);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
@@ -515,6 +524,15 @@ Built with ❤️ for the Puppet community`;
 		codeLensProvider
 	);
 	context.subscriptions.push(codeLensProviderDisposable);
+
+	// Register CodeLens provider for diff views
+	const diffCodeLensProvider = new UpgradeDiffCodeLensProvider();
+	UpgradeDiffCodeLensProvider.setInstance(diffCodeLensProvider);
+	const diffCodeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
+		{ scheme: 'puppetfile-diff' },
+		diffCodeLensProvider
+	);
+	context.subscriptions.push(diffCodeLensProviderDisposable);
 }
 
 // This method is called when your extension is deactivated

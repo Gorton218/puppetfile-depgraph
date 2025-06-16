@@ -3,10 +3,12 @@ import { UpgradePlan, UpgradePlannerService } from './upgradePlannerService';
 import { PuppetfileUpdateService, UpdateResult } from '../puppetfileUpdateService';
 import { PuppetfileParser } from '../puppetfileParser';
 import { PuppetfileCodeLensProvider } from '../puppetfileCodeLensProvider';
+import { UpgradeDiffCodeLensProvider } from './upgradeDiffCodeLensProvider';
 
 export interface DiffOptions {
     showUpgradeableLonly?: boolean;
     includeComments?: boolean;
+    showInlineActions?: boolean;
 }
 
 /**
@@ -26,8 +28,8 @@ export class UpgradeDiffProvider {
         options: DiffOptions = {}
     ): Promise<void> {
         try {
-            // Create the proposed content with upgrades
-            const proposedContent = this.createProposedContent(originalContent, upgradePlan, options);
+            // Create the proposed content with upgrades and inline action comments
+            const proposedContent = this.createProposedContent(originalContent, upgradePlan, { ...options, showInlineActions: true });
             
             // Create temporary documents for the diff view
             const originalUri = vscode.Uri.parse('puppetfile-diff://current/Puppetfile');
@@ -36,6 +38,10 @@ export class UpgradeDiffProvider {
             // Register a content provider for our custom scheme
             const provider = new PuppetfileDiffContentProvider(originalContent, proposedContent);
             const disposable = vscode.workspace.registerTextDocumentContentProvider('puppetfile-diff', provider);
+            
+            // Store upgrade plan and options for later use
+            (global as any).__currentUpgradePlan = upgradePlan;
+            (global as any).__currentUpgradeOptions = options;
             
             // Open the diff editor
             await vscode.commands.executeCommand(
@@ -46,13 +52,24 @@ export class UpgradeDiffProvider {
                 { preview: true }
             );
             
+            // Set up CodeLens provider for the diff view
+            UpgradeDiffCodeLensProvider.setUpgradePlan(upgradePlan);
+            
+            // Refresh CodeLens after a short delay to ensure diff is loaded
+            setTimeout(() => {
+                const diffCodeLensProvider = UpgradeDiffCodeLensProvider.getInstance();
+                if (diffCodeLensProvider) {
+                    diffCodeLensProvider.refresh();
+                }
+            }, 1000);
+            
             // Show action buttons for applying changes
             await this.showUpgradeActions(upgradePlan, options);
             
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
                 disposable.dispose();
-            }, 5000);
+            }, 10000); // Longer delay to account for decorations
             
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to show upgrade diff: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -95,12 +112,63 @@ export class UpgradeDiffProvider {
             proposedContent = UpgradePlannerService.applyUpgradesToContent(originalContent, upgradePlan);
         }
         
+        // Add inline action comments for each upgrade if enabled
+        if (options.showInlineActions !== false) { // Default to true
+            proposedContent = this.addInlineActionComments(proposedContent, upgradePlan, options);
+        }
+        
         // Add upgrade summary as comments if requested
         if (options.includeComments) {
             proposedContent = this.addUpgradeComments(proposedContent, upgradePlan);
         }
         
         return proposedContent;
+    }
+    
+    /**
+     * Add inline action comments above upgrade lines with clickable apply/skip buttons
+     * @param content The Puppetfile content with upgrades applied
+     * @param upgradePlan The upgrade plan
+     * @param options Display options
+     * @returns Content with inline action comments
+     */
+    private static addInlineActionComments(
+        content: string, 
+        upgradePlan: UpgradePlan, 
+        options: DiffOptions
+    ): string {
+        const lines = content.split('\n');
+        const upgradeableCandidates = upgradePlan.candidates.filter(c => c.isUpgradeable);
+        
+        // Process candidates in reverse line order to preserve line numbers when inserting
+        const sortedCandidates = upgradeableCandidates.sort((a, b) => b.module.line - a.module.line);
+        
+        for (const candidate of sortedCandidates) {
+            const currentVersion = candidate.currentVersion === 'unversioned' ? 'unversioned' : candidate.currentVersion;
+            const newVersion = candidate.maxSafeVersion;
+            
+            // Find the line that contains this module (search for the module name)
+            let moduleLineIndex = -1;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                // Look for module declaration with the specific module name
+                if (line.includes(`mod '${candidate.module.name}'`) || line.includes(`mod "${candidate.module.name}"`)) {
+                    moduleLineIndex = i;
+                    break;
+                }
+            }
+            
+            // If we found the module line, insert the upgrade comment above it
+            if (moduleLineIndex >= 0) {
+                // Create a clean action comment line
+                const actionComment = `# ↑ UPGRADE: ${candidate.module.name} ${currentVersion} → ${newVersion}`;
+                
+                // Insert the action comment above the module line
+                lines.splice(moduleLineIndex, 0, actionComment);
+            }
+        }
+        
+        return lines.join('\n');
     }
     
     /**
@@ -122,6 +190,7 @@ export class UpgradeDiffProvider {
         
         return [...header, ...lines].join('\n');
     }
+    
     
     /**
      * Show an interactive upgrade planner with options
@@ -172,7 +241,7 @@ export class UpgradeDiffProvider {
         
         switch (selection.action) {
             case 'all':
-                await this.showUpgradeDiff(originalContent, upgradePlan, { includeComments: true });
+                await this.showUpgradeDiff(originalContent, upgradePlan, { includeComments: true, showInlineActions: true });
                 break;
                 
             case 'summary':
@@ -434,6 +503,135 @@ export class UpgradeDiffProvider {
             vscode.window.showErrorMessage(
                 `Failed to apply upgrades: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
+        }
+    }
+    
+    /**
+     * Apply a single upgrade from the diff view
+     * @param args Command arguments containing upgrade information
+     */
+    public static async applySingleUpgradeFromDiff(args: any[]): Promise<void> {
+        if (!args || args.length === 0) {
+            vscode.window.showErrorMessage('Invalid arguments for upgrade command');
+            return;
+        }
+        
+        const upgradeInfo = args[0];
+        const { moduleName, currentVersion, newVersion, line } = upgradeInfo;
+        
+        if (!moduleName || !newVersion || !line) {
+            vscode.window.showErrorMessage('Missing upgrade information');
+            return;
+        }
+        
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.languageId !== 'puppetfile') {
+            vscode.window.showErrorMessage('Please open a Puppetfile to apply upgrades.');
+            return;
+        }
+        
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Applying upgrade: ${moduleName}`,
+                cancellable: false
+            }, async (progress) => {
+                progress.report({ 
+                    increment: 0, 
+                    message: `${currentVersion || 'unversioned'} → ${newVersion}` 
+                });
+                
+                // Apply the update to the original Puppetfile
+                await PuppetfileUpdateService.updateModuleVersionAtLine(line, newVersion);
+                
+                progress.report({ increment: 100, message: 'Complete!' });
+            });
+            
+            // Show success message
+            vscode.window.showInformationMessage(
+                `✅ Applied upgrade: ${moduleName} → ${newVersion}`
+            );
+            
+            // Refresh the diff view
+            await this.refreshDiffView();
+            
+        } catch (error) {
+            vscode.window.showErrorMessage(
+                `Failed to apply upgrade for ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+        }
+    }
+    
+    /**
+     * Skip a single upgrade from the diff view
+     * @param args Command arguments containing module information
+     */
+    public static async skipSingleUpgradeFromDiff(args: any[]): Promise<void> {
+        if (!args || args.length === 0) {
+            return;
+        }
+        
+        const skipInfo = args[0];
+        const { moduleName } = skipInfo;
+        
+        if (!moduleName) {
+            return;
+        }
+        
+        // Show info message about skipping
+        vscode.window.showInformationMessage(
+            `⏭️ Skipped upgrade for ${moduleName}`
+        );
+        
+        // Could implement a way to track skipped upgrades if needed
+        // For now, just provide user feedback
+    }
+    
+    /**
+     * Refresh the diff view to show updated state
+     */
+    private static async refreshDiffView(): Promise<void> {
+        try {
+            // Check if we have a stored upgrade plan to refresh
+            const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+            const upgradeOptions: DiffOptions = (global as any).__currentUpgradeOptions;
+            
+            if (!upgradePlan) {
+                return;
+            }
+            
+            // Get the current document content
+            const activeEditor = vscode.window.activeTextEditor;
+            if (!activeEditor) {
+                return;
+            }
+            
+            // Re-parse the updated content
+            const parseResult = PuppetfileParser.parseActiveEditor();
+            if (parseResult.errors.length > 0) {
+                return;
+            }
+            
+            // Create a new upgrade plan with the updated content
+            const updatedUpgradePlan = await UpgradePlannerService.createUpgradePlan(parseResult.modules);
+            
+            // Update the global upgrade plan
+            (global as any).__currentUpgradePlan = updatedUpgradePlan;
+            
+            // Re-show the diff with updated content
+            const originalContent = activeEditor.document.getText();
+            await this.showUpgradeDiff(originalContent, updatedUpgradePlan, upgradeOptions);
+            
+            // Refresh the CodeLens provider with the updated plan
+            UpgradeDiffCodeLensProvider.setUpgradePlan(updatedUpgradePlan);
+            const diffCodeLensProvider = UpgradeDiffCodeLensProvider.getInstance();
+            if (diffCodeLensProvider) {
+                diffCodeLensProvider.refresh();
+            }
+            
+        } catch (error) {
+            // Silently fail refresh - user can manually refresh if needed
+            console.warn('Failed to refresh diff view:', error);
         }
     }
 }

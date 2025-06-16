@@ -135,7 +135,7 @@ describe('Extension', () => {
             activate(mockContext);
 
             // Assert
-            expect(mockedVSCode.commands.registerCommand as jest.Mock).toHaveBeenCalledTimes(12);
+            expect(mockedVSCode.commands.registerCommand as jest.Mock).toHaveBeenCalledTimes(14);
             expect(registeredCommands.has('puppetfile-depgraph.updateAllToSafe')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.updateAllToLatest')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showDependencyTree')).toBe(true);
@@ -148,6 +148,8 @@ describe('Extension', () => {
             expect(registeredCommands.has('puppetfile-depgraph.applyAllUpgrades')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.applySelectedUpgrades')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.applySingleUpgrade')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applySingleUpgradeFromDiff')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.skipSingleUpgradeFromDiff')).toBe(true);
         });
 
         test('should register hover provider', () => {
@@ -166,7 +168,7 @@ describe('Extension', () => {
             activate(mockContext);
 
             // Assert
-            expect(mockContext.subscriptions.length).toBe(14); // 12 commands + 1 hover provider + 1 codelens provider
+            expect(mockContext.subscriptions.length).toBe(17); // 14 commands + 1 hover provider + 2 codelens providers
         });
     });
 
