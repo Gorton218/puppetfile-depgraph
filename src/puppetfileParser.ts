@@ -238,7 +238,8 @@ export class PuppetfileParser {
      */
     private static parseComplexModuleLine(line: string, lineNumber: number): PuppetModule | null {
         // Extract module name
-        const modMatch = /^mod\s*['"]([^'"]+)['"]/.exec(line);
+        const modRegex = /^mod\s*['"]([^'"]+)['"]/;
+        const modMatch = modRegex.exec(line);
         if (!modMatch) {
             throw new Error('Invalid module declaration syntax');
         }
@@ -251,20 +252,24 @@ export class PuppetfileParser {
         };
 
         // Check for git source (handle multi-line with dotall flag)
-        const gitMatch = /:git\s*=>\s*['"]([^'"]+)['"]/s.exec(line);
+        const gitRegex = /:git\s*=>\s*['"]([^'"]+)['"]/s;
+        const gitMatch = gitRegex.exec(line);
         if (gitMatch) {
             module.source = 'git';
             module.gitUrl = gitMatch[1];
 
             // Look for tag or ref (handle multi-line)
-            const tagMatch = /:tag\s*=>\s*['"]([^'"]+)['"]/s.exec(line);
-            const refMatch = /:ref\s*=>\s*['"]([^'"]+)['"]/s.exec(line);
+            const tagRegex = /:tag\s*=>\s*['"]([^'"]+)['"]/s;
+            const refRegex = /:ref\s*=>\s*['"]([^'"]+)['"]/s;
+            const tagMatch = tagRegex.exec(line);
+            const refMatch = refRegex.exec(line);
 
             this.extractGitRef(line, tagMatch?.[1] || refMatch?.[1], module, tagMatch ? 'tag' : 'ref');
         } else {
             // Look for version - check if it's the second quoted string after the module name
             // But make sure it's not part of a git configuration
-            const versionMatch = /^mod\s*['"]([^'"]+)['"],\s*['"]([^'"]+)['"](?:\s*$|,)/.exec(line);
+            const versionRegex = /^mod\s*['"]([^'"]+)['"],\s*['"]([^'"]+)['"](?:\s*$|,)/;
+            const versionMatch = versionRegex.exec(line);
             if (versionMatch && !line.includes(':git')) {
                 module.version = versionMatch[2];
             }
@@ -278,7 +283,8 @@ export class PuppetfileParser {
      */
     private static stripInlineComment(line: string): string {
         // This regex looks for # that's not inside quotes
-        const commentMatch = /^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/.exec(line);
+        const commentRegex = /^([^#'"]*(?:['"][^'"]*['"][^#'"]*)*)#.*$/;
+        const commentMatch = commentRegex.exec(line);
         if (commentMatch) {
             return commentMatch[1].trim();
         }
