@@ -1,6 +1,6 @@
 // Unit tests for extension.ts - Uses Jest syntax
 import * as vscode from 'vscode';
-import { activate, deactivate } from '../extension';
+import { activate, deactivate, showTemporaryMessage } from '../extension';
 import { PuppetfileParser } from '../puppetfileParser';
 import { PuppetfileUpdateService } from '../puppetfileUpdateService';
 import { DependencyTreeService } from '../dependencyTreeService';
@@ -17,7 +17,8 @@ jest.mock('vscode', () => ({
         registerCommand: jest.fn()
     },
     languages: {
-        registerHoverProvider: jest.fn()
+        registerHoverProvider: jest.fn(),
+        registerCodeLensProvider: jest.fn()
     },
     window: {
         showErrorMessage: jest.fn(),
@@ -33,7 +34,11 @@ jest.mock('vscode', () => ({
     },
     ProgressLocation: {
         Notification: 'notification'
-    }
+    },
+    EventEmitter: jest.fn().mockImplementation(() => ({
+        fire: jest.fn(),
+        event: jest.fn()
+    }))
 }));
 
 jest.mock('../puppetfileParser');
@@ -45,6 +50,18 @@ jest.mock('../gitMetadataService');
 jest.mock('../cacheService');
 jest.mock('../services/upgradePlannerService');
 jest.mock('../services/upgradeDiffProvider');
+jest.mock('../puppetfileCodeLensProvider', () => ({
+    PuppetfileCodeLensProvider: jest.fn().mockImplementation(() => ({
+        provideCodeLenses: jest.fn()
+    })),
+    setInstance: jest.fn()
+}));
+jest.mock('../services/upgradeDiffCodeLensProvider', () => ({
+    UpgradeDiffCodeLensProvider: jest.fn().mockImplementation(() => ({
+        provideCodeLenses: jest.fn()
+    })),
+    setInstance: jest.fn()
+}));
 
 const mockedVSCode = vscode as jest.Mocked<typeof vscode>;
 
@@ -92,6 +109,7 @@ describe('Extension', () => {
         });
 
         (mockedVSCode.languages.registerHoverProvider as jest.Mock).mockReturnValue({ dispose: jest.fn() } as any);
+        (mockedVSCode.languages.registerCodeLensProvider as jest.Mock).mockReturnValue({ dispose: jest.fn() } as any);
         (mockedVSCode.window as any).activeTextEditor = mockActiveEditor;
         (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
             const progress = { report: jest.fn() };
@@ -108,6 +126,37 @@ describe('Extension', () => {
             ],
             errors: []
         });
+
+        // Mock PuppetForgeService
+        (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true);
+        (PuppetForgeService.clearCache as jest.Mock).mockImplementation(() => {});
+        (PuppetForgeService.cleanupAgents as jest.Mock).mockImplementation(() => {});
+
+        // Mock other services
+        (GitMetadataService.clearCache as jest.Mock).mockImplementation(() => {});
+        (CacheService.cacheAllModules as jest.Mock).mockResolvedValue(undefined);
+        (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockResolvedValue(undefined);
+        (UpgradePlannerService.createUpgradePlan as jest.Mock).mockResolvedValue({ modules: [], summary: {} });
+        (UpgradeDiffProvider.showInteractiveUpgradePlanner as jest.Mock).mockResolvedValue(undefined);
+        (UpgradeDiffProvider.applyAllUpgrades as jest.Mock).mockResolvedValue(undefined);
+        (UpgradeDiffProvider.applySelectedUpgrades as jest.Mock).mockResolvedValue(undefined);
+        (UpgradeDiffProvider.applySingleUpgradeFromDiff as jest.Mock).mockResolvedValue(undefined);
+        (UpgradeDiffProvider.skipSingleUpgradeFromDiff as jest.Mock).mockResolvedValue(undefined);
+        
+        // Mock PuppetfileCodeLensProvider static method
+        const mockCodeLensProvider = require('../puppetfileCodeLensProvider');
+        mockCodeLensProvider.PuppetfileCodeLensProvider.setInstance = jest.fn();
+        mockCodeLensProvider.PuppetfileCodeLensProvider.applySingleUpgrade = jest.fn().mockResolvedValue(undefined);
+        
+        // Mock UpgradeDiffCodeLensProvider static method
+        const mockDiffCodeLensProvider = require('../services/upgradeDiffCodeLensProvider');
+        mockDiffCodeLensProvider.UpgradeDiffCodeLensProvider.setInstance = jest.fn();
+
+        // Mock PuppetfileUpdateService
+        (PuppetfileUpdateService.updateModuleVersionAtLine as jest.Mock).mockResolvedValue(undefined);
+        (PuppetfileUpdateService.updateAllToSafeVersions as jest.Mock).mockResolvedValue([]);
+        (PuppetfileUpdateService.updateAllToLatestVersions as jest.Mock).mockResolvedValue([]);
+        (PuppetfileUpdateService.generateUpdateSummary as jest.Mock).mockReturnValue('Mock summary');
     });
 
     afterEach(() => {
@@ -128,7 +177,7 @@ describe('Extension', () => {
             activate(mockContext);
 
             // Assert
-            expect(mockedVSCode.commands.registerCommand as jest.Mock).toHaveBeenCalledTimes(9);
+            expect(mockedVSCode.commands.registerCommand as jest.Mock).toHaveBeenCalledTimes(14);
             expect(registeredCommands.has('puppetfile-depgraph.updateAllToSafe')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.updateAllToLatest')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showDependencyTree')).toBe(true);
@@ -138,6 +187,11 @@ describe('Extension', () => {
             expect(registeredCommands.has('puppetfile-depgraph.cacheAllModules')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showUpgradePlanner')).toBe(true);
             expect(registeredCommands.has('puppetfile-depgraph.showAbout')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applyAllUpgrades')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applySelectedUpgrades')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applySingleUpgrade')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.applySingleUpgradeFromDiff')).toBe(true);
+            expect(registeredCommands.has('puppetfile-depgraph.skipSingleUpgradeFromDiff')).toBe(true);
         });
 
         test('should register hover provider', () => {
@@ -156,7 +210,7 @@ describe('Extension', () => {
             activate(mockContext);
 
             // Assert
-            expect(mockContext.subscriptions.length).toBe(10); // 9 commands + 1 hover provider
+            expect(mockContext.subscriptions.length).toBe(17); // 14 commands + 1 hover provider + 2 codelens providers
         });
     });
 
@@ -423,7 +477,14 @@ describe('Extension', () => {
 
             // Assert
             expect(PuppetfileUpdateService.updateModuleVersionAtLine).toHaveBeenCalledWith(5, '1.2.3');
-            expect(mockedVSCode.window.showInformationMessage as jest.Mock).toHaveBeenCalledWith('Updated module to version 1.2.3');
+            expect(mockedVSCode.window.withProgress as jest.Mock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Updated module to version 1.2.3',
+                    cancellable: false
+                }),
+                expect.any(Function)
+            );
         });
 
         test('should handle array of objects arguments', async () => {
@@ -437,7 +498,14 @@ describe('Extension', () => {
 
             // Assert
             expect(PuppetfileUpdateService.updateModuleVersionAtLine).toHaveBeenCalledWith(10, '2.0.0');
-            expect(mockedVSCode.window.showInformationMessage as jest.Mock).toHaveBeenCalledWith('Updated module to version 2.0.0');
+            expect(mockedVSCode.window.withProgress as jest.Mock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Updated module to version 2.0.0',
+                    cancellable: false
+                }),
+                expect.any(Function)
+            );
         });
 
         test('should handle invalid arguments', async () => {
@@ -551,6 +619,9 @@ describe('Extension', () => {
 
             // Act
             await command!();
+            
+            // Wait for the setTimeout to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
 
             // Assert
             expect(UpgradePlannerService.createUpgradePlan).toHaveBeenCalledWith([
@@ -615,6 +686,9 @@ describe('Extension', () => {
 
             // Act
             await command!();
+            
+            // Wait for the setTimeout to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
 
             // Assert
             expect(UpgradePlannerService.createUpgradePlan).toHaveBeenCalledWith([
@@ -654,6 +728,197 @@ describe('Extension', () => {
         });
     });
 
+    describe('error handling edge cases', () => {
+        test('should handle non-Error objects in updateAllToSafe', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.updateAllToSafe');
+            (PuppetfileUpdateService.updateAllToSafeVersions as jest.Mock).mockRejectedValue('String error');
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Update failed: Unknown error');
+        });
+
+        test('should handle non-Error objects in updateAllToLatest', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.updateAllToLatest');
+            (mockedVSCode.window.showWarningMessage as jest.Mock).mockResolvedValue('Yes' as any);
+            (PuppetfileUpdateService.updateAllToLatestVersions as jest.Mock).mockRejectedValue(null);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Update failed: Unknown error');
+        });
+
+        test('should handle non-Error objects in showDependencyTree', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockRejectedValue('String error');
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Failed to build dependency tree: Unknown error');
+        });
+
+        test('should handle non-Error objects in updateModuleVersion', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.updateModuleVersion');
+            (PuppetfileUpdateService.updateModuleVersionAtLine as jest.Mock).mockRejectedValue(123);
+
+            // Act
+            await command!({ line: 5, version: '1.2.3' });
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Failed to update module: Unknown error');
+        });
+
+        test('should handle non-Error objects in showUpgradePlanner', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showUpgradePlanner');
+            (UpgradePlannerService.createUpgradePlan as jest.Mock).mockRejectedValue({ message: 'Custom error' });
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Failed to analyze upgrades: Unknown error');
+        });
+    });
+
+    describe('updateAllToLatest warning scenarios', () => {
+        test('should handle undefined warning response', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.updateAllToLatest');
+            (mockedVSCode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(PuppetfileUpdateService.updateAllToLatestVersions).not.toHaveBeenCalled();
+        });
+
+        test('should handle empty string warning response', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.updateAllToLatest');
+            (mockedVSCode.window.showWarningMessage as jest.Mock).mockResolvedValue('');
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(PuppetfileUpdateService.updateAllToLatestVersions).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('complex progress scenarios', () => {
+        test('should handle phase2 animation cleanup on error', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(false);
+            
+            // Mock CacheService to complete successfully
+            (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockImplementation(async (modules, token, callback) => {
+                callback(2, 2); // Complete caching
+            });
+            
+            // Mock DependencyTreeService to throw an error
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockRejectedValue(new Error('Tree build error'));
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Failed to build dependency tree: Tree build error');
+        });
+
+        test('should handle final cancellation check before showing results', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            
+            const mockTree = [{ module: 'puppetlabs/stdlib', dependencies: [] }];
+            let cancelToken: any;
+            (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                cancelToken = { isCancellationRequested: false };
+                const progress = { report: jest.fn() };
+                return await task(progress as any, cancelToken);
+            });
+            
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(async (modules, progressCallback, token) => {
+                // Simulate successful tree building but then cancel before showing results
+                token.isCancellationRequested = true;
+                return mockTree;
+            });
+            (DependencyTreeService.generateTreeText as jest.Mock).mockReturnValue('Tree text');
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(DependencyTreeService.buildDependencyTree).toHaveBeenCalled();
+            expect(mockedVSCode.workspace.openTextDocument as jest.Mock).not.toHaveBeenCalled();
+        });
+
+        test('should ensure progress reaches exactly 100% before completion', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            
+            const mockTree = [{ module: 'puppetlabs/stdlib', dependencies: [] }];
+            let progressReports: any[] = [];
+            
+            (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                const progress = { 
+                    report: jest.fn().mockImplementation((report) => {
+                        progressReports.push(report);
+                    })
+                };
+                const token = { isCancellationRequested: false };
+                return await task(progress as any, token);
+            });
+            
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(async (modules, progressCallback, token) => {
+                // Simulate Phase 3 progress that doesn't reach 100%
+                progressCallback('Checking module 1', 'conflicts', 1, 2);
+                progressCallback('Checking module 2', 'conflicts', 2, 2);
+                return mockTree;
+            });
+            (DependencyTreeService.generateTreeText as jest.Mock).mockReturnValue('Tree text');
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(DependencyTreeService.buildDependencyTree).toHaveBeenCalled();
+            expect(mockedVSCode.workspace.openTextDocument as jest.Mock).toHaveBeenCalled();
+            
+            // Check that final progress ensures 100%
+            const finalProgressReport = progressReports[progressReports.length - 1];
+            expect(finalProgressReport.message).toBe('Complete!');
+        });
+    });
+
     describe('showAbout command', () => {
         test('should display about information', async () => {
             // Arrange
@@ -672,6 +937,305 @@ describe('Extension', () => {
             expect(documentCall.content).toContain('https://github.com/example/repo');
             expect(documentCall.language).toBe('markdown');
             expect(mockedVSCode.window.showTextDocument as jest.Mock).toHaveBeenCalled();
+        });
+    });
+
+    describe('showTemporaryMessage', () => {
+        test('should display temporary message with default duration', () => {
+            // Act
+            showTemporaryMessage('Test message');
+            
+            // Assert
+            expect(mockedVSCode.window.withProgress as jest.Mock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Test message',
+                    cancellable: false
+                }),
+                expect.any(Function)
+            );
+        });
+        
+        test('should display temporary message with custom duration', () => {
+            // Act
+            showTemporaryMessage('Custom message', 3000);
+            
+            // Assert
+            expect(mockedVSCode.window.withProgress as jest.Mock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Custom message',
+                    cancellable: false
+                }),
+                expect.any(Function)
+            );
+        });
+        
+        test('should resolve progress after specified duration', async () => {
+            // Arrange
+            let progressResolver: any;
+            const mockProgress = { report: jest.fn() };
+            (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                return await task(mockProgress, {} as any);
+            });
+            
+            // Mock setTimeout to capture and immediately resolve
+            const originalSetTimeout = global.setTimeout;
+            global.setTimeout = jest.fn().mockImplementation((callback, delay) => {
+                expect(delay).toBe(5000);
+                callback(); // Immediately call the callback
+                return 123; // Mock timer ID
+            }) as any;
+            
+            // Act
+            await showTemporaryMessage('Test message');
+            
+            // Assert
+            expect(mockProgress.report).toHaveBeenCalledWith({ increment: 0 });
+            expect(mockProgress.report).toHaveBeenCalledWith({ increment: 100 });
+            
+            // Restore setTimeout
+            global.setTimeout = originalSetTimeout;
+        });
+    });
+
+    describe('apply upgrade commands', () => {
+        test('should call UpgradeDiffProvider.applyAllUpgrades for applyAllUpgrades command', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.applyAllUpgrades');
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(UpgradeDiffProvider.applyAllUpgrades).toHaveBeenCalled();
+        });
+
+        test('should call UpgradeDiffProvider.applySelectedUpgrades for applySelectedUpgrades command', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.applySelectedUpgrades');
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(UpgradeDiffProvider.applySelectedUpgrades).toHaveBeenCalled();
+        });
+
+        test('should call PuppetfileCodeLensProvider.applySingleUpgrade for applySingleUpgrade command', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.applySingleUpgrade');
+            const mockArgs = { line: 5, version: '1.0.0' };
+
+            // Act
+            await command!(mockArgs);
+
+            // Assert
+            expect(require('../puppetfileCodeLensProvider').PuppetfileCodeLensProvider.applySingleUpgrade).toHaveBeenCalledWith(mockArgs);
+        });
+
+        test('should call UpgradeDiffProvider.applySingleUpgradeFromDiff for applySingleUpgradeFromDiff command', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.applySingleUpgradeFromDiff');
+            const mockArgs = [{ line: 5, version: '1.0.0' }];
+
+            // Act
+            await command!(...mockArgs);
+
+            // Assert
+            expect(UpgradeDiffProvider.applySingleUpgradeFromDiff).toHaveBeenCalledWith(mockArgs);
+        });
+
+        test('should call UpgradeDiffProvider.skipSingleUpgradeFromDiff for skipSingleUpgradeFromDiff command', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.skipSingleUpgradeFromDiff');
+            const mockArgs = [{ line: 5, version: '1.0.0' }];
+
+            // Act
+            await command!(...mockArgs);
+
+            // Assert
+            expect(UpgradeDiffProvider.skipSingleUpgradeFromDiff).toHaveBeenCalledWith(mockArgs);
+        });
+    });
+
+    describe('showDependencyTree progress handling', () => {
+        test('should handle cancellation during Phase 1', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            
+            let cancelToken: any;
+            (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                cancelToken = { isCancellationRequested: true };
+                const progress = { report: jest.fn() };
+                return await task(progress as any, cancelToken);
+            });
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(DependencyTreeService.buildDependencyTree).not.toHaveBeenCalled();
+        });
+
+        test('should handle cancellation during Phase 2', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            
+            let cancelToken: any;
+            (mockedVSCode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                cancelToken = { isCancellationRequested: false };
+                const progress = { report: jest.fn() };
+                return await task(progress as any, cancelToken);
+            });
+            
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(async (modules, progressCallback, token) => {
+                // Simulate cancellation during tree building
+                token.isCancellationRequested = true;
+                return [];
+            });
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(DependencyTreeService.buildDependencyTree).toHaveBeenCalled();
+            expect(mockedVSCode.workspace.openTextDocument as jest.Mock).not.toHaveBeenCalled();
+        });
+
+        test('should handle progress reporting with uncached modules', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(false);
+            
+            const mockTree = [{ module: 'puppetlabs/stdlib', dependencies: [] }];
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockResolvedValue(mockTree);
+            (DependencyTreeService.generateTreeText as jest.Mock).mockReturnValue('Tree text');
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+            
+            let progressCallback: any;
+            (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockImplementation(async (modules, token, callback) => {
+                progressCallback = callback;
+                callback(1, 2); // Simulate progress
+                callback(2, 2); // Complete
+            });
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(CacheService.cacheUncachedModulesWithProgressiveUpdates).toHaveBeenCalled();
+            expect(progressCallback).toBeDefined();
+        });
+
+        test('should handle progress reporting with dependency tree callback', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            
+            const mockTree = [{ module: 'puppetlabs/stdlib', dependencies: [] }];
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(async (modules, progressCallback, token) => {
+                // Simulate Phase 2 progress
+                progressCallback('Analyzing dependencies', 'tree');
+                // Simulate Phase 3 progress
+                progressCallback('Checking conflicts', 'conflicts', 1, 2);
+                return mockTree;
+            });
+            (DependencyTreeService.generateTreeText as jest.Mock).mockReturnValue('Tree text');
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(DependencyTreeService.buildDependencyTree).toHaveBeenCalled();
+            expect(mockedVSCode.workspace.openTextDocument as jest.Mock).toHaveBeenCalled();
+        });
+
+        test('should handle all modules already cached scenario', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (mockedVSCode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' } as any);
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true); // All modules cached
+            
+            const mockTree = [{ module: 'puppetlabs/stdlib', dependencies: [] }];
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockResolvedValue(mockTree);
+            (DependencyTreeService.generateTreeText as jest.Mock).mockReturnValue('Tree text');
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(CacheService.cacheUncachedModulesWithProgressiveUpdates).not.toHaveBeenCalled();
+            expect(DependencyTreeService.buildDependencyTree).toHaveBeenCalled();
+        });
+
+        test('should handle parsing errors in showDependencyTree', async () => {
+            // Arrange
+            activate(mockContext);
+            const command = registeredCommands.get('puppetfile-depgraph.showDependencyTree');
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [],
+                errors: ['Parse error in showDependencyTree']
+            });
+
+            // Act
+            await command!();
+
+            // Assert
+            expect(mockedVSCode.window.showErrorMessage as jest.Mock).toHaveBeenCalledWith('Puppetfile parsing errors: Parse error in showDependencyTree');
+            expect(mockedVSCode.window.showQuickPick as jest.Mock).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('CodeLens provider registration', () => {
+        test('should register CodeLens provider for Puppetfile pattern', () => {
+            // Act
+            activate(mockContext);
+
+            // Assert
+            expect(mockedVSCode.languages.registerCodeLensProvider as jest.Mock).toHaveBeenCalledWith(
+                { pattern: '**/Puppetfile' },
+                expect.any(Object)
+            );
+        });
+
+        test('should register CodeLens provider for diff views', () => {
+            // Act
+            activate(mockContext);
+
+            // Assert
+            expect(mockedVSCode.languages.registerCodeLensProvider as jest.Mock).toHaveBeenCalledWith(
+                { scheme: 'puppetfile-diff' },
+                expect.any(Object)
+            );
+        });
+
+        test('should set static instances for CodeLens providers', () => {
+            // Arrange
+            const setInstanceSpy = jest.spyOn(require('../puppetfileCodeLensProvider').PuppetfileCodeLensProvider, 'setInstance').mockImplementation(() => {});
+            const setDiffInstanceSpy = jest.spyOn(require('../services/upgradeDiffCodeLensProvider').UpgradeDiffCodeLensProvider, 'setInstance').mockImplementation(() => {});
+
+            // Act
+            activate(mockContext);
+
+            // Assert
+            expect(setInstanceSpy).toHaveBeenCalled();
+            expect(setDiffInstanceSpy).toHaveBeenCalled();
         });
     });
 

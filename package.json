@@ -2,7 +2,7 @@
   "name": "puppetfile-depgraph",
   "displayName": "Puppetfile Dependency Manager",
   "description": "A VS Code extension for managing Puppet module dependencies with visual dependency analysis and safe update recommendations",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.100.0",
     "node": ">=24.0.0"
@@ -66,6 +66,21 @@
       {
         "command": "puppetfile-depgraph.showAbout",
         "title": "About Puppetfile Dependency Manager",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.applyAllUpgrades",
+        "title": "Apply all safe upgrades",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.applySelectedUpgrades",
+        "title": "Apply selected upgrades",
+        "category": "Puppetfile"
+      },
+      {
+        "command": "puppetfile-depgraph.applySingleUpgrade",
+        "title": "Apply single module upgrade",
         "category": "Puppetfile"
       }
     ],

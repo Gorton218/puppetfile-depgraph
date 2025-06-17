@@ -16,6 +16,15 @@ A comprehensive VS Code extension for managing Puppet module dependencies with v
 - Bulk update operations with detailed progress reporting
 - Version conflict detection and resolution suggestions
 
+### 📋 **Upgrade Planner**
+- **Interactive Upgrade Planning**: Comprehensive analysis of all upgrade opportunities
+- **Selective Upgrades**: Apply or skip individual module upgrades directly from the diff view
+- **Conflict Detection**: Identifies dependency conflicts that prevent upgrades
+- **Visual Diff Interface**: Side-by-side comparison of current vs. proposed Puppetfile changes
+- **Progress Tracking**: Real-time progress indication with cancellation support
+- **One-Click Actions**: Apply and Skip buttons integrated directly into the upgrade diff
+- **Upgrade Statistics**: Summary view showing upgradeable, blocked, and unchanged modules
+
 ### 🌳 **Dependency Tree Visualization**
 - **Tree View**: Hierarchical display of all dependencies and their relationships
 - **List View**: Flat list of direct and transitive dependencies
@@ -72,6 +81,19 @@ Access these commands via:
   - Choose between Tree View or List View
   - Displays comprehensive dependency information
   - Highlights potential version conflicts
+
+- **`Puppetfile: Show Upgrade Planner`**
+  - Analyzes all modules for upgrade opportunities
+  - Shows interactive diff with current vs. proposed changes
+  - Provides Apply/Skip buttons for selective upgrades
+  - Detects and explains dependency conflicts
+  - Displays upgrade statistics and recommendations
+
+- **`Puppetfile: Cache info for all modules`**
+  - Pre-caches information for all Puppet Forge modules in the Puppetfile
+  - Significantly improves hover tooltip performance
+  - Progress bar with cancellation support
+  - Processes modules in batches to respect API rate limits
 
 ### Hover Information
 

@@ -10,6 +10,8 @@ import { GitMetadataService } from './gitMetadataService';
 import { CacheService } from './cacheService';
 import { UpgradePlannerService } from './services/upgradePlannerService';
 import { UpgradeDiffProvider } from './services/upgradeDiffProvider';
+import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
+import { UpgradeDiffCodeLensProvider } from './services/upgradeDiffCodeLensProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -370,7 +372,7 @@ export function activate(context: vscode.ExtensionContext) {
                 
                 try {
                     await PuppetfileUpdateService.updateModuleVersionAtLine(commandArgs.line, commandArgs.version);
-                    vscode.window.showInformationMessage(`Updated module to version ${commandArgs.version}`);
+                    showTemporaryMessage(`Updated module to version ${commandArgs.version}`, 5000);
                 } catch (error) {
                     console.error('Error updating module version:', error);
                     vscode.window.showErrorMessage(`Failed to update module: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -408,7 +410,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 // Show progress indicator
-                await vscode.window.withProgress({
+                const progressPromise = vscode.window.withProgress({
                         location: vscode.ProgressLocation.Notification,
                         title: "Analyzing upgrade opportunities",
                         cancellable: false
@@ -430,13 +432,20 @@ export function activate(context: vscode.ExtensionContext) {
                                 
                                 progress.report({ increment: 100, message: "Opening upgrade planner..." });
                                 
-                                // Show the interactive upgrade planner
-                                await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+                                // Wait a brief moment to let the user see the "Opening upgrade planner..." message
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                
+                                // Show the interactive upgrade planner after progress closes
+                                setTimeout(async () => {
+                                        await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+                                }, 100);
                                 
                         } catch (error) {
                                 vscode.window.showErrorMessage(`Failed to analyze upgrades: ${error instanceof Error ? error.message : 'Unknown error'}`);
                         }
                 });
+                
+                await progressPromise;
         });
 
         const showAbout = vscode.commands.registerCommand('puppetfile-depgraph.showAbout', async () => {
@@ -476,8 +485,28 @@ Built with ❤️ for the Puppet community`;
                 await vscode.window.showTextDocument(doc);
         });
 
+        const applyAllUpgrades = vscode.commands.registerCommand('puppetfile-depgraph.applyAllUpgrades', async () => {
+                await UpgradeDiffProvider.applyAllUpgrades();
+        });
+
+        const applySelectedUpgrades = vscode.commands.registerCommand('puppetfile-depgraph.applySelectedUpgrades', async () => {
+                await UpgradeDiffProvider.applySelectedUpgrades();
+        });
+
+        const applySingleUpgrade = vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async (args) => {
+                await PuppetfileCodeLensProvider.applySingleUpgrade(args);
+        });
+
+        const applySingleUpgradeFromDiff = vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgradeFromDiff', async (...args) => {
+                await UpgradeDiffProvider.applySingleUpgradeFromDiff(args);
+        });
+
+        const skipSingleUpgradeFromDiff = vscode.commands.registerCommand('puppetfile-depgraph.skipSingleUpgradeFromDiff', async (...args) => {
+                await UpgradeDiffProvider.skipSingleUpgradeFromDiff(args);
+        });
+
         // Add all commands to subscriptions
-        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, clearCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout);
+        context.subscriptions.push(updateAllToSafe, updateAllToLatest, showDependencyTree, clearForgeCache, clearCache, updateModuleVersion, cacheAllModules, showUpgradePlanner, showAbout, applyAllUpgrades, applySelectedUpgrades, applySingleUpgrade, applySingleUpgradeFromDiff, skipSingleUpgradeFromDiff);
 
 	// Register hover provider for Puppetfile (pattern-based to avoid duplicates)
 	const hoverProvider = vscode.languages.registerHoverProvider(
@@ -485,6 +514,45 @@ Built with ❤️ for the Puppet community`;
 		new PuppetfileHoverProvider()
 	);
 	context.subscriptions.push(hoverProvider);
+
+	// Register CodeLens provider for Puppetfile inline upgrade actions
+	const codeLensProvider = new PuppetfileCodeLensProvider();
+	PuppetfileCodeLensProvider.setInstance(codeLensProvider);
+	const codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
+		{ pattern: '**/Puppetfile' },
+		codeLensProvider
+	);
+	context.subscriptions.push(codeLensProviderDisposable);
+
+	// Register CodeLens provider for diff views
+	const diffCodeLensProvider = new UpgradeDiffCodeLensProvider();
+	UpgradeDiffCodeLensProvider.setInstance(diffCodeLensProvider);
+	const diffCodeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
+		{ scheme: 'puppetfile-diff' },
+		diffCodeLensProvider
+	);
+	context.subscriptions.push(diffCodeLensProviderDisposable);
+}
+
+/**
+ * Shows a temporary information message that auto-closes after a specified duration
+ */
+export function showTemporaryMessage(message: string, duration: number = 5000): void {
+    vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: message,
+        cancellable: false
+    }, async (progress) => {
+        progress.report({ increment: 0 });
+        
+        // Auto-complete the progress after the specified duration
+        return new Promise<void>((resolve) => {
+            setTimeout(() => {
+                progress.report({ increment: 100 });
+                resolve();
+            }, duration);
+        });
+    });
 }
 
 // This method is called when your extension is deactivated
