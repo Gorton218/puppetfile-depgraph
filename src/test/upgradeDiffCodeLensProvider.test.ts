@@ -359,7 +359,7 @@ describe('UpgradeDiffCodeLensProvider', () => {
             expect(validResult).toHaveLength(2);
         });
 
-        test('should handle scheme containing puppetfile-diff', async () => {
+        test('should reject schemes that are not exactly puppetfile-diff', async () => {
             // Arrange
             UpgradeDiffCodeLensProvider.setUpgradePlan(mockUpgradePlan);
             mockDocument.uri.scheme = 'custom-puppetfile-diff-view';
@@ -368,8 +368,8 @@ describe('UpgradeDiffCodeLensProvider', () => {
             // Act
             const result = await provider.provideCodeLenses(mockDocument, mockToken);
 
-            // Assert
-            expect(result).toHaveLength(2);
+            // Assert - Should return empty array for non-exact match
+            expect(result).toEqual([]);
         });
     });
 });

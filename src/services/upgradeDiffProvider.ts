@@ -552,7 +552,7 @@ export class UpgradeDiffProvider {
                          doc.uri.path.endsWith('\\Puppetfile') ||
                          doc.fileName === 'Puppetfile') &&
                         // Not a diff view
-                        !doc.uri.scheme.includes('puppetfile-diff')
+                        doc.uri.scheme !== 'puppetfile-diff'
                     );
                 };
                 

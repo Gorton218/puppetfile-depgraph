@@ -36,7 +36,7 @@ export class UpgradeDiffCodeLensProvider implements vscode.CodeLensProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.CodeLens[]> {
         // Only provide CodeLenses for our diff documents
-        if (!document.uri.scheme.includes('puppetfile-diff')) {
+        if (document.uri.scheme !== 'puppetfile-diff') {
             return [];
         }
 
