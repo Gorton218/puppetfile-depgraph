@@ -308,8 +308,9 @@ export class DependencyTreeService {
      * @returns Extracted version or undefined
      */
     private static extractVersionFromRequirement(requirement: string): string | undefined {
-        // Enhanced extraction to support full semantic versioning including pre-release and metadata
-        const regex = /\d+\.\d+\.\d+(-[0-9A-Za-z-.]+)?(\+[0-9A-Za-z-.]+)?/;
+        // Extract version numbers from requirement strings
+        // This intentionally captures only the numeric version part (e.g., "1.2.3" from "v1.2.3-suffix")
+        const regex = /\d+(?:\.\d+)*/;
         const match = regex.exec(requirement);
         return match ? match[0] : undefined;
     }

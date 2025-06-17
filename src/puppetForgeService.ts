@@ -127,13 +127,17 @@ export class PuppetForgeService {
             // Construct a ForgeModule object from release data
             // Note: This is a simplified version - some fields may be missing
             
-            // Validate moduleName format
-            if (!moduleName.includes('/')) {
-                throw new Error(`Invalid moduleName format: "${moduleName}". Expected "owner/module".`);
+            // Module names can be in format "owner/module" or "owner-module"
+            // Validate that the module name contains a separator
+            if (!(moduleName.includes('/') || moduleName.includes('-'))) {
+                throw new Error(`Invalid module name format: "${moduleName}". Expected "owner/module" or "owner-module".`);
             }
             
+            // For API calls, we need "owner/module" format
             const moduleSlug = moduleName.replace('/', '-');
-            const owner = moduleName.split('/')[0];
+            const owner = moduleName.includes('/') 
+                ? moduleName.split('/')[0]
+                : moduleName.split('-')[0];
             
             return {
                 name: moduleName,
