@@ -410,7 +410,6 @@ export function activate(context: vscode.ExtensionContext) {
                 }
 
                 // Show progress indicator
-                let progressResolve: (() => void) | null = null;
                 const progressPromise = vscode.window.withProgress({
                         location: vscode.ProgressLocation.Notification,
                         title: "Analyzing upgrade opportunities",
