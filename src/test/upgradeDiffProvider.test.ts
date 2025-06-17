@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import { UpgradeDiffProvider } from '../services/upgradeDiffProvider';
-import { UpgradePlan, UpgradeCandidate } from '../services/upgradePlannerService';
+import { UpgradePlan, UpgradeCandidate, UpgradePlannerService } from '../services/upgradePlannerService';
 import { PuppetModule } from '../puppetfileParser';
+import { PuppetfileUpdateService } from '../puppetfileUpdateService';
+import { PuppetfileParser } from '../puppetfileParser';
+
+// Mock dependencies
+jest.mock('../services/upgradePlannerService');
+jest.mock('../puppetfileUpdateService');
+jest.mock('../puppetfileParser');
 
 // Mock VS Code API
 jest.mock('vscode', () => {
@@ -11,10 +18,13 @@ jest.mock('vscode', () => {
     const mockShowTextDocument = jest.fn();
     const mockShowErrorMessage = jest.fn();
     const mockShowInformationMessage = jest.fn();
+    const mockWithProgress = jest.fn();
+    const mockCreateWorkspaceEdit = jest.fn();
+    const mockApplyEdit = jest.fn();
     
     return {
         Uri: {
-            parse: jest.fn((uri: string) => ({ scheme: 'puppetfile-diff', path: uri.split('/').pop() }))
+            parse: jest.fn((uri: string) => ({ scheme: 'puppetfile-diff', path: uri.split('/').pop(), authority: uri.includes('current') ? 'current' : 'proposed' }))
         },
         EventEmitter: jest.fn().mockImplementation(() => ({
             event: jest.fn(),
@@ -23,8 +33,13 @@ jest.mock('vscode', () => {
         })),
         workspace: {
             registerTextDocumentContentProvider: jest.fn(() => ({ dispose: jest.fn() })),
-            openTextDocument: mockOpenTextDocument
+            openTextDocument: mockOpenTextDocument,
+            textDocuments: [],
+            applyEdit: mockApplyEdit
         },
+        WorkspaceEdit: jest.fn(() => ({
+            replace: jest.fn()
+        })),
         commands: {
             executeCommand: mockExecuteCommand
         },
@@ -32,18 +47,30 @@ jest.mock('vscode', () => {
             showQuickPick: mockShowQuickPick,
             showTextDocument: mockShowTextDocument,
             showErrorMessage: mockShowErrorMessage,
-            showInformationMessage: mockShowInformationMessage
+            showInformationMessage: mockShowInformationMessage,
+            withProgress: mockWithProgress,
+            activeTextEditor: null,
+            visibleTextEditors: []
+        },
+        ProgressLocation: {
+            Notification: 15
         },
         _mockExecuteCommand: mockExecuteCommand,
         _mockShowQuickPick: mockShowQuickPick,
         _mockOpenTextDocument: mockOpenTextDocument,
         _mockShowTextDocument: mockShowTextDocument,
         _mockShowErrorMessage: mockShowErrorMessage,
-        _mockShowInformationMessage: mockShowInformationMessage
+        _mockShowInformationMessage: mockShowInformationMessage,
+        _mockWithProgress: mockWithProgress,
+        _mockCreateWorkspaceEdit: mockCreateWorkspaceEdit,
+        _mockApplyEdit: mockApplyEdit
     };
 });
 
 const mockVscode = vscode as jest.Mocked<typeof vscode>;
+const mockUpgradePlannerService = UpgradePlannerService as jest.Mocked<typeof UpgradePlannerService>;
+const mockPuppetfileUpdateService = PuppetfileUpdateService as jest.Mocked<typeof PuppetfileUpdateService>;
+const mockPuppetfileParser = PuppetfileParser as jest.Mocked<typeof PuppetfileParser>;
 
 describe('UpgradeDiffProvider', () => {
     beforeEach(() => {
@@ -54,6 +81,20 @@ describe('UpgradeDiffProvider', () => {
         (mockVscode as any)._mockShowTextDocument.mockClear();
         (mockVscode as any)._mockShowErrorMessage.mockClear();
         (mockVscode as any)._mockShowInformationMessage.mockClear();
+        (mockVscode as any)._mockWithProgress.mockClear();
+        (mockVscode as any)._mockApplyEdit.mockClear();
+        
+        // Clear global state
+        (global as any).__currentUpgradePlan = undefined;
+        (global as any).__currentUpgradeOptions = undefined;
+        (global as any).__currentContentProvider = undefined;
+        
+        // Reset mocks
+        mockUpgradePlannerService.applyUpgradesToContent = jest.fn().mockReturnValue('mocked content');
+        mockUpgradePlannerService.generateUpgradeSummary = jest.fn().mockReturnValue('# Upgrade Plan Summary\nMocked summary');
+        mockPuppetfileUpdateService.applyUpdates = jest.fn().mockResolvedValue(undefined);
+        mockPuppetfileUpdateService.updateModuleVersionAtLine = jest.fn().mockResolvedValue(undefined);
+        mockPuppetfileParser.parseContent = jest.fn().mockReturnValue({ modules: [], errors: [] });
     });
 
     describe('showUpgradeDiff', () => {
@@ -333,6 +374,406 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             return UpgradeDiffProvider.showUpgradeDiff(originalContent, upgradePlan).then(() => {
                 expect(mockVscode.workspace.registerTextDocumentContentProvider).toHaveBeenCalled();
             });
+        });
+    });
+
+    describe('applyAllUpgrades', () => {
+        test('should show error when no upgrade plan available', async () => {
+            await UpgradeDiffProvider.applyAllUpgrades();
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                'No upgrade plan available. Please run the upgrade planner first.'
+            );
+        });
+        
+        test('should show error when no active editor', async () => {
+            const upgradePlan: UpgradePlan = {
+                candidates: [],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = upgradePlan;
+            
+            await UpgradeDiffProvider.applyAllUpgrades();
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                'Please open a Puppetfile to apply upgrades.'
+            );
+        });
+        
+        test('should apply upgrades successfully', async () => {
+            const upgradePlan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = upgradePlan;
+            
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+            
+            const mockProgressCallback = jest.fn();
+            (mockVscode as any)._mockWithProgress.mockImplementation((options: any, callback: any) => {
+                return callback({ report: mockProgressCallback });
+            });
+            
+            await UpgradeDiffProvider.applyAllUpgrades();
+            
+            expect(mockPuppetfileUpdateService.applyUpdates).toHaveBeenCalledWith(
+                mockEditor,
+                expect.arrayContaining([{
+                    moduleName: 'puppetlabs/stdlib',
+                    currentVersion: '8.0.0',
+                    newVersion: '9.0.0',
+                    success: true,
+                    line: 1
+                }])
+            );
+        });
+        
+        test('should handle apply updates error', async () => {
+            const upgradePlan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = upgradePlan;
+            
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+            
+            const mockProgressCallback = jest.fn();
+            (mockVscode as any)._mockWithProgress.mockImplementation((options: any, callback: any) => {
+                return callback({ report: mockProgressCallback });
+            });
+            
+            mockPuppetfileUpdateService.applyUpdates.mockRejectedValue(new Error('Test error'));
+            
+            await UpgradeDiffProvider.applyAllUpgrades();
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                'Failed to apply upgrades: Test error'
+            );
+        });
+    });
+    
+    describe('applySelectedUpgrades', () => {
+        test('should show error when no upgrade plan available', async () => {
+            await UpgradeDiffProvider.applySelectedUpgrades();
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                'No upgrade plan available. Please run the upgrade planner first.'
+            );
+        });
+        
+        test('should show info when no upgrades available', async () => {
+            const upgradePlan: UpgradePlan = {
+                candidates: [],
+                totalUpgradeable: 0,
+                totalModules: 0,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = upgradePlan;
+            
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+            
+            await UpgradeDiffProvider.applySelectedUpgrades();
+            
+            expect((mockVscode as any)._mockShowInformationMessage).toHaveBeenCalledWith(
+                'No upgrades available to apply.'
+            );
+        });
+        
+        test('should handle user cancellation', async () => {
+            const upgradePlan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = upgradePlan;
+            
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+            
+            (mockVscode as any)._mockShowQuickPick.mockResolvedValue(undefined);
+            
+            await UpgradeDiffProvider.applySelectedUpgrades();
+            
+            expect(mockPuppetfileUpdateService.applyUpdates).not.toHaveBeenCalled();
+        });
+        
+        test('should apply selected upgrades', async () => {
+            const upgradePlan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = upgradePlan;
+            
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+            
+            const selectedItem = {
+                label: 'puppetlabs/stdlib',
+                candidate: upgradePlan.candidates[0]
+            };
+            (mockVscode as any)._mockShowQuickPick.mockResolvedValue([selectedItem]);
+            
+            const mockProgressCallback = jest.fn();
+            (mockVscode as any)._mockWithProgress.mockImplementation((options: any, callback: any) => {
+                return callback({ report: mockProgressCallback });
+            });
+            
+            await UpgradeDiffProvider.applySelectedUpgrades();
+            
+            expect(mockPuppetfileUpdateService.applyUpdates).toHaveBeenCalledWith(
+                mockEditor,
+                expect.arrayContaining([{
+                    moduleName: 'puppetlabs/stdlib',
+                    currentVersion: '8.0.0',
+                    newVersion: '9.0.0',
+                    success: true,
+                    line: 1
+                }])
+            );
+        });
+    });
+    
+    describe('applySingleUpgradeFromDiff', () => {
+        test('should handle invalid arguments', async () => {
+            await UpgradeDiffProvider.applySingleUpgradeFromDiff([]);
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                'Invalid arguments for upgrade command'
+            );
+        });
+        
+        test('should handle missing upgrade information', async () => {
+            await UpgradeDiffProvider.applySingleUpgradeFromDiff([{}]);
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                'Missing upgrade information'
+            );
+        });
+        
+        test('should handle missing Puppetfile document', async () => {
+            const upgradeInfo = {
+                moduleName: 'puppetlabs/stdlib',
+                currentVersion: '8.0.0',
+                newVersion: '9.0.0'
+            };
+            
+            const mockProgressCallback = jest.fn();
+            (mockVscode as any)._mockWithProgress.mockImplementation((options: any, callback: any) => {
+                return callback({ report: mockProgressCallback });
+            });
+            
+            (mockVscode.workspace as any).textDocuments = [];
+            mockVscode.window.visibleTextEditors = [];
+            
+            await UpgradeDiffProvider.applySingleUpgradeFromDiff([upgradeInfo]);
+            
+            expect((mockVscode as any)._mockShowErrorMessage).toHaveBeenCalledWith(
+                expect.stringContaining('Could not find the original Puppetfile document')
+            );
+        });
+        
+        test('should apply single upgrade with editor', async () => {
+            const upgradeInfo = {
+                moduleName: 'puppetlabs/stdlib',
+                currentVersion: '8.0.0',
+                newVersion: '9.0.0'
+            };
+            
+            const mockDocument = {
+                languageId: 'puppetfile',
+                uri: { path: '/test/Puppetfile', scheme: 'file' },
+                fileName: 'Puppetfile',
+                getText: jest.fn().mockReturnValue("mod 'puppetlabs/stdlib', '8.0.0'")
+            };
+            
+            const mockEditor = {
+                document: mockDocument
+            };
+            
+            (mockVscode.workspace as any).textDocuments = [mockDocument as any];
+            mockVscode.window.visibleTextEditors = [mockEditor as any];
+            
+            const mockProgressCallback = jest.fn();
+            (mockVscode as any)._mockWithProgress.mockImplementation((options: any, callback: any) => {
+                return callback({ report: mockProgressCallback });
+            });
+            
+            await UpgradeDiffProvider.applySingleUpgradeFromDiff([upgradeInfo]);
+            
+            expect(mockPuppetfileUpdateService.updateModuleVersionAtLine).toHaveBeenCalledWith(1, '9.0.0');
+        });
+    });
+    
+    describe('skipSingleUpgradeFromDiff', () => {
+        test('should handle empty arguments', async () => {
+            await UpgradeDiffProvider.skipSingleUpgradeFromDiff([]);
+            
+            // Should not throw error and not show any message
+            expect((mockVscode as any)._mockShowInformationMessage).not.toHaveBeenCalled();
+        });
+        
+        test('should show skip message', async () => {
+            const skipInfo = { moduleName: 'puppetlabs/stdlib' };
+            
+            await UpgradeDiffProvider.skipSingleUpgradeFromDiff([skipInfo]);
+            
+            expect((mockVscode as any)._mockShowInformationMessage).toHaveBeenCalledWith(
+                '⏭️ Skipped upgrade for puppetlabs/stdlib'
+            );
+        });
+    });
+    
+    describe('showUpgradeActions integration', () => {
+        test('should show upgrade actions through diff flow', async () => {
+            const originalContent = `mod 'puppetlabs/stdlib', '8.0.0'`;
+            const upgradePlan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            
+            (mockVscode as any)._mockShowInformationMessage.mockResolvedValue('Apply All');
+            
+            await UpgradeDiffProvider.showUpgradeDiff(originalContent, upgradePlan);
+            
+            // Verify diff was shown and upgrade actions were triggered
+            expect((mockVscode as any)._mockExecuteCommand).toHaveBeenCalledWith(
+                'vscode.diff',
+                expect.any(Object),
+                expect.any(Object),
+                expect.any(String),
+                expect.any(Object)
+            );
+        });
+    });
+    
+    describe('content creation options', () => {
+        test('should handle different diff options through showUpgradeDiff', async () => {
+            const originalContent = "mod 'puppetlabs/stdlib', '8.0.0'";
+            const upgradePlan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            
+            // Test with different options
+            await UpgradeDiffProvider.showUpgradeDiff(originalContent, upgradePlan, { 
+                showUpgradeableLonly: true, 
+                includeComments: true 
+            });
+            
+            expect(mockUpgradePlannerService.applyUpgradesToContent).toHaveBeenCalled();
+            expect((mockVscode as any)._mockExecuteCommand).toHaveBeenCalledWith(
+                'vscode.diff',
+                expect.any(Object),
+                expect.any(Object),
+                expect.any(String),
+                expect.any(Object)
+            );
+        });
+    });
+    
+    describe('diff view integration', () => {
+        test('should register content provider and show diff', async () => {
+            const originalContent = "mod 'puppetlabs/stdlib', '8.0.0'";
+            const upgradePlan: UpgradePlan = {
+                candidates: [],
+                totalUpgradeable: 0,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            
+            await UpgradeDiffProvider.showUpgradeDiff(originalContent, upgradePlan);
+            
+            expect(mockVscode.workspace.registerTextDocumentContentProvider).toHaveBeenCalledWith(
+                'puppetfile-diff',
+                expect.any(Object)
+            );
+            expect((mockVscode as any)._mockExecuteCommand).toHaveBeenCalledWith(
+                'vscode.diff',
+                expect.any(Object),
+                expect.any(Object),
+                'Puppetfile Upgrade Plan: Current ↔ Proposed',
+                { preview: true }
+            );
         });
     });
 });
