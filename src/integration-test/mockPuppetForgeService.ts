@@ -24,7 +24,7 @@ export class MockPuppetForgeService {
 
     // Load mock data from fixtures
     const fixturesDir = path.join(__dirname, 'fixtures', 'api-responses');
-    const files = ['puppetlabs-stdlib.json', 'puppetlabs-concat.json'];
+    const files = ['puppetlabs-stdlib.json', 'puppetlabs-concat.json', 'puppetlabs-firewall.json'];
 
     for (const file of files) {
       try {
