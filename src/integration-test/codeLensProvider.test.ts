@@ -219,6 +219,9 @@ suite('Code Lens Provider Integration Tests', () => {
     // Mock error in forge service
     sandbox.restore();
     sandbox.stub(PuppetForgeService, 'getModule').rejects(new Error('API Error'));
+    sandbox.stub(PuppetForgeService, 'getLatestVersion').rejects(new Error('API Error'));
+    sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').rejects(new Error('API Error'));
+    sandbox.stub(PuppetForgeService, 'checkForUpdate').rejects(new Error('API Error'));
     
     // Should still return some code lenses (without version info)
     const codeLenses = await TestHelper.getCodeLenses(doc);
