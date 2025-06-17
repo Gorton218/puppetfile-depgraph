@@ -118,9 +118,12 @@
     "test": "jest",
     "test:unit": "jest",
     "test:integration": "node ./scripts/runTests.js",
+    "test:e2e": "node ./scripts/runTests.js --e2e",
+    "test:performance": "jest --testMatch='**/performance/*.test.ts'",
     "test:coverage": "jest --coverage",
     "test:debug": "jest --detectOpenHandles",
-    "test:all": "npm run test:coverage && npm run test:integration",
+    "test:all": "npm run test:coverage && npm run test:integration && npm run test:e2e",
+    "test:regression": "npm run test:all",
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {

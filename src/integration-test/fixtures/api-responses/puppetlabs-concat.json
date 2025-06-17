@@ -1,0 +1,92 @@
+{
+  "name": "puppetlabs-concat",
+  "slug": "puppetlabs-concat",
+  "uri": "/v3/modules/puppetlabs-concat",
+  "owner": {
+    "username": "puppetlabs",
+    "slug": "puppetlabs"
+  },
+  "current_release": {
+    "version": "9.0.2",
+    "metadata": {
+      "name": "puppetlabs-concat",
+      "version": "9.0.2",
+      "author": "puppetlabs",
+      "summary": "Construct files from multiple fragments.",
+      "dependencies": [
+        {
+          "name": "puppetlabs/stdlib",
+          "version_requirement": ">= 4.13.1 < 10.0.0"
+        }
+      ]
+    },
+    "created_at": "2024-02-01 10:00:00 -0800",
+    "updated_at": "2024-02-01 10:00:00 -0800"
+  },
+  "releases": [
+    {
+      "version": "9.0.2",
+      "created_at": "2024-02-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "9.0.1",
+      "created_at": "2024-01-20 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "9.0.0",
+      "created_at": "2024-01-10 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "8.0.1",
+      "created_at": "2023-10-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "8.0.0",
+      "created_at": "2023-09-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.4.0",
+      "created_at": "2023-06-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.3.3",
+      "created_at": "2023-05-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.3.2",
+      "created_at": "2023-04-15 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.3.1",
+      "created_at": "2023-04-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.3.0",
+      "created_at": "2023-03-15 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.2.0",
+      "created_at": "2023-02-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "7.1.0",
+      "created_at": "2022-12-01 10:00:00 -0800",
+      "supported": false
+    }
+  ],
+  "feedback_score": 98,
+  "downloads": 40000000,
+  "created_at": "2012-01-01 10:00:00 -0800",
+  "updated_at": "2024-02-01 10:00:00 -0800"
+}

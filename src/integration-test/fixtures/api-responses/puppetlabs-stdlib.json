@@ -1,0 +1,66 @@
+{
+  "name": "puppetlabs-stdlib",
+  "slug": "puppetlabs-stdlib",
+  "uri": "/v3/modules/puppetlabs-stdlib",
+  "owner": {
+    "username": "puppetlabs",
+    "slug": "puppetlabs"
+  },
+  "current_release": {
+    "version": "9.6.0",
+    "metadata": {
+      "name": "puppetlabs-stdlib",
+      "version": "9.6.0",
+      "author": "puppetlabs",
+      "summary": "Standard library of resources for Puppet modules.",
+      "dependencies": []
+    },
+    "created_at": "2024-01-15 10:00:00 -0800",
+    "updated_at": "2024-01-15 10:00:00 -0800",
+    "file_size": 123456,
+    "file_type": "tar.gz",
+    "file_md5": "abc123def456",
+    "downloads": 50000000
+  },
+  "releases": [
+    {
+      "version": "9.6.0",
+      "created_at": "2024-01-15 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "9.5.0", 
+      "created_at": "2023-12-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "9.4.1",
+      "created_at": "2023-11-15 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "9.4.0",
+      "created_at": "2023-11-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "8.6.0",
+      "created_at": "2023-06-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "8.5.0",
+      "created_at": "2023-03-01 10:00:00 -0800",
+      "supported": true
+    },
+    {
+      "version": "8.4.0",
+      "created_at": "2023-01-01 10:00:00 -0800",
+      "supported": false
+    }
+  ],
+  "feedback_score": 95,
+  "downloads": 50000000,
+  "created_at": "2012-01-01 10:00:00 -0800",
+  "updated_at": "2024-01-15 10:00:00 -0800"
+}
