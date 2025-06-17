@@ -1579,6 +1579,50 @@ describe('DependencyTreeService Test Suite', () => {
             expect(result[0].name).toBe('test/module');
         });
 
+        test('analyzeConflicts should transform module names correctly for API calls', async () => {
+            // Test the module name transformation logic in analyzeConflicts
+            const modules: PuppetModule[] = [
+                {
+                    name: 'puppetlabs-stdlib', // Dash format
+                    version: '8.5.0',
+                    source: 'forge',
+                    line: 1
+                },
+                {
+                    name: 'single-word', // Single word, should not be transformed
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 2
+                },
+                {
+                    name: 'user-module-extra', // More than 2 parts, should not be transformed
+                    version: '2.0.0',
+                    source: 'forge',
+                    line: 3
+                }
+            ];
+
+            // Reset the existing stub to capture calls
+            forgeModuleStub.reset();
+            
+            // Mock ConflictAnalyzer to prevent actual conflict analysis
+            const conflictStub = sinon.stub(ConflictAnalyzer, 'analyzeModule');
+            conflictStub.returns({
+                hasConflict: false,
+                satisfyingVersions: ['8.5.0'],
+                mergedConstraint: {}
+            });
+
+            await DependencyTreeService.buildDependencyTree(modules);
+
+            // Verify the API calls were made with correct transformations
+            expect(forgeModuleStub.calledWith('puppetlabs/stdlib')).toBe(true); // Should be transformed
+            expect(forgeModuleStub.calledWith('single-word')).toBe(true); // Should not be transformed
+            expect(forgeModuleStub.calledWith('user-module-extra')).toBe(true); // Should not be transformed
+
+            conflictStub.restore();
+        });
+
         test('findConflicts should report conflicts from dependency graph', () => {
             // Manually add conflict to dependency graph for testing
             const modules: PuppetModule[] = [

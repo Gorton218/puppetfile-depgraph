@@ -506,10 +506,11 @@ export class DependencyTreeService {
             try {
                 // Get available versions from Forge - use original name format for API call
                 // Convert back to slash format for API if it looks like an org/module pair
-                const apiModuleName = moduleName.includes('-') && moduleName.split('-').length === 2 
-                    ? moduleName.replace('-', '/') 
-                    : moduleName;
-                const forgeModule = await PuppetForgeService.getModule(apiModuleName);
+                const forgeModule = await PuppetForgeService.getModule(
+                    moduleName.includes('-') && moduleName.split('-').length === 2 
+                        ? moduleName.replace('-', '/') 
+                        : moduleName
+                );
                 const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
 
                 // Analyze for conflicts
