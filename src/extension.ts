@@ -538,7 +538,7 @@ Built with ❤️ for the Puppet community`;
 /**
  * Shows a temporary information message that auto-closes after a specified duration
  */
-function showTemporaryMessage(message: string, duration: number = 5000): void {
+export function showTemporaryMessage(message: string, duration: number = 5000): void {
     vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: message,
