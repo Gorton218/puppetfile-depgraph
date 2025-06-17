@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { PuppetfileParser, PuppetModule } from './puppetfileParser';
+import { PuppetfileParser } from './puppetfileParser';
 import { PuppetfileUpdateService } from './puppetfileUpdateService';
 import { DependencyTreeService } from './dependencyTreeService';
 import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
