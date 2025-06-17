@@ -54,7 +54,7 @@ export class PuppetForgeService {
     private static readonly API_VERSION = 'v3';
 
     // Two-level cache: module name -> (version -> version data)
-    private static moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
+    private static readonly moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
     
     // Keep a single agent instance for reuse
     private static proxyAgent: HttpsProxyAgent<string> | null = null;
@@ -126,8 +126,18 @@ export class PuppetForgeService {
             
             // Construct a ForgeModule object from release data
             // Note: This is a simplified version - some fields may be missing
+            
+            // Module names can be in format "owner/module" or "owner-module"
+            // Validate that the module name contains a separator
+            if (!(moduleName.includes('/') || moduleName.includes('-'))) {
+                throw new Error(`Invalid module name format: "${moduleName}". Expected "owner/module" or "owner-module".`);
+            }
+            
+            // For API calls, we need "owner/module" format
             const moduleSlug = moduleName.replace('/', '-');
-            const [owner, name] = moduleName.split('/');
+            const owner = moduleName.includes('/') 
+                ? moduleName.split('/')[0]
+                : moduleName.split('-')[0];
             
             return {
                 name: moduleName,

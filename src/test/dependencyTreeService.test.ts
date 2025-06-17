@@ -896,6 +896,12 @@ describe('DependencyTreeService Test Suite', () => {
             // Should not crash and should assume no violation when parsing fails
             expect(result[0].children.length).toBe(1);
             expect(result[0].children[0].isConstraintViolated).toBe(false);
+            
+            // Should log the parsing error
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Could not parse version requirement'),
+                expect.any(Error)
+            );
         });
 
         test('findBestMatchingVersion should find optimal version', async () => {
@@ -1083,18 +1089,30 @@ describe('DependencyTreeService Test Suite', () => {
         });
 
         test('extractVersionFromRequirement should extract version numbers', () => {
-            // This method is private, but we can test it through other functionality
-            const modules: PuppetModule[] = [
-                {
-                    name: 'test/module',
-                    version: '1.0.0',
-                    source: 'forge',
-                    line: 1
-                }
+            // Since the method is private, we need to access it via the class
+            const extractMethod = (DependencyTreeService as any).extractVersionFromRequirement;
+            
+            // Test cases covering different version requirement formats
+            const testCases = [
+                { requirement: '>= 1.0.0', expected: '1.0.0' },
+                { requirement: '< 2.0.0', expected: '2.0.0' },
+                { requirement: '~> 1.2.3', expected: '1.2.3' },
+                { requirement: '= 4.5.6', expected: '4.5.6' },
+                { requirement: '>= 1.2.3 < 2.0.0', expected: '1.2.3' }, // Should extract first version
+                { requirement: 'version 3.14.159', expected: '3.14.159' },
+                { requirement: '1.0', expected: '1.0' },
+                { requirement: '10.20.30', expected: '10.20.30' },
+                { requirement: 'no_version_here', expected: undefined },
+                { requirement: 'latest', expected: undefined },
+                { requirement: '', expected: undefined },
+                { requirement: '1', expected: '1' },
+                { requirement: 'v1.2.3-suffix', expected: '1.2.3' }
             ];
-
-            DependencyTreeService.buildDependencyTree(modules);
-            // The method would be used internally during tree building
+            
+            testCases.forEach(({ requirement, expected }) => {
+                const result = extractMethod(requirement);
+                expect(result).toBe(expected);
+            });
         });
 
         test('extractVersionFromRequirement should handle requirements without version numbers', async () => {
@@ -1565,6 +1583,50 @@ describe('DependencyTreeService Test Suite', () => {
             // Should handle modules without requirements gracefully
             expect(result.length).toBe(1);
             expect(result[0].name).toBe('test/module');
+        });
+
+        test('analyzeConflicts should transform module names correctly for API calls', async () => {
+            // Test the module name transformation logic in analyzeConflicts
+            const modules: PuppetModule[] = [
+                {
+                    name: 'puppetlabs-stdlib', // Dash format
+                    version: '8.5.0',
+                    source: 'forge',
+                    line: 1
+                },
+                {
+                    name: 'single-word', // Single word, should not be transformed
+                    version: '1.0.0',
+                    source: 'forge',
+                    line: 2
+                },
+                {
+                    name: 'user-module-extra', // More than 2 parts, should not be transformed
+                    version: '2.0.0',
+                    source: 'forge',
+                    line: 3
+                }
+            ];
+
+            // Reset the existing stub to capture calls
+            forgeModuleStub.reset();
+            
+            // Mock ConflictAnalyzer to prevent actual conflict analysis
+            const conflictStub = sinon.stub(ConflictAnalyzer, 'analyzeModule');
+            conflictStub.returns({
+                hasConflict: false,
+                satisfyingVersions: ['8.5.0'],
+                mergedConstraint: {}
+            });
+
+            await DependencyTreeService.buildDependencyTree(modules);
+
+            // Verify the API calls were made with correct transformations
+            expect(forgeModuleStub.calledWith('puppetlabs/stdlib')).toBe(true); // Should be transformed
+            expect(forgeModuleStub.calledWith('single-word')).toBe(true); // Should not be transformed
+            expect(forgeModuleStub.calledWith('user-module-extra')).toBe(true); // Should not be transformed
+
+            conflictStub.restore();
         });
 
         test('findConflicts should report conflicts from dependency graph', () => {

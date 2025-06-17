@@ -1,5 +1,5 @@
 import { PuppetModule } from './puppetfileParser';
-import { PuppetForgeService, ForgeModule } from './puppetForgeService';
+import { PuppetForgeService } from './puppetForgeService';
 import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
 import { DependencyGraph, Requirement, DependencyConflict } from './types/dependencyTypes';
 import { ConflictAnalyzer } from './services/conflictAnalyzer';
@@ -32,7 +32,7 @@ export class DependencyTreeService {
     private static visitedModules = new Set<string>();
     private static dependencyGraph: DependencyGraph = {};
     private static currentPath: string[] = [];
-    private static directDependencies = new Map<string, string>();
+    private static readonly directDependencies = new Map<string, string>();
 
 
     /**
@@ -308,8 +308,10 @@ export class DependencyTreeService {
      * @returns Extracted version or undefined
      */
     private static extractVersionFromRequirement(requirement: string): string | undefined {
-        // Simple extraction - in reality, this would need more sophisticated parsing
-        const match = requirement.match(/[\d.]+/);
+        // Extract version numbers from requirement strings
+        // This intentionally captures only the numeric version part (e.g., "1.2.3" from "v1.2.3-suffix")
+        const regex = /\d+(?:\.\d+)*/;
+        const match = regex.exec(requirement);
         return match ? match[0] : undefined;
     }
 
@@ -505,10 +507,11 @@ export class DependencyTreeService {
             try {
                 // Get available versions from Forge - use original name format for API call
                 // Convert back to slash format for API if it looks like an org/module pair
-                const apiModuleName = moduleName.includes('-') && moduleName.split('-').length === 2 
-                    ? moduleName.replace('-', '/') 
-                    : moduleName;
-                const forgeModule = await PuppetForgeService.getModule(apiModuleName);
+                const forgeModule = await PuppetForgeService.getModule(
+                    moduleName.includes('-') && moduleName.split('-').length === 2 
+                        ? moduleName.replace('-', '/') 
+                        : moduleName
+                );
                 const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
 
                 // Analyze for conflicts
@@ -625,6 +628,7 @@ export class DependencyTreeService {
             const requirements = VersionParser.parse(versionRequirement);
             return !VersionParser.satisfiesAll(resolvedVersion, requirements);
         } catch (error) {
+            console.warn(`Could not parse version requirement "${versionRequirement}" for version "${resolvedVersion}":`, error);
             // If we can't parse, assume no violation
             return false;
         }
