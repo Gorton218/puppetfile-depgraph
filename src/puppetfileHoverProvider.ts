@@ -233,7 +233,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             if (module.version) {
                 // Get dependencies from the specific version
                 const release = allReleases.find(r => r.version === module.version);
-                if (release && release.metadata) {
+                if (release?.metadata) {
                     dependencies = release.metadata.dependencies;
                 }
                 
