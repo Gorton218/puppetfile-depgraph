@@ -3,6 +3,8 @@
 All notable changes to the "puppetfile-depgraph" extension will be documented in this file.
 
 ## [Unreleased]
+
+## [0.1.0] - 2025-06-17
 ### Added
 - **Three-Phase Progress System**: Enhanced dependency tree building with intelligent progress indicators
   - Phase 1 (0-30%): Direct module caching with real-time incremental progress
@@ -27,6 +29,12 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Progress indication during analysis with cancellation support
   - Supports both Forge and Git modules (Git modules shown as informational)
   - Integrates with existing version compatibility and caching services
+- **Interactive Upgrade Actions**: Enhanced Upgrade Planner with direct action capabilities
+  - Clickable "Apply" and "Skip" buttons directly within the upgrade diff view
+  - Selective module upgrade application without leaving the diff interface
+  - Inline action comments showing upgrade options in context with proposed changes
+  - New VS Code commands for granular upgrade control (apply/skip individual modules)
+  - Real-time feedback with auto-closing success notifications
 - **Cache All Modules**: New context menu command "Cache info for all modules"
   - Pre-caches information for all Puppet Forge modules in the Puppetfile
   - Progress bar with cancellation support
@@ -48,6 +56,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Caching for improved performance with network requests
 
 ### Improved
+- **Upgrade Planner User Experience**: Enhanced interface responsiveness and interaction flow
+  - Improved progress indicator messaging during upgrade analysis
+  - Better modal behavior with proper pop-up window timing and sequence
+  - Enhanced visual feedback with contextual apply/skip actions
+  - Streamlined workflow allowing users to make granular upgrade decisions
 - **CacheService Architecture**: Refactored caching system to eliminate code duplication
   - Consolidated multiple caching methods into a single core implementation
   - Added dual progress modes: internal VS Code dialogs and external progress callbacks
@@ -112,6 +125,11 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Corrected URI parsing in content provider (checking authority instead of path)
   - Diff view now properly displays current vs proposed Puppetfile content
   - Fixed content provider to handle puppetfile-diff:// URI scheme correctly
+- **Apply Button Functionality**: Fixed non-functional apply buttons in upgrade diff view
+  - Resolved multiple technical issues with apply button behavior in diff interface
+  - Fixed CodeLens provider registration and command execution
+  - Improved button responsiveness and user feedback during upgrade operations
+  - Enhanced error handling for failed upgrade applications
 
 ### Enhanced
 - **Improved Hover Menu**: Better version display and interaction
@@ -135,7 +153,15 @@ All notable changes to the "puppetfile-depgraph" extension will be documented in
   - Consistent spacing and formatting throughout hover tooltips
 
 ### Technical Improvements
-- **Testing**: Expanded test suite to 138 tests
+- **New Architecture Components**: Added specialized services for enhanced upgrade management
+  - `UpgradeDiffCodeLensProvider`: New service for handling interactive actions in diff views
+  - Enhanced `UpgradeDiffProvider` with inline action support and state management
+  - Global state management for maintaining upgrade context across diff views
+  - New VS Code commands for granular upgrade control
+- **Testing**: Expanded test suite with comprehensive caching and concurrency coverage
+  - Enhanced CacheService tests with concurrency prevention, progress reporting, and cancellation scenarios
+  - Added comprehensive error handling tests for various edge cases and special characters
+  - Added tests for large arrays, empty inputs, and operation timeout scenarios
   - Added comprehensive tests for inline comment handling
   - Added tests for version update functionality with comments
   - Added comprehensive Git metadata service tests
