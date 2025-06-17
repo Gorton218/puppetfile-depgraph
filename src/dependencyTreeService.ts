@@ -32,7 +32,7 @@ export class DependencyTreeService {
     private static visitedModules = new Set<string>();
     private static dependencyGraph: DependencyGraph = {};
     private static currentPath: string[] = [];
-    private static directDependencies = new Map<string, string>();
+    private static readonly directDependencies = new Map<string, string>();
 
 
     /**
