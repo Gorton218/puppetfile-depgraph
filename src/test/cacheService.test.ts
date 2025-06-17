@@ -833,6 +833,7 @@ describe('CacheService', () => {
             mockWithProgress.mockImplementation(async (options, callback) => {
                 try {
                     // Force a non-Error object
+                    // eslint-disable-next-line no-throw-literal
                     throw 'String error';
                 } catch (error) {
                     // This simulates the catch block in performOriginalCaching
