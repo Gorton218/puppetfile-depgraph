@@ -642,9 +642,10 @@ export class UpgradeDiffProvider {
                 progress.report({ increment: 100, message: 'Complete!' });
             });
             
-            // Show success message
-            vscode.window.showInformationMessage(
-                `✅ Applied upgrade: ${moduleName} → ${newVersion}`
+            // Show success message with auto-close after 5 seconds
+            this.showTemporaryMessage(
+                `✅ Applied upgrade: ${moduleName} → ${newVersion}`,
+                5000
             );
             
             // Refresh the diff view
@@ -742,6 +743,27 @@ export class UpgradeDiffProvider {
             // Silently fail refresh - user can manually refresh if needed
             console.warn('Failed to refresh diff view:', error);
         }
+    }
+
+    /**
+     * Shows a temporary information message that auto-closes after a specified duration
+     */
+    private static showTemporaryMessage(message: string, duration: number = 5000): void {
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: message,
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0 });
+            
+            // Auto-complete the progress after the specified duration
+            return new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    progress.report({ increment: 100 });
+                    resolve();
+                }, duration);
+            });
+        });
     }
 }
 

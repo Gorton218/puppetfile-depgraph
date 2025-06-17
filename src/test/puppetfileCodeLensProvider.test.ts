@@ -162,8 +162,13 @@ describe('PuppetfileCodeLensProvider', () => {
 
             // Assert
             expect(PuppetfileUpdateService.updateModuleVersionAtLine).toHaveBeenCalledWith(1, '2.0.0');
-            expect(mockedVSCode.window.showInformationMessage).toHaveBeenCalledWith(
-                'Successfully updated apache to version 2.0.0'
+            expect(mockedVSCode.window.withProgress).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Successfully updated apache to version 2.0.0',
+                    cancellable: false
+                }),
+                expect.any(Function)
             );
         });
 

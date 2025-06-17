@@ -144,9 +144,10 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
                 progress.report({ increment: 100, message: 'Complete!' });
             });
 
-            // Show success message
-            vscode.window.showInformationMessage(
-                `Successfully updated ${moduleName} to version ${newVersion}`
+            // Show success message with auto-close after 5 seconds
+            PuppetfileCodeLensProvider.showTemporaryMessage(
+                `Successfully updated ${moduleName} to version ${newVersion}`,
+                5000
             );
 
             // Refresh CodeLenses to remove the applied upgrade
@@ -171,5 +172,26 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
 
     public static setInstance(instance: PuppetfileCodeLensProvider): void {
         this.instance = instance;
+    }
+
+    /**
+     * Shows a temporary information message that auto-closes after a specified duration
+     */
+    private static showTemporaryMessage(message: string, duration: number = 5000): void {
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: message,
+            cancellable: false
+        }, async (progress) => {
+            progress.report({ increment: 0 });
+            
+            // Auto-complete the progress after the specified duration
+            return new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    progress.report({ increment: 100 });
+                    resolve();
+                }, duration);
+            });
+        });
     }
 }

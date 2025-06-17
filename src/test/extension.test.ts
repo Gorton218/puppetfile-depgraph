@@ -435,7 +435,14 @@ describe('Extension', () => {
 
             // Assert
             expect(PuppetfileUpdateService.updateModuleVersionAtLine).toHaveBeenCalledWith(5, '1.2.3');
-            expect(mockedVSCode.window.showInformationMessage as jest.Mock).toHaveBeenCalledWith('Updated module to version 1.2.3');
+            expect(mockedVSCode.window.withProgress as jest.Mock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Updated module to version 1.2.3',
+                    cancellable: false
+                }),
+                expect.any(Function)
+            );
         });
 
         test('should handle array of objects arguments', async () => {
@@ -449,7 +456,14 @@ describe('Extension', () => {
 
             // Assert
             expect(PuppetfileUpdateService.updateModuleVersionAtLine).toHaveBeenCalledWith(10, '2.0.0');
-            expect(mockedVSCode.window.showInformationMessage as jest.Mock).toHaveBeenCalledWith('Updated module to version 2.0.0');
+            expect(mockedVSCode.window.withProgress as jest.Mock).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    location: mockedVSCode.ProgressLocation.Notification,
+                    title: 'Updated module to version 2.0.0',
+                    cancellable: false
+                }),
+                expect.any(Function)
+            );
         });
 
         test('should handle invalid arguments', async () => {

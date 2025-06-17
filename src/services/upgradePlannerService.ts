@@ -100,7 +100,6 @@ export class UpgradePlannerService {
             // For unversioned modules, any compatible version is an upgrade
             const isUpgradeable = !module.version ? true : this.isVersionNewer(maxSafeVersion, module.version);
             
-            
             // If not upgradeable, check what's blocking it
             let blockedBy: string[] | undefined;
             let conflicts: VersionCompatibility['conflicts'] | undefined;

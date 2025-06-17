@@ -372,7 +372,7 @@ export function activate(context: vscode.ExtensionContext) {
                 
                 try {
                     await PuppetfileUpdateService.updateModuleVersionAtLine(commandArgs.line, commandArgs.version);
-                    vscode.window.showInformationMessage(`Updated module to version ${commandArgs.version}`);
+                    showTemporaryMessage(`Updated module to version ${commandArgs.version}`, 5000);
                 } catch (error) {
                     console.error('Error updating module version:', error);
                     vscode.window.showErrorMessage(`Failed to update module: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -533,6 +533,27 @@ Built with ❤️ for the Puppet community`;
 		diffCodeLensProvider
 	);
 	context.subscriptions.push(diffCodeLensProviderDisposable);
+}
+
+/**
+ * Shows a temporary information message that auto-closes after a specified duration
+ */
+function showTemporaryMessage(message: string, duration: number = 5000): void {
+    vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: message,
+        cancellable: false
+    }, async (progress) => {
+        progress.report({ increment: 0 });
+        
+        // Auto-complete the progress after the specified duration
+        return new Promise<void>((resolve) => {
+            setTimeout(() => {
+                progress.report({ increment: 100 });
+                resolve();
+            }, duration);
+        });
+    });
 }
 
 // This method is called when your extension is deactivated
