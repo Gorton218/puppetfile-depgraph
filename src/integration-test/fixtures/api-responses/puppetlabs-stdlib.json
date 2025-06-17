@@ -1,66 +1,419 @@
 {
   "name": "puppetlabs-stdlib",
   "slug": "puppetlabs-stdlib",
-  "uri": "/v3/modules/puppetlabs-stdlib",
   "owner": {
     "username": "puppetlabs",
     "slug": "puppetlabs"
   },
   "current_release": {
-    "version": "9.6.0",
+    "version": "9.7.0",
     "metadata": {
       "name": "puppetlabs-stdlib",
-      "version": "9.6.0",
-      "author": "puppetlabs",
-      "summary": "Standard library of resources for Puppet modules.",
+      "version": "9.7.0",
       "dependencies": []
     },
-    "created_at": "2024-01-15 10:00:00 -0800",
-    "updated_at": "2024-01-15 10:00:00 -0800",
-    "file_size": 123456,
-    "file_type": "tar.gz",
-    "file_md5": "abc123def456",
-    "downloads": 50000000
+    "created_at": "2024-12-16 22:30:06 -0800"
   },
   "releases": [
     {
-      "version": "9.6.0",
-      "created_at": "2024-01-15 10:00:00 -0800",
-      "supported": true
+      "version": "9.7.0",
+      "created_at": "2024-12-16 22:30:06 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     },
     {
-      "version": "9.5.0", 
-      "created_at": "2023-12-01 10:00:00 -0800",
-      "supported": true
+      "version": "9.6.0",
+      "created_at": "2024-04-03 01:32:12 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "9.5.0",
+      "created_at": "2024-03-11 06:08:57 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     },
     {
       "version": "9.4.1",
-      "created_at": "2023-11-15 10:00:00 -0800",
-      "supported": true
+      "created_at": "2023-11-09 08:49:15 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     },
     {
       "version": "9.4.0",
-      "created_at": "2023-11-01 10:00:00 -0800",
-      "supported": true
+      "created_at": "2023-09-29 03:52:01 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "9.3.0",
+      "created_at": "2023-08-01 01:33:43 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "9.2.0",
+      "created_at": "2023-06-27 07:46:10 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "9.1.0",
+      "created_at": "2023-06-15 02:07:57 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "9.0.0",
+      "created_at": "2023-05-30 07:25:38 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     },
     {
       "version": "8.6.0",
-      "created_at": "2023-06-01 10:00:00 -0800",
-      "supported": true
+      "created_at": "2023-04-24 09:01:59 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     },
     {
       "version": "8.5.0",
-      "created_at": "2023-03-01 10:00:00 -0800",
-      "supported": true
+      "created_at": "2022-10-13 03:02:54 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     },
     {
       "version": "8.4.0",
-      "created_at": "2023-01-01 10:00:00 -0800",
-      "supported": false
+      "created_at": "2022-07-21 06:28:39 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "8.3.0",
+      "created_at": "2022-07-11 07:31:07 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "8.2.0",
+      "created_at": "2022-05-16 08:33:05 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "8.1.0",
+      "created_at": "2021-10-04 02:14:45 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "8.0.0",
+      "created_at": "2021-08-24 07:45:11 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "7.1.0",
+      "created_at": "2021-05-17 04:59:50 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "7.0.1",
+      "created_at": "2021-04-12 02:17:13 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "7.0.0",
+      "created_at": "2021-03-01 05:51:59 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.6.0",
+      "created_at": "2021-02-02 03:29:49 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.5.0",
+      "created_at": "2020-09-30 05:56:06 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.4.0",
+      "created_at": "2020-08-21 05:18:48 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.3.0",
+      "created_at": "2020-04-16 03:48:04 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.2.0",
+      "created_at": "2019-12-10 02:17:23 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.1.0",
+      "created_at": "2019-09-20 04:28:19 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "6.0.0",
+      "created_at": "2019-05-22 01:22:42 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "5.2.0",
+      "created_at": "2019-01-18 02:33:39 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "5.1.0",
+      "created_at": "2018-10-01 06:48:10 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "5.0.0",
+      "created_at": "2018-08-22 08:03:51 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.25.1",
+      "created_at": "2018-04-04 02:24:13 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.25.0",
+      "created_at": "2018-03-13 10:14:52 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.24.0",
+      "created_at": "2017-12-08 03:14:03 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.23.0",
+      "created_at": "2017-11-24 08:59:38 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.22.0",
+      "created_at": "2017-11-15 03:23:42 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.21.0",
+      "created_at": "2017-11-03 11:25:11 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.20.0",
+      "created_at": "2017-09-11 14:00:50 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.19.0",
+      "created_at": "2017-08-21 11:08:38 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.18.0",
+      "created_at": "2017-08-11 01:49:21 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.17.1",
+      "created_at": "2017-06-16 04:01:00 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.17.0",
+      "created_at": "2017-05-10 02:31:19 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.16.0",
+      "created_at": "2017-03-21 04:33:03 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.15.0",
+      "created_at": "2017-01-20 05:14:17 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.14.0",
+      "created_at": "2016-12-12 06:32:03 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.13.1",
+      "created_at": "2016-10-13 10:22:14 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.13.0",
+      "created_at": "2016-10-11 08:02:31 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.12.0",
+      "created_at": "2016-05-03 11:31:54 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.11.0",
+      "created_at": "2016-01-12 03:10:32 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.10.0",
+      "created_at": "2015-12-15 10:53:09 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.9.1",
+      "created_at": "2015-12-08 07:06:38 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
+    },
+    {
+      "version": "4.9.0",
+      "created_at": "2015-09-08 15:22:42 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": []
+      }
     }
-  ],
-  "feedback_score": 95,
-  "downloads": 50000000,
-  "created_at": "2012-01-01 10:00:00 -0800",
-  "updated_at": "2024-01-15 10:00:00 -0800"
+  ]
 }
