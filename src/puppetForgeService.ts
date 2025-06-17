@@ -127,7 +127,7 @@ export class PuppetForgeService {
             // Construct a ForgeModule object from release data
             // Note: This is a simplified version - some fields may be missing
             const moduleSlug = moduleName.replace('/', '-');
-            const [owner, name] = moduleName.split('/');
+            const owner = moduleName.split('/')[0];
             
             return {
                 name: moduleName,
