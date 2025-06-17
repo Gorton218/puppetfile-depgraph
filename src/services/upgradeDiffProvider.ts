@@ -579,8 +579,9 @@ export class UpgradeDiffProvider {
                         `${d.languageId} (${d.uri.scheme}): ${d.uri.toString()}`
                     );
                     
-                    console.error('Debug info - Available editors:', availableEditors);
-                    console.error('Debug info - Available documents:', availableDocs);
+                    // Debug information for troubleshooting in development
+                    // console.error('Debug info - Available editors:', availableEditors);
+                    // console.error('Debug info - Available documents:', availableDocs);
                     
                     throw new Error(`Could not find the original Puppetfile document. Available editors: ${availableEditors.join(', ')}. Available docs: ${availableDocs.join(', ')}`);
                 }
