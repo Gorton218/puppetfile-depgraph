@@ -1,5 +1,5 @@
 import { PuppetForgeService } from '../../src/services/puppetForgeService';
-import pkg from '../../src/../package.json';
+import axios from 'axios';
 
 describe('PuppetForgeService Test Suite', () => {
     
@@ -103,10 +103,7 @@ describe('PuppetForgeService Test Suite', () => {
         expect(availableVersions.length).toBe(2);
     });
 
-    test('should handle zero values with nullish coalescing in array access', () => {
-        // Test the ?? operator with array indices that could be 0
-        const versions = ['1.0.0', '2.0.0', '3.0.0'];
-        
+    test('should handle zero values with nullish coalescing in array access', () => {        
         // Simulate version comparison logic with nullish coalescing
         const aParts = '1.0'.split('.').map(Number);
         const bParts = '1.0.0'.split('.').map(Number);
@@ -115,15 +112,16 @@ describe('PuppetForgeService Test Suite', () => {
             const aPart = aParts[i] ?? 0;
             const bPart = bParts[i] ?? 0;
             
-            if (i === 0) {
-                expect(aPart).toBe(1);
-                expect(bPart).toBe(1);
-            } else if (i === 1) {
-                expect(aPart).toBe(0);
-                expect(bPart).toBe(0);
-            } else if (i === 2) {
-                expect(aPart).toBe(0); // Should use 0 from ?? operator
-                expect(bPart).toBe(0);
+            switch (i) {
+                case 0:
+                    expect(aPart).toBe(1);
+                    expect(bPart).toBe(1);
+                    break;
+                case 1:
+                case 2:
+                    expect(aPart).toBe(0); // Should use 0 from ?? operator
+                    expect(bPart).toBe(0);
+                    break;
             }
         }
     });
@@ -214,5 +212,34 @@ describe('PuppetForgeService Test Suite', () => {
             expect(result.latestVersion).toBe(latestVersion);
             expect(result.currentVersion).toBe(latestVersion);
         }
+    });
+
+    describe('Error handling improvements', () => {
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        test('getModule should return null for 404 errors', async () => {
+            const mockError = {
+                isAxiosError: true,
+                response: { status: 404 }
+            };
+            
+            jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+            jest.spyOn(PuppetForgeService, 'getModuleReleases').mockRejectedValue(mockError);
+            
+            const result = await PuppetForgeService.getModule('nonexistent/module');
+            expect(result).toBe(null);
+        });
+
+        test('getModule should rethrow unexpected errors with context', async () => {
+            const unexpectedError = new Error('Network timeout');
+            
+            jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
+            jest.spyOn(PuppetForgeService, 'getModuleReleases').mockRejectedValue(unexpectedError);
+            
+            await expect(PuppetForgeService.getModule('test/module'))
+                .rejects.toThrow('Failed to fetch module test/module: Network timeout');
+        });
     });
 });
