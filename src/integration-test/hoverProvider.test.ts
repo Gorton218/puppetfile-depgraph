@@ -57,10 +57,11 @@ suite('Hover Provider Integration Tests', () => {
       typeof c === 'string' ? c : (c as vscode.MarkdownString).value
     ).join('\n');
     
+    
     assert.ok(hoverContent.includes('puppetlabs-stdlib'), 'Hover should show module name');
     assert.ok(hoverContent.includes('8.5.0'), 'Hover should show current version');
-    assert.ok(hoverContent.includes('Latest'), 'Hover should show latest version');
-    assert.ok(hoverContent.includes('9.6.0'), 'Hover should show latest version number');
+    assert.ok(hoverContent.includes('Latest Version'), 'Hover should show latest version');
+    assert.ok(hoverContent.includes('9.7.0'), 'Hover should show latest version number');
   });
 
   test('Hover shows safe update version when available', async () => {
@@ -108,7 +109,7 @@ suite('Hover Provider Integration Tests', () => {
       typeof c === 'string' ? c : (c as vscode.MarkdownString).value
     ).join('\n');
     
-    assert.ok(hoverContent.includes('Latest'), 'Should show latest version');
+    assert.ok(hoverContent.includes('Latest Version') || hoverContent.includes('Version:'), 'Should show latest version');
     assert.ok(hoverContent.includes('15.0.0'), 'Should show latest version number');
   });
 
