@@ -8,7 +8,8 @@ export class VersionParser {
     
     // Handle pessimistic constraint (~>)
     if (constraint.includes('~>')) {
-      const match = constraint.match(/~>\s*(.+)/);
+      const pessimisticRegex = /~>\s*(.+)/;
+      const match = pessimisticRegex.exec(constraint);
       if (match) {
         const version = match[1].trim();
         const parts = version.split('.');
@@ -173,8 +174,8 @@ export class VersionParser {
   }
   
   private static compareVersions(v1: string, v2: string): number {
-    const parse1 = v1.match(this.versionRegex);
-    const parse2 = v2.match(this.versionRegex);
+    const parse1 = this.versionRegex.exec(v1);
+    const parse2 = this.versionRegex.exec(v2);
     
     if (!parse1 || !parse2) {
       return v1.localeCompare(v2);
