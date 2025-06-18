@@ -1,20 +1,19 @@
-import * as assert from 'assert';
-import { CacheService } from '../../src/services/cacheService';
-import { PuppetModule } from '../../src/puppetfileParser';
-import { PuppetForgeService } from '../../src/services/puppetForgeService';
-import { MockPuppetForgeService } from '../../src/integration-test/mockPuppetForgeService';
+import { CacheService } from '../../../src/services/cacheService';
+import { PuppetModule } from '../../../src/puppetfileParser';
+import { PuppetForgeService } from '../../../src/services/puppetForgeService';
+import { MockPuppetForgeService } from '../../integration/mockPuppetForgeService';
 import * as sinon from 'sinon';
 
 /**
  * Performance tests for caching functionality
  * Measures response times and validates cache effectiveness
  */
-suite('Performance: Cache Tests', () => {
+describe('Performance: Cache Tests', () => {
   let sandbox: sinon.SinonSandbox;
   // CacheService is static, no instance needed
   let apiCallCount: number;
 
-  setup(() => {
+  beforeEach(() => {
     sandbox = sinon.createSandbox();
     // CacheService is static
     apiCallCount = 0;
@@ -30,7 +29,7 @@ suite('Performance: Cache Tests', () => {
     });
   });
 
-  teardown(() => {
+  afterEach(() => {
     sandbox.restore();
     PuppetForgeService.clearCache();
     MockPuppetForgeService.reset();
@@ -44,17 +43,17 @@ suite('Performance: Cache Tests', () => {
     const result1 = await PuppetForgeService.getModule(moduleName);
     const time1 = Date.now() - start1;
     
-    assert.ok(result1, 'Should return module info');
-    assert.strictEqual(apiCallCount, 1, 'Should make API call');
+    expect(result1).toBeTruthy();
+    expect(apiCallCount).toBe(1);
     
     // Second request - should use cache
     const start2 = Date.now();
     const result2 = await PuppetForgeService.getModule(moduleName);
     const time2 = Date.now() - start2;
     
-    assert.deepStrictEqual(result2, result1, 'Should return same data');
-    assert.strictEqual(apiCallCount, 1, 'Should not make another API call');
-    assert.ok(time2 < time1 / 2, `Cached response (${time2}ms) should be much faster than initial (${time1}ms)`);
+    expect(result2).toEqual(result1);
+    expect(apiCallCount).toBe(1);
+    expect(time2 < time1 / 2).toBeTruthy();
   });
 
   test('Batch caching reduces total API calls', async () => {
@@ -81,7 +80,7 @@ suite('Performance: Cache Tests', () => {
     await CacheService.cacheAllModules(mockModules, false);
     const batchTime = Date.now() - batchStart;
     
-    assert.strictEqual(apiCallCount, modules.length, 'Should make one API call per module');
+    expect(apiCallCount).toBe(modules.length);
     
     // Now request all modules individually
     apiCallCount = 0;
@@ -93,8 +92,8 @@ suite('Performance: Cache Tests', () => {
     
     const individualTime = Date.now() - individualStart;
     
-    assert.strictEqual(apiCallCount, 0, 'Should not make any API calls (all cached)');
-    assert.ok(individualTime < batchTime / 5, 'Cached requests should be much faster');
+    expect(apiCallCount).toBe(0);
+    expect(individualTime < batchTime / 5).toBeTruthy();
   });
 
   test('Cache hit rate tracking', async () => {
@@ -122,9 +121,9 @@ suite('Performance: Cache Tests', () => {
     await PuppetForgeService.getModule('puppetlabs-concat'); // Hit
     
     const hitRate = cacheHits / (cacheHits + cacheMisses);
-    assert.strictEqual(cacheMisses, 2, 'Should have 2 cache misses');
-    assert.strictEqual(cacheHits, 3, 'Should have 3 cache hits');
-    assert.ok(hitRate >= 0.6, `Cache hit rate (${hitRate}) should be good`);
+    expect(cacheMisses).toBe(2);
+    expect(cacheHits).toBe(3);
+    expect(hitRate >= 0.6).toBeTruthy();
   });
 
   test('Large scale caching performance', async () => {
@@ -156,17 +155,17 @@ suite('Performance: Cache Tests', () => {
     const batchTime = Date.now() - batchStart;
     
     const avgTimePerModule = batchTime / moduleCount;
-    assert.ok(avgTimePerModule < 150, `Average time per module (${avgTimePerModule}ms) should be reasonable`);
+    expect(avgTimePerModule < 150).toBeTruthy();
     
     // Test cache retrieval performance
     const retrievalStart = Date.now();
     for (const module of modules) {
       const isCached = PuppetForgeService.hasModuleCached(module);
-      assert.ok(isCached, `Should have cached ${module}`);
+      expect(isCached).toBeTruthy();
     }
     const retrievalTime = Date.now() - retrievalStart;
     
-    assert.ok(retrievalTime < 50, `Cache retrieval for ${moduleCount} modules should be fast (${retrievalTime}ms)`);
+    expect(retrievalTime < 50).toBeTruthy();
   });
 
   test('Cache memory usage is reasonable', async () => {
@@ -200,7 +199,7 @@ suite('Performance: Cache Tests', () => {
     const afterCacheMemory = process.memoryUsage().heapUsed;
     const memoryIncrease = (afterCacheMemory - initialMemory) / 1024 / 1024; // MB
     
-    assert.ok(memoryIncrease < 50, `Memory increase (${memoryIncrease.toFixed(2)}MB) should be reasonable for 500 modules`);
+    expect(memoryIncrease < 50).toBeTruthy();
     
     // Clear cache and verify memory is released
     PuppetForgeService.clearCache();
@@ -213,7 +212,7 @@ suite('Performance: Cache Tests', () => {
     const afterClearMemory = process.memoryUsage().heapUsed;
     const memoryAfterClear = (afterClearMemory - initialMemory) / 1024 / 1024;
     
-    assert.ok(memoryAfterClear < memoryIncrease / 2, 'Memory should be mostly released after cache clear');
+    expect(memoryAfterClear < memoryIncrease / 2).toBeTruthy();
   });
 
   test('Cache expiration performance', async () => {
@@ -224,7 +223,7 @@ suite('Performance: Cache Tests', () => {
     
     // Add item with short TTL
     // Skip TTL test as current CacheService doesn't support custom TTL
-    assert.ok(true, 'TTL test skipped - not supported by current implementation');
+    expect(true).toBeTruthy();
   });
 
   test('Concurrent cache access performance', async () => {
@@ -252,7 +251,7 @@ suite('Performance: Cache Tests', () => {
     await Promise.all(promises);
     const concurrentTime = Date.now() - concurrentStart;
     
-    assert.strictEqual(apiCallCount, 0, 'All requests should be served from cache');
-    assert.ok(concurrentTime < 100, `${concurrentRequests} concurrent cached requests should complete quickly (${concurrentTime}ms)`);
+    expect(apiCallCount).toBe(0);
+    expect(concurrentTime < 100).toBeTruthy();
   });
 });

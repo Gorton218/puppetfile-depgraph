@@ -119,7 +119,7 @@
     "test:unit": "jest",
     "test:integration": "npm run compile && tsc -p test/integration --outDir out && cp -r test/integration/fixtures out/integration-test/ 2>/dev/null || true && node ./scripts/runTests.js",
     "test:e2e": "npm run compile && tsc -p test/e2e --outDir out && node ./scripts/runTests.js --e2e",
-    "test:performance": "jest --testMatch='**/performance/*.test.ts'",
+    "test:performance": "jest --roots=test/e2e/performance --testMatch='**/*.test.ts'",
     "test:coverage": "jest --coverage",
     "test:debug": "jest --detectOpenHandles",
     "test:api-integration": "npm run compile && tsc test/api/puppetForgeApi.test.ts --outDir out/test/api --module commonjs --target es2022 --lib es2022 --types node,jest --skipLibCheck && jest --roots=out/test/api --testMatch='**/*.test.js' --testTimeout=30000",
