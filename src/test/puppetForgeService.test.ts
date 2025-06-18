@@ -1,4 +1,4 @@
-import { PuppetForgeService } from '../puppetForgeService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 import pkg from '../../package.json';
 
 describe('PuppetForgeService Test Suite', () => {

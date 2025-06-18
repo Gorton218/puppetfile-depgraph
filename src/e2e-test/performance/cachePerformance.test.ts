@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { CacheService } from '../../cacheService';
+import { CacheService } from '../../services/cacheService';
 import { PuppetModule } from '../../puppetfileParser';
-import { PuppetForgeService } from '../../puppetForgeService';
+import { PuppetForgeService } from '../../services/puppetForgeService';
 import { MockPuppetForgeService } from '../../integration-test/mockPuppetForgeService';
 import * as sinon from 'sinon';
 

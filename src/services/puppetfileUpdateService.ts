@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { PuppetModule, PuppetfileParser } from './puppetfileParser';
+import { PuppetModule, PuppetfileParser } from '../puppetfileParser';
 import { PuppetForgeService } from './puppetForgeService';
 
 /**

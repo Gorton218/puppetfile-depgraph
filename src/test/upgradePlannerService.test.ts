@@ -1,11 +1,11 @@
 import { UpgradePlannerService, UpgradeCandidate } from '../services/upgradePlannerService';
 import { PuppetModule } from '../puppetfileParser';
-import { PuppetForgeService } from '../puppetForgeService';
-import { VersionCompatibilityService } from '../versionCompatibilityService';
+import { PuppetForgeService } from '../services/puppetForgeService';
+import { VersionCompatibilityService } from '../services/versionCompatibilityService';
 
 // Mock the dependencies
-jest.mock('../puppetForgeService');
-jest.mock('../versionCompatibilityService');
+jest.mock('../services/puppetForgeService');
+jest.mock('../services/versionCompatibilityService');
 
 const mockPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
 const mockVersionCompatibilityService = VersionCompatibilityService as jest.Mocked<typeof VersionCompatibilityService>;

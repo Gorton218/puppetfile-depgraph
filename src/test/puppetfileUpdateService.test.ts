@@ -1,10 +1,10 @@
-import { PuppetfileUpdateService, UpdateResult } from '../puppetfileUpdateService';
+import { PuppetfileUpdateService, UpdateResult } from '../services/puppetfileUpdateService';
 import { PuppetfileParser } from '../puppetfileParser';
-import { PuppetForgeService } from '../puppetForgeService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 import * as vscode from 'vscode';
 
 jest.mock('../puppetfileParser');
-jest.mock('../puppetForgeService');
+jest.mock('../services/puppetForgeService');
 jest.mock('vscode', () => ({
     window: {
         activeTextEditor: null

@@ -1,6 +1,6 @@
 import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
-import { PuppetfileParser, PuppetModule } from './puppetfileParser';
-import { VersionParser } from './utils/versionParser';
+import { PuppetfileParser, PuppetModule } from '../puppetfileParser';
+import { VersionParser } from '../utils/versionParser';
 import { GitMetadataService } from './gitMetadataService';
 
 export interface VersionCompatibility {

@@ -1,6 +1,6 @@
 import * as sinon from 'sinon';
-import { DependencyTreeService } from '../dependencyTreeService';
-import { PuppetForgeService } from '../puppetForgeService';
+import { DependencyTreeService } from '../services/dependencyTreeService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 import { PuppetModule } from '../puppetfileParser';
 
 // Helper types

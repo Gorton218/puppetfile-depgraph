@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from 'axios';
-import pkg from '../package.json';
+import pkg from '../../package.json';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 /**

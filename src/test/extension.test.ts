@@ -2,12 +2,12 @@
 import * as vscode from 'vscode';
 import { activate, deactivate, showTemporaryMessage } from '../extension';
 import { PuppetfileParser } from '../puppetfileParser';
-import { PuppetfileUpdateService } from '../puppetfileUpdateService';
-import { DependencyTreeService } from '../dependencyTreeService';
+import { PuppetfileUpdateService } from '../services/puppetfileUpdateService';
+import { DependencyTreeService } from '../services/dependencyTreeService';
 import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
-import { PuppetForgeService } from '../puppetForgeService';
-import { GitMetadataService } from '../gitMetadataService';
-import { CacheService } from '../cacheService';
+import { PuppetForgeService } from '../services/puppetForgeService';
+import { GitMetadataService } from '../services/gitMetadataService';
+import { CacheService } from '../services/cacheService';
 import { UpgradePlannerService } from '../services/upgradePlannerService';
 import { UpgradeDiffProvider } from '../services/upgradeDiffProvider';
 
@@ -42,12 +42,12 @@ jest.mock('vscode', () => ({
 }));
 
 jest.mock('../puppetfileParser');
-jest.mock('../puppetfileUpdateService');
-jest.mock('../dependencyTreeService');
+jest.mock('../services/puppetfileUpdateService');
+jest.mock('../services/dependencyTreeService');
 jest.mock('../puppetfileHoverProvider');
-jest.mock('../puppetForgeService');
-jest.mock('../gitMetadataService');
-jest.mock('../cacheService');
+jest.mock('../services/puppetForgeService');
+jest.mock('../services/gitMetadataService');
+jest.mock('../services/cacheService');
 jest.mock('../services/upgradePlannerService');
 jest.mock('../services/upgradeDiffProvider');
 jest.mock('../puppetfileCodeLensProvider', () => ({

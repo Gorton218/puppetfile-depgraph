@@ -122,6 +122,7 @@
     "test:performance": "jest --testMatch='**/performance/*.test.ts'",
     "test:coverage": "jest --coverage",
     "test:debug": "jest --detectOpenHandles",
+    "test:api-integration": "jest --testMatch='**/api-integration/*.test.ts' --testTimeout=30000",
     "test:all": "npm run test:coverage && npm run test:integration && npm run test:e2e",
     "test:regression": "npm run test:all",
     "package": "npx @vscode/vsce package"

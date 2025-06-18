@@ -2,12 +2,12 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { PuppetfileParser } from './puppetfileParser';
-import { PuppetfileUpdateService } from './puppetfileUpdateService';
-import { DependencyTreeService } from './dependencyTreeService';
+import { PuppetfileUpdateService } from './services/puppetfileUpdateService';
+import { DependencyTreeService } from './services/dependencyTreeService';
 import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
-import { PuppetForgeService } from './puppetForgeService';
-import { GitMetadataService } from './gitMetadataService';
-import { CacheService } from './cacheService';
+import { PuppetForgeService } from './services/puppetForgeService';
+import { GitMetadataService } from './services/gitMetadataService';
+import { CacheService } from './services/cacheService';
 import { UpgradePlannerService } from './services/upgradePlannerService';
 import { UpgradeDiffProvider } from './services/upgradeDiffProvider';
 import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';

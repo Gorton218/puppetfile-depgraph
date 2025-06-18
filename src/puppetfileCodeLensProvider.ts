@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser } from './puppetfileParser';
-import { PuppetForgeService } from './puppetForgeService';
-import { PuppetfileUpdateService } from './puppetfileUpdateService';
+import { PuppetForgeService } from './services/puppetForgeService';
+import { PuppetfileUpdateService } from './services/puppetfileUpdateService';
 import { showTemporaryMessage } from './extension';
 
 /**

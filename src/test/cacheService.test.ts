@@ -1,9 +1,9 @@
-import { CacheService } from '../cacheService';
+import { CacheService } from '../services/cacheService';
 import { PuppetModule } from '../puppetfileParser';
-import { PuppetForgeService } from '../puppetForgeService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 import * as vscode from 'vscode';
 
-jest.mock('../puppetForgeService');
+jest.mock('../services/puppetForgeService');
 jest.mock('vscode', () => ({
     window: {
         withProgress: jest.fn(),

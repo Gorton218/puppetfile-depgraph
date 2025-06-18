@@ -1,5 +1,5 @@
 import * as sinon from 'sinon';
-import { GitMetadataService } from '../gitMetadataService';
+import { GitMetadataService } from '../services/gitMetadataService';
 import axios from 'axios';
 
 describe('GitMetadataService Test Suite', () => {

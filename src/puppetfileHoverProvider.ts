@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
-import { PuppetForgeService, ForgeModule } from './puppetForgeService';
-import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
-import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
-import { CacheService } from './cacheService';
+import { PuppetForgeService, ForgeModule } from './services/puppetForgeService';
+import { GitMetadataService, GitModuleMetadata } from './services/gitMetadataService';
+import { VersionCompatibilityService, VersionCompatibility } from './services/versionCompatibilityService';
+import { CacheService } from './services/cacheService';
 
 /**
  * Provides hover information for Puppetfile modules

@@ -1,8 +1,8 @@
 import * as sinon from 'sinon';
-import { DependencyTreeService, DependencyNode } from '../dependencyTreeService';
+import { DependencyTreeService, DependencyNode } from '../services/dependencyTreeService';
 import { PuppetModule } from '../puppetfileParser';
-import { GitMetadataService } from '../gitMetadataService';
-import { PuppetForgeService } from '../puppetForgeService';
+import { GitMetadataService } from '../services/gitMetadataService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 import { ConflictAnalyzer } from '../services/conflictAnalyzer';
 import { VersionParser } from '../utils/versionParser';
 

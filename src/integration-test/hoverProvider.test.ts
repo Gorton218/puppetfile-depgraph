@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as assert from 'assert';
 import { TestHelper } from './testHelper';
 import * as sinon from 'sinon';
-import { PuppetForgeService } from '../puppetForgeService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 import { MockPuppetForgeService } from './mockPuppetForgeService';
 import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
 

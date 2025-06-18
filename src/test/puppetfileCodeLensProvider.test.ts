@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PuppetfileCodeLensProvider } from '../puppetfileCodeLensProvider';
-import { PuppetForgeService } from '../puppetForgeService';
+import { PuppetForgeService } from '../services/puppetForgeService';
 
 // Mock VS Code module
 jest.mock('vscode', () => ({
@@ -21,7 +21,7 @@ jest.mock('vscode', () => ({
 }));
 
 // Mock PuppetForgeService
-jest.mock('../puppetForgeService');
+jest.mock('../services/puppetForgeService');
 
 // Mock PuppetfileParser
 jest.mock('../puppetfileParser', () => ({
@@ -31,7 +31,7 @@ jest.mock('../puppetfileParser', () => ({
 }));
 
 // Mock PuppetfileUpdateService
-jest.mock('../puppetfileUpdateService', () => ({
+jest.mock('../services/puppetfileUpdateService', () => ({
     PuppetfileUpdateService: {
         updateModuleVersionAtLine: jest.fn()
     }
@@ -148,7 +148,7 @@ describe('PuppetfileCodeLensProvider', () => {
                 newVersion: '2.0.0'
             };
 
-            const { PuppetfileUpdateService } = require('../puppetfileUpdateService');
+            const { PuppetfileUpdateService } = require('../services/puppetfileUpdateService');
             PuppetfileUpdateService.updateModuleVersionAtLine.mockResolvedValue(undefined);
 
             const mockedVSCode = vscode as any;
@@ -181,7 +181,7 @@ describe('PuppetfileCodeLensProvider', () => {
                 newVersion: '2.0.0'
             };
 
-            const { PuppetfileUpdateService } = require('../puppetfileUpdateService');
+            const { PuppetfileUpdateService } = require('../services/puppetfileUpdateService');
             PuppetfileUpdateService.updateModuleVersionAtLine.mockRejectedValue(new Error('Update failed'));
 
             const mockedVSCode = vscode as any;

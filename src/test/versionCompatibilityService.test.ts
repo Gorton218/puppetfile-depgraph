@@ -1,6 +1,6 @@
-import { VersionCompatibilityService } from '../versionCompatibilityService';
-import { PuppetForgeService } from '../puppetForgeService';
-import { GitMetadataService, GitModuleMetadata } from '../gitMetadataService';
+import { VersionCompatibilityService } from '../services/versionCompatibilityService';
+import { PuppetForgeService } from '../services/puppetForgeService';
+import { GitMetadataService, GitModuleMetadata } from '../services/gitMetadataService';
 import { PuppetModule } from '../puppetfileParser';
 
 describe('VersionCompatibilityService', () => {

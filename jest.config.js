@@ -6,7 +6,8 @@ module.exports = {
     '**/**.test.ts'
   ],
   testPathIgnorePatterns: [
-    'node_modules/'
+    'node_modules/',
+    'src/test/api-integration/'
   ],
   transform: {
     '^.+\\.ts$': ['ts-jest', {

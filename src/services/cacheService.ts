@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PuppetForgeService } from './puppetForgeService';
-import { PuppetModule } from './puppetfileParser';
+import { PuppetModule } from '../puppetfileParser';
 
 export class CacheService {
     private static cachingPromise: Promise<void> | null = null;

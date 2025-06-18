@@ -2,12 +2,12 @@ import * as vscode from 'vscode';
 import { UpgradeDiffProvider } from '../services/upgradeDiffProvider';
 import { UpgradePlan, UpgradeCandidate, UpgradePlannerService } from '../services/upgradePlannerService';
 import { PuppetModule } from '../puppetfileParser';
-import { PuppetfileUpdateService } from '../puppetfileUpdateService';
+import { PuppetfileUpdateService } from '../services/puppetfileUpdateService';
 import { PuppetfileParser } from '../puppetfileParser';
 
 // Mock dependencies
 jest.mock('../services/upgradePlannerService');
-jest.mock('../puppetfileUpdateService');
+jest.mock('../services/puppetfileUpdateService');
 jest.mock('../puppetfileParser');
 
 // Mock VS Code API

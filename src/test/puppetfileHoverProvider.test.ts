@@ -1,6 +1,6 @@
 import * as sinon from 'sinon';
 import { PuppetfileHoverProvider } from '../puppetfileHoverProvider';
-import { PuppetForgeService, ForgeModule } from '../puppetForgeService';
+import { PuppetForgeService, ForgeModule } from '../services/puppetForgeService';
 
 describe('PuppetfileHoverProvider Test Suite', () => {
     let consoleWarnSpy: jest.SpyInstance;
@@ -614,7 +614,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
         const consoleInfoStub = sinon.stub(console, 'info');
         
         // Mock GitMetadataService.getModuleMetadataWithFallback
-        const { GitMetadataService } = require('../gitMetadataService');
+        const { GitMetadataService } = require('../services/gitMetadataService');
         const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
         
         GitMetadataService.getModuleMetadataWithFallback = async () => ({
@@ -667,7 +667,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
         const consoleDebugStub = sinon.stub(console, 'debug');
         
         // Mock GitMetadataService to return null (no metadata)
-        const { GitMetadataService } = require('../gitMetadataService');
+        const { GitMetadataService } = require('../services/gitMetadataService');
         const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
         GitMetadataService.getModuleMetadataWithFallback = async () => null;
         
@@ -697,7 +697,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
         const provider = createProvider();
         
         // Mock GitMetadataService to throw error
-        const { GitMetadataService } = require('../gitMetadataService');
+        const { GitMetadataService } = require('../services/gitMetadataService');
         const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
         GitMetadataService.getModuleMetadataWithFallback = async () => {
             throw new Error('Network error');
@@ -747,7 +747,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             PuppetForgeService.hasModuleCached = () => false;
             
             // Mock CacheService.isCachingInProgress
-            const { CacheService } = require('../cacheService');
+            const { CacheService } = require('../services/cacheService');
             const originalIsCachingInProgress = CacheService.isCachingInProgress;
             CacheService.isCachingInProgress = () => true;
             
