@@ -216,18 +216,23 @@ suite('Code Lens Provider Integration Tests', () => {
     const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
     await TestHelper.showDocument(doc);
     
-    // Mock error in forge service
-    sandbox.restore();
-    sandbox.stub(PuppetForgeService, 'getModule').rejects(new Error('API Error'));
-    sandbox.stub(PuppetForgeService, 'getLatestVersion').rejects(new Error('API Error'));
-    sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').rejects(new Error('API Error'));
-    sandbox.stub(PuppetForgeService, 'checkForUpdate').rejects(new Error('API Error'));
+    // Create a temporary sandbox for this test only
+    const tempSandbox = sinon.createSandbox();
+    tempSandbox.stub(PuppetForgeService, 'getModule').rejects(new Error('API Error'));
+    tempSandbox.stub(PuppetForgeService, 'getLatestVersion').rejects(new Error('API Error'));
+    tempSandbox.stub(PuppetForgeService, 'getLatestSafeVersion').rejects(new Error('API Error'));
+    tempSandbox.stub(PuppetForgeService, 'checkForUpdate').rejects(new Error('API Error'));
     
-    // Should still return some code lenses (without version info)
-    const codeLenses = await TestHelper.getCodeLenses(doc);
-    
-    // Should not crash, may have reduced functionality
-    assert.ok(Array.isArray(codeLenses), 'Should return array even with errors');
+    try {
+      // Should still return some code lenses (without version info)
+      const codeLenses = await TestHelper.getCodeLenses(doc);
+      
+      // Should not crash, may have reduced functionality
+      assert.ok(Array.isArray(codeLenses), 'Should return array even with errors');
+    } finally {
+      // Clean up the temporary sandbox
+      tempSandbox.restore();
+    }
   });
 
   test('Code lens performance with multiple modules', async () => {

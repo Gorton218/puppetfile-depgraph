@@ -31,7 +31,7 @@ export class MockPuppetForgeService {
       'puppet-logrotate.json', 'puppet-nodejs.json', 'puppet-prometheus.json',
       'puppet-python.json', 'puppet-rabbitmq.json', 'puppet-redis.json',
       'puppet-selinux.json', 'puppetlabs-ntp.json', 'puppetlabs-postgresql.json',
-      'sensu-sensu.json'
+      'sensu-sensu.json', 'puppet-nginx.json'
     ];
 
     for (const file of files) {
@@ -72,12 +72,6 @@ export class MockPuppetForgeService {
       { version: '8.0.0', supported: true }
     ]);
 
-    this.addMockModule('puppet-nginx', '5.0.0', [
-      { version: '5.0.0', supported: true },
-      { version: '4.4.0', supported: true },
-      { version: '4.3.0', supported: true },
-      { version: '4.2.0', supported: true }
-    ]);
 
     this.addMockModule('example-test', '2.0.0', [
       { version: '2.0.0', supported: true },
@@ -119,6 +113,10 @@ export class MockPuppetForgeService {
   }
 
   static async getModuleInfo(moduleName: string): Promise<any> {
+    // Force re-initialization if no data is loaded
+    if (this.mockData.size === 0) {
+      this.initialized = false;
+    }
     this.initialize();
     
     // Simulate network delay
