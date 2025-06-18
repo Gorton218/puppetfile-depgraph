@@ -1,5 +1,6 @@
 import { PuppetForgeService } from '../puppetForgeService';
 import pkg from '../../package.json';
+import axios from 'axios';
 
 describe('PuppetForgeService Test Suite', () => {
     
@@ -173,5 +174,34 @@ describe('PuppetForgeService Test Suite', () => {
             expect(result.latestVersion).toBe(latestVersion);
             expect(result.currentVersion).toBe(latestVersion);
         }
+    });
+
+    describe('Error handling improvements', () => {
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        test('getModule should return null for 404 errors', async () => {
+            const mockError = {
+                isAxiosError: true,
+                response: { status: 404 }
+            };
+            
+            jest.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+            jest.spyOn(PuppetForgeService, 'getModuleReleases').mockRejectedValue(mockError);
+            
+            const result = await PuppetForgeService.getModule('nonexistent/module');
+            expect(result).toBe(null);
+        });
+
+        test('getModule should rethrow unexpected errors with context', async () => {
+            const unexpectedError = new Error('Network timeout');
+            
+            jest.spyOn(axios, 'isAxiosError').mockReturnValue(false);
+            jest.spyOn(PuppetForgeService, 'getModuleReleases').mockRejectedValue(unexpectedError);
+            
+            await expect(PuppetForgeService.getModule('test/module'))
+                .rejects.toThrow('Failed to fetch module test/module: Network timeout');
+        });
     });
 });
