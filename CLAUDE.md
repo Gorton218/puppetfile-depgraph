@@ -48,9 +48,6 @@ src/
 ├── test/                       # Unit tests (Jest framework)
 │   ├── mocks/                  # Mock implementations for unit tests
 │   │   └── puppetForgeServiceMock.ts # Comprehensive mock data
-│   └── api-integration/        # Real API tests (separate from main tests)
-│       ├── puppetForgeApi.test.ts # Tests against real Puppet Forge
-│       └── README.md           # API integration test documentation
 ├── integration-test/           # VS Code integration tests (Mocha)
 │   ├── fixtures/               # Test data and mock fixtures
 │   │   ├── api-responses/      # Mock API responses (JSON files)
@@ -60,6 +57,9 @@ src/
 │   └── testSetup.ts            # Mock setup helpers
 ├── e2e-test/                   # End-to-end workflow tests
 │   └── commands/               # Command workflow tests
+├── api-integration/            # Real API tests (separate from main tests)
+│   ├── puppetForgeApi.test.ts  # Tests against real Puppet Forge
+│   └── README.md               # API integration test documentation
 └── claude-temp/                # Temporary development files (Git ignored)
 ```
 
@@ -120,7 +120,7 @@ The project is actively being enhanced with improvements to hover tooltips, cach
 - ✅ **CI/CD Pipeline** - ALWAYS use mocks for reliability
 
 **WHEN TO USE REAL APIs (1% of tests):**
-- ✅ **API Integration Tests** (`src/test/api-integration/`) - ONLY place for real calls
+- ✅ **API Integration Tests** (`api-integration/`) - ONLY place for real calls
 - ✅ **External-facing services only** (puppetForgeService, gitMetadataService)
 - ✅ **API contract validation** - ensure external APIs return expected data formats
 - ✅ **Manual validation** before releases
@@ -196,7 +196,7 @@ describe('PuppetForgeService', () => {
 });
 ```
 
-**Integration Tests (`src/test/api-integration/`):**
+**Integration Tests (`api-integration/`):**
 ```typescript
 // ✅ ONLY place where external-facing services use real calls
 describe('PuppetForgeService API Integration', () => {

@@ -28,6 +28,7 @@
         "standaloneParser.ts",
         "node_modules",
         ".vscode-test",
-        ".private"
+        ".private",
+        "api-integration"
     ]
 }
