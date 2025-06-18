@@ -1,4 +1,5 @@
-import { PuppetForgeService } from '../../services/puppetForgeService';
+// @ts-ignore - Importing compiled JS module for API integration tests
+const { PuppetForgeService } = require('../../out/services/puppetForgeService');
 
 /**
  * API Integration Tests for PuppetForgeService

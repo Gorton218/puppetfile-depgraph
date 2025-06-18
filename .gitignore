@@ -12,6 +12,9 @@ out/
 dist/
 *.js.map
 
+# Prevent compiled JS files in source directory
+src/**/*.js
+
 # VS Code extension packaging
 *.vsix
 
