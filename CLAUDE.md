@@ -16,34 +16,71 @@ Puppetfile Dependency Manager is a VS Code extension for managing Puppet module 
 - `npm run vscode:prepublish` - Prepare for publication
 
 ### Testing
-The project uses a dual testing approach:
+The project uses a multi-layered testing approach with different strategies for different types of tests:
 
 - **Unit Tests**: Jest framework in `src/test/` using `describe()` and `test()` functions
   - Run with: `npm test` or `npm run test:unit`
   - Coverage: `npm run test:coverage`
+  - **Always use mocks** for external services (PuppetForgeService, GitMetadataService)
 - **Integration Tests**: VS Code test runner with Mocha in `src/integration-test/` using `suite()` and `test()` functions  
   - Run with: `npm run test:integration`
-- **All Tests**: `npm run test:all` (runs both unit and integration tests)
+  - **Always use mocks** for external API calls (Puppet Forge, Git repositories)
+- **E2E Tests**: End-to-end workflow tests in `src/e2e-test/` using Mocha
+  - Run with: `npm run test:e2e`
+  - **Always use mocks** for external services to ensure reliability
+- **API Integration Tests**: Real API tests in `src/test/api-integration/`
+  - Run with: `npm run test:api-integration`
+  - **Only place where real API calls are allowed**
+- **All Tests**: `npm run test:all` (runs unit, integration, and e2e tests, but NOT api-integration)
 
-## Architecture
+## Project Structure
+
+### Directory Organization
+```
+src/
+├── services/                    # All service layer implementations
+│   ├── puppetForgeService.ts   # Puppet Forge API client with caching
+│   ├── gitMetadataService.ts   # Git repository metadata fetching
+│   ├── dependencyTreeService.ts # Dependency tree building and analysis
+│   ├── puppetfileUpdateService.ts # Module version updates
+│   ├── cacheService.ts         # Caching infrastructure
+│   └── versionCompatibilityService.ts # Version compatibility checking
+├── test/                       # Unit tests (Jest framework)
+│   ├── mocks/                  # Mock implementations for unit tests
+│   │   └── puppetForgeServiceMock.ts # Comprehensive mock data
+│   └── api-integration/        # Real API tests (separate from main tests)
+│       ├── puppetForgeApi.test.ts # Tests against real Puppet Forge
+│       └── README.md           # API integration test documentation
+├── integration-test/           # VS Code integration tests (Mocha)
+│   ├── fixtures/               # Test data and mock fixtures
+│   │   ├── api-responses/      # Mock API responses (JSON files)
+│   │   └── puppetfiles/        # Test Puppetfile examples
+│   ├── mockPuppetForgeService.ts # Mock service for integration tests
+│   ├── testHelper.ts           # VS Code testing utilities
+│   └── testSetup.ts            # Mock setup helpers
+├── e2e-test/                   # End-to-end workflow tests
+│   └── commands/               # Command workflow tests
+└── claude-temp/                # Temporary development files (Git ignored)
+```
 
 ### Service Layer Architecture
-- **puppetfileParser.ts**: Parses Puppetfile syntax (Forge and Git modules)
-- **puppetForgeService.ts**: Puppet Forge API client with caching
-- **dependencyTreeService.ts**: Builds and manages dependency trees
-- **puppetfileUpdateService.ts**: Handles module version updates
-- **puppetfileHoverProvider.ts**: Provides hover tooltips with version info
+- **All services are in `src/services/`** - Centralized service organization
+- **Services are singleton instances** exported from their modules
+- **External API calls are isolated** to service layer only
+- **Services support proxy configuration** via VS Code settings
+- **Parser returns structured data** with line numbers for editor integration
+- **Caching layer reduces API calls** to external services
 
-### Key Patterns
-1. Services are singleton instances exported from their modules
-2. All services support proxy configuration via VS Code settings
-3. Parser returns structured data with line numbers for editor integration
-4. Caching layer reduces API calls to Puppet Forge
+### Key Architectural Patterns
+1. **Service Isolation**: Only services make external API calls
+2. **Comprehensive Mocking**: All tests except API integration use mocks
+3. **Layered Testing**: Different test types serve different purposes
+4. **Fixture-Based Testing**: Real-like data for consistent test behavior
 
-### API Integration
-- Uses axios for HTTP requests
-- Puppet Forge API endpoint: `https://forgeapi.puppet.com/v3/`
-- Supports HTTP/HTTPS proxies via `https-proxy-agent`
+### API Integration Points
+- **Puppet Forge API**: `https://forgeapi.puppet.com/v3/` for module information
+- **Git Repositories**: Fetch metadata.json from Git repositories
+- **HTTP Proxies**: Support via `https-proxy-agent`
 
 ## Extension Activation
 - Activates on files with language ID "puppetfile"
@@ -71,7 +108,276 @@ The project uses a dual testing approach:
 ## Current Development Focus
 The project is actively being enhanced with improvements to hover tooltips, caching functionality, and Puppet Forge integration. Recent work includes implementing batch caching, fixing version-specific links, and improving the dependency display for modules.
 
-## Development Guidelines
+## Testing Guidelines
+
+### 🔥 CRITICAL: Mock vs Real API Usage
+
+**WHEN TO USE MOCKS (99% of tests):**
+- ✅ **Unit Tests** (`src/test/`) - ALWAYS use mocks
+- ✅ **Integration Tests** (`src/integration-test/`) - ALWAYS use mocks
+- ✅ **E2E Tests** (`src/e2e-test/`) - ALWAYS use mocks
+- ✅ **Performance Tests** - ALWAYS use mocks for speed
+- ✅ **CI/CD Pipeline** - ALWAYS use mocks for reliability
+
+**WHEN TO USE REAL APIs (1% of tests):**
+- ✅ **API Integration Tests** (`src/test/api-integration/`) - ONLY place for real calls
+- ✅ **External-facing services only** (puppetForgeService, gitMetadataService)
+- ✅ **API contract validation** - ensure external APIs return expected data formats
+- ✅ **Manual validation** before releases
+- ✅ **Debugging API contract changes**
+
+### Mock Implementation Strategy
+
+#### For Unit Tests (`src/test/`)
+```typescript
+// Use the comprehensive mock with hardcoded data
+import { MockPuppetForgeService } from '../test/mocks/puppetForgeServiceMock';
+
+// Mock the service completely
+jest.mock('../services/puppetForgeService', () => ({
+  PuppetForgeService: MockPuppetForgeService
+}));
+```
+
+#### For Integration Tests (`src/integration-test/`)
+```typescript
+// Use sinon to stub individual methods
+sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
+  const mockData = await MockPuppetForgeService.getModuleInfo(moduleName);
+  return convertToForgeModuleFormat(mockData);
+});
+```
+
+#### For E2E Tests (`src/e2e-test/`)
+```typescript
+// Use TestSetup helper for comprehensive mocking
+import { TestSetup } from '../../integration-test/testSetup';
+
+suiteSetup(() => {
+  TestSetup.setupAll(); // Mocks all external services
+});
+```
+
+### Mock Data Sources
+
+1. **Unit Tests**: `src/test/mocks/puppetForgeServiceMock.ts`
+   - Hardcoded, predictable test data
+   - Fast, deterministic responses
+   - Covers common test scenarios
+
+2. **Integration Tests**: `src/integration-test/fixtures/api-responses/`
+   - JSON files with realistic API responses
+   - Loaded dynamically by `MockPuppetForgeService`
+   - Matches real Puppet Forge API structure
+
+3. **API Integration Tests**: Real external APIs
+   - Validates API contracts haven't changed
+   - Tests actual network conditions
+   - Separate from main test suite
+
+### Service Mocking Rules
+
+#### 🌐 External-Facing Services (puppetForgeService, gitMetadataService)
+Services responsible for external communication have **different rules** for unit vs integration tests:
+
+**Unit Tests (`src/test/`):**
+```typescript
+// ✅ ALWAYS use mocks for external-facing services
+jest.mock('../services/puppetForgeService', () => ({
+  PuppetForgeService: MockPuppetForgeService
+}));
+
+// Test the service logic without real API calls
+describe('PuppetForgeService', () => {
+  test('should parse version correctly', () => {
+    // Test pure functions with real implementation
+    expect(PuppetForgeService.compareVersions('2.0.0', '1.0.0')).toBeGreaterThan(0);
+  });
+});
+```
+
+**Integration Tests (`src/test/api-integration/`):**
+```typescript
+// ✅ ONLY place where external-facing services use real calls
+describe('PuppetForgeService API Integration', () => {
+  test('should fetch real module data', async () => {
+    // Real API call to validate contract
+    const module = await PuppetForgeService.getModule('puppetlabs/stdlib');
+    expect(module).not.toBeNull();
+    expect(module.current_release.version).toMatch(/^\d+\.\d+\.\d+/);
+  });
+});
+```
+
+#### 🏗️ Internal Services (dependencyTreeService, versionCompatibilityService, etc.)
+Services that depend on external-facing services **ALWAYS use mocks** in both unit and integration tests:
+
+**Unit Tests:**
+```typescript
+// ✅ Mock external-facing service dependencies
+jest.mock('../services/puppetForgeService', () => ({
+  PuppetForgeService: MockPuppetForgeService
+}));
+
+describe('DependencyTreeService', () => {
+  test('should build dependency tree', async () => {
+    // Uses mocked PuppetForgeService responses
+    const tree = await DependencyTreeService.buildTree(modules);
+    expect(tree.nodes.length).toBeGreaterThan(0);
+  });
+});
+```
+
+**Integration Tests (`src/integration-test/`):**
+```typescript
+// ✅ Mock external-facing services, test VS Code integration
+sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
+  return MockPuppetForgeService.getModuleInfo(moduleName);
+});
+
+test('Dependency tree command works', async () => {
+  // Tests VS Code command with mocked external services
+  await vscode.commands.executeCommand('puppetfile-depgraph.showDependencyTree');
+});
+```
+
+#### ✅ DO: Mock External Services
+```typescript
+// Mock services that make HTTP requests
+PuppetForgeService.getModule()
+PuppetForgeService.getLatestVersion()
+GitMetadataService.getModuleMetadata()
+
+// Mock caching to avoid complex setup
+PuppetForgeService.hasModuleCached() // Return true
+CacheService.isCachingInProgress() // Return false
+```
+
+#### ❌ DON'T: Mock Pure Functions
+```typescript
+// Don't mock pure utility functions
+PuppetForgeService.compareVersions() // Use real implementation
+PuppetForgeService.isSafeVersion()   // Use real implementation
+PuppetfileParser.parseContent()     // Use real implementation
+```
+
+#### ❌ DON'T: Make Real API Calls in Regular Tests
+```typescript
+// NEVER do this in unit/integration/e2e tests:
+const module = await axios.get('https://forgeapi.puppet.com/...');
+const gitData = await axios.get('https://github.com/...');
+```
+
+### Test Performance Requirements
+
+- **Unit Tests**: < 5 seconds total
+- **Integration Tests**: < 2 minutes total  
+- **E2E Tests**: < 5 minutes total
+- **API Integration Tests**: No time limit (separate execution)
+
+### Debugging Failed Tests
+
+1. **Check mock setup**: Ensure all required methods are stubbed
+2. **Verify data format**: Mock data must match expected interfaces
+3. **Check test isolation**: Each test should clean up after itself
+4. **Review fixture data**: Ensure test data matches test expectations
+
+### Adding New Tests
+
+#### For New Features
+1. **Start with unit tests** using mocks
+2. **Add integration tests** for VS Code interactions
+3. **Add E2E tests** for complete workflows
+4. **Optionally add API tests** for new external integrations
+
+#### For Bug Fixes
+1. **Reproduce with mocked test** first
+2. **Fix the issue**
+3. **Verify fix with existing test suite**
+4. **Add regression test** if coverage gap exists
+
+### Mock Data Management
+
+#### Adding New Mock Modules
+When tests need data for modules not yet in the mock fixtures:
+
+1. **For Unit Tests**: Add to `puppetForgeServiceMock.ts` hardcoded data
+```typescript
+['new/module', {
+  latestVersion: '2.0.0',
+  latestSafeVersion: '1.9.0',
+  releases: [/* version history */]
+}]
+```
+
+2. **For Integration Tests**: Add JSON file to `fixtures/api-responses/`
+```bash
+# Create new-module.json with realistic API response structure
+cp puppetlabs-stdlib.json new-module.json
+# Edit versions, dependencies, etc.
+```
+
+#### Mock Data Consistency Rules
+- **Use realistic version numbers** (not 1.0.0 everywhere)
+- **Include dependencies** that match real modules
+- **Maintain version history** with reasonable timestamps
+- **Follow semantic versioning** patterns
+- **Include both stable and pre-release** versions for comprehensive testing
+
+### Common Testing Patterns
+
+#### Test Setup Pattern
+```typescript
+suite('My Feature Tests', () => {
+  let sandbox: sinon.SinonSandbox;
+
+  setup(async () => {
+    sandbox = sinon.createSandbox();
+    TestHelper.setupMockForgeService();
+    
+    // Stub all required service methods
+    sandbox.stub(PuppetForgeService, 'getModule').callsFake(/* mock */);
+    // ... other stubs
+    
+    await TestHelper.closeAllEditors();
+  });
+
+  teardown(async () => {
+    sandbox.restore();
+    await TestHelper.closeAllEditors();
+  });
+});
+```
+
+#### VS Code Document Testing Pattern
+```typescript
+test('Feature works with Puppetfile', async () => {
+  const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
+  await TestHelper.showDocument(doc);
+  
+  // Test your feature
+  const result = await yourFeature(doc);
+  
+  assert.ok(result, 'Feature should work');
+});
+```
+
+#### Hover Provider Testing Pattern
+```typescript
+test('Hover shows expected information', async () => {
+  const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
+  const line = TestHelper.findLineContaining(doc, 'module-name');
+  const hovers = await TestHelper.getHoverAtPosition(doc, line, 10);
+  
+  const content = hovers[0].contents.map(c => 
+    typeof c === 'string' ? c : c.value
+  ).join('\n');
+  
+  assert.ok(content.includes('expected text'));
+});
+```
+
+### Development Guidelines
 
 ### Temporary Files and Testing
 - Use the `claude-temp/` folder for all temporary development files, stubs, and mocks
