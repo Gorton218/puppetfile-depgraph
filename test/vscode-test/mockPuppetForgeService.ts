@@ -42,7 +42,9 @@ export class MockPuppetForgeService {
 
     console.log('MockPuppetForgeService: Initializing...');
     // Load mock data from fixtures
-    const fixturesDir = path.join(__dirname, 'fixtures', 'api-responses');
+    // When compiled, __dirname points to out/test/vscode-test
+    // We need to go to the source directory: test/vscode-test/fixtures
+    const fixturesDir = path.join(__dirname, '../../../test/vscode-test/fixtures', 'api-responses');
     console.log(`Looking for fixtures in: ${fixturesDir}`);
     const files = [
       'puppetlabs-stdlib.json', 'puppetlabs-concat.json', 'puppetlabs-firewall.json',

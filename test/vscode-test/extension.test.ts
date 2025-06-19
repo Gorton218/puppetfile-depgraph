@@ -2,7 +2,12 @@
 import * as vscode from 'vscode';
 import * as assert from 'assert';
 
+console.log('Loading extension test file...');
+console.log('typeof suite:', typeof suite);
+console.log('typeof test:', typeof test);
+
 suite('Extension Integration Test Suite', () => {
+  console.log('Inside suite definition...');
 	vscode.window.showInformationMessage('Start integration tests.');
 
 	test('Sample integration test', () => {
