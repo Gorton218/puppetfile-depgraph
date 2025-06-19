@@ -216,12 +216,17 @@ suite('Code Lens Provider Integration Tests', () => {
     const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
     await TestHelper.showDocument(doc);
     
-    // Create a temporary sandbox for this test only
-    const tempSandbox = sinon.createSandbox();
-    tempSandbox.stub(PuppetForgeService, 'getModule').rejects(new Error('API Error'));
-    tempSandbox.stub(PuppetForgeService, 'getLatestVersion').rejects(new Error('API Error'));
-    tempSandbox.stub(PuppetForgeService, 'getLatestSafeVersion').rejects(new Error('API Error'));
-    tempSandbox.stub(PuppetForgeService, 'checkForUpdate').rejects(new Error('API Error'));
+    // Reconfigure existing stubs to reject with errors
+    (PuppetForgeService.getModule as sinon.SinonStub).rejects(new Error('API Error'));
+    (PuppetForgeService.getLatestVersion as sinon.SinonStub).rejects(new Error('API Error'));
+    (PuppetForgeService.getLatestSafeVersion as sinon.SinonStub).rejects(new Error('API Error'));
+    
+    // Also stub checkForUpdate if it's not already stubbed
+    if (typeof (PuppetForgeService.checkForUpdate as any).restore !== 'function') {
+      sandbox.stub(PuppetForgeService, 'checkForUpdate').rejects(new Error('API Error'));
+    } else {
+      (PuppetForgeService.checkForUpdate as sinon.SinonStub).rejects(new Error('API Error'));
+    }
     
     try {
       // Should still return some code lenses (without version info)
@@ -230,8 +235,16 @@ suite('Code Lens Provider Integration Tests', () => {
       // Should not crash, may have reduced functionality
       assert.ok(Array.isArray(codeLenses), 'Should return array even with errors');
     } finally {
-      // Clean up the temporary sandbox
-      tempSandbox.restore();
+      // Restore original behaviors for next tests
+      (PuppetForgeService.getModule as sinon.SinonStub).callsFake(async (moduleName) => {
+        return MockPuppetForgeService.getModuleInfo(moduleName);
+      });
+      (PuppetForgeService.getLatestVersion as sinon.SinonStub).callsFake(async (moduleName) => {
+        return MockPuppetForgeService.getLatestVersion(moduleName);
+      });
+      (PuppetForgeService.getLatestSafeVersion as sinon.SinonStub).callsFake(async (moduleName) => {
+        return MockPuppetForgeService.getLatestVersion(moduleName);
+      });
     }
   });
 
