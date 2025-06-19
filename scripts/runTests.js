@@ -5,9 +5,9 @@ const isWin = process.platform === 'win32';
 const isE2E = process.argv.includes('--e2e');
 
 // Determine which tests to run
-let testPath = './out/test/vscode-test/test/vscode-test/index';
+let testPath = './out/test/vscode-test/index';
 if (isE2E) {
-  testPath = './out/test/e2e/test/e2e/index';
+  testPath = './out/test/e2e/index';
 }
 
 // Set environment variables for test configuration

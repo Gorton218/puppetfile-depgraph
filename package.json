@@ -117,7 +117,7 @@
     "lint": "eslint src --ext ts",
     "test": "jest",
     "test:unit": "jest",
-    "test:vscode": "npm run compile && tsc -p test/vscode-test && node ./scripts/runTests.js",
+    "test:vscode": "npm run compile && tsc -p test/vscode-test && cp -r test/vscode-test/fixtures out/test/vscode-test/ && node ./scripts/runTests.js",
     "test:e2e": "npm run compile && tsc -p test/e2e && node ./scripts/runTests.js --e2e",
     "test:performance": "jest --roots=test/e2e/performance --testMatch='**/*.test.ts'",
     "test:coverage": "jest --coverage",
