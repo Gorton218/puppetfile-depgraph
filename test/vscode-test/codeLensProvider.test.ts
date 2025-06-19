@@ -6,6 +6,7 @@ import { PuppetForgeService } from '../../src/services/puppetForgeService';
 import { MockPuppetForgeService } from './mockPuppetForgeService';
 import { PuppetfileCodeLensProvider } from '../../src/puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from '../../src/services/upgradeDiffCodeLensProvider';
+import { UpgradePlan } from '../../src/services/upgradePlannerService';
 
 suite('Code Lens Provider Integration Tests', () => {
   let sandbox: sinon.SinonSandbox;
@@ -26,7 +27,23 @@ suite('Code Lens Provider Integration Tests', () => {
     });
     
     sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getLatestVersion(moduleName); // For testing
+      return MockPuppetForgeService.getSafeUpdateVersion(moduleName, '1.0.0'); // Will calculate safe version
+    });
+    
+    sandbox.stub(PuppetForgeService, 'checkForUpdate').callsFake(async (moduleName: string, currentVersion?: string, safeOnly?: boolean) => {
+      if (safeOnly) {
+        const safeVersion = await MockPuppetForgeService.getSafeUpdateVersion(moduleName, currentVersion || '0.0.0');
+        const hasUpdate = safeVersion && currentVersion ? 
+          PuppetForgeService.compareVersions(safeVersion, currentVersion) > 0 : 
+          !!safeVersion;
+        return { hasUpdate, latestVersion: safeVersion, currentVersion };
+      } else {
+        const latestVersion = await MockPuppetForgeService.getLatestVersion(moduleName);
+        const hasUpdate = currentVersion ? 
+          PuppetForgeService.compareVersions(latestVersion, currentVersion) > 0 : 
+          true;
+        return { hasUpdate, latestVersion, currentVersion };
+      }
     });
 
     // Register code lens providers
@@ -136,7 +153,7 @@ suite('Code Lens Provider Integration Tests', () => {
     
     // Find update command
     const updateLens = codeLenses.find(lens => 
-      lens.command?.command === 'puppetfile-depgraph.updateModuleVersion'
+      lens.command?.command === 'puppetfile-depgraph.applySingleUpgrade'
     );
     
     assert.ok(updateLens, 'Should have update module command');
@@ -178,6 +195,9 @@ suite('Code Lens Provider Integration Tests', () => {
     );
     await TestHelper.replaceText(editor, fullRange, newText);
     
+    // Trigger code lens refresh
+    puppetfileCodeLensProvider.refresh();
+    
     // Wait for code lens to update
     await TestHelper.wait(500);
     
@@ -188,28 +208,59 @@ suite('Code Lens Provider Integration Tests', () => {
   });
 
   test('Upgrade diff code lens provider shows apply options', async () => {
-    // Create a diff document
+    // First set up a mock upgrade plan
+    UpgradeDiffCodeLensProvider.setUpgradePlan({
+      totalModules: 1,
+      totalUpgradeable: 1,
+      totalGitModules: 0,
+      hasConflicts: false,
+      gitModules: [],
+      candidates: [{
+        module: { name: 'puppetlabs-stdlib', source: 'forge' as const, line: 1 },
+        currentVersion: '8.5.0',
+        availableVersions: ['8.6.0', '9.6.0'],
+        maxSafeVersion: '8.6.0',
+        isUpgradeable: true
+      }]
+    });
+    
+    // Create a diff document with the expected comment pattern
     const diffContent = `
 @@ -1,5 +1,5 @@
  forge 'https://forge.puppet.com'
  
 -mod 'puppetlabs-stdlib', '8.5.0'
-+mod 'puppetlabs-stdlib', '9.6.0'
++mod 'puppetlabs-stdlib', '8.6.0' # ↑ UPGRADE: puppetlabs-stdlib (8.5.0 → 8.6.0)
  mod 'puppetlabs-concat', '7.2.0'
 `;
     
-    const doc = await TestHelper.createTestDocument(diffContent, 'puppetfile-diff');
-    await TestHelper.showDocument(doc);
+    // Register a simple content provider for the test
+    const provider = {
+      provideTextDocumentContent: (uri: vscode.Uri) => diffContent
+    };
+    const disposable = vscode.workspace.registerTextDocumentContentProvider('puppetfile-diff', provider);
     
-    // Get code lenses from diff provider
-    const codeLenses = await TestHelper.getCodeLenses(doc);
+    try {
+      // Create a document with puppetfile-diff scheme
+      const diffUri = vscode.Uri.parse('puppetfile-diff://test/Puppetfile');
+      const doc = await vscode.workspace.openTextDocument(diffUri);
+      await TestHelper.showDocument(doc);
+      
+      // Wait for code lens provider to process
+      await TestHelper.wait(200);
+      
+      // Get code lenses from diff provider
+      const codeLenses = await TestHelper.getCodeLenses(doc);
     
-    // Should show apply options
-    const applyLens = codeLenses.find(lens => 
-      lens.command?.title.includes('Apply') || lens.command?.title.includes('apply')
-    );
-    
-    assert.ok(applyLens, 'Should show apply option in diff view');
+      // Should show apply options
+      const applyLens = codeLenses.find(lens => 
+        lens.command?.title.includes('Apply') || lens.command?.title.includes('apply')
+      );
+      
+      assert.ok(applyLens, 'Should show apply option in diff view');
+    } finally {
+      disposable.dispose();
+    }
   });
 
   test('Code lens handles errors gracefully', async () => {
