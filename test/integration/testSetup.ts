@@ -1,6 +1,6 @@
 import * as sinon from 'sinon';
 import { PuppetForgeService } from '../../src/services/puppetForgeService';
-import { MockPuppetForgeService } from '../../src/test/mocks/puppetForgeServiceMock';
+import { MockPuppetForgeService } from '../unit/mocks/puppetForgeServiceMock';
 
 /**
  * Sets up mocks for integration tests to avoid real API calls

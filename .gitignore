@@ -11,6 +11,8 @@ yarn-error.log*
 out/
 dist/
 *.js.map
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # Prevent compiled JS files in source directory
 src/**/*.js

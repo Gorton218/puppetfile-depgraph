@@ -1,4 +1,4 @@
-import { ForgeModule, ForgeVersion, PuppetForgeService } from '../../src/../services/puppetForgeService';
+import { ForgeModule, ForgeVersion, PuppetForgeService } from '../../../src/services/puppetForgeService';
 
 /**
  * Mock data for Puppet Forge modules
