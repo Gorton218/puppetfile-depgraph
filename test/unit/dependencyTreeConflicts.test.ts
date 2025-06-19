@@ -2,6 +2,7 @@ import * as sinon from 'sinon';
 import { DependencyTreeService } from '../../src/services/dependencyTreeService';
 import { PuppetForgeService } from '../../src/services/puppetForgeService';
 import { PuppetModule } from '../../src/puppetfileParser';
+import { ModuleNameUtils } from '../../src/utils/moduleNameUtils';
 
 // Helper types
 type Dependency = { name: string; version_requirement: string };
@@ -15,7 +16,7 @@ function createModuleMock(name: string, version: string, dependencies: Dependenc
     : [createRelease(version)];
   
   return {
-    name: name.replace('/', '-'),
+    name: ModuleNameUtils.toDashFormat(name),
     current_release: createRelease(version),
     releases
   };

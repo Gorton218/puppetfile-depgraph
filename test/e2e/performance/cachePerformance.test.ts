@@ -4,6 +4,7 @@ import { PuppetForgeService } from '../../../src/services/puppetForgeService';
 import { MockPuppetForgeService } from '../../vscode-test/mockPuppetForgeService';
 import * as sinon from 'sinon';
 import axios from 'axios';
+import { ModuleNameUtils } from '../../../src/utils/moduleNameUtils';
 
 /**
  * Performance tests for caching functionality
@@ -31,12 +32,12 @@ describe('Performance: Cache Tests', () => {
       // Extract module name from URL or params
       let moduleName = '';
       if (config?.params?.module) {
-        moduleName = config.params.module.replace('-', '/');
+        moduleName = ModuleNameUtils.toSlashFormat(config.params.module);
       } else if (typeof url === 'string' && url.includes('/modules/')) {
         // Extract from URL like /modules/puppetlabs-stdlib
         const match = url.match(/\/modules\/([^\/]+)/);
         if (match) {
-          moduleName = match[1].replace('-', '/');
+          moduleName = ModuleNameUtils.toSlashFormat(match[1]);
         }
       }
       

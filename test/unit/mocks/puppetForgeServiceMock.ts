@@ -1,4 +1,5 @@
 import { ForgeModule, ForgeVersion, PuppetForgeService } from '../../../src/services/puppetForgeService';
+import { ModuleNameUtils } from '../../../src/utils/moduleNameUtils';
 
 /**
  * Mock data for Puppet Forge modules
@@ -1372,10 +1373,8 @@ export class MockPuppetForgeService {
         }
 
         const latestRelease = releases[0];
-        const moduleSlug = moduleName.replace('/', '-');
-        const owner = moduleName.includes('/') 
-            ? moduleName.split('/')[0]
-            : moduleName.split('-')[0];
+        const moduleSlug = ModuleNameUtils.toDashFormat(moduleName);
+        const owner = ModuleNameUtils.getOwner(moduleName);
 
         return {
             name: moduleName,

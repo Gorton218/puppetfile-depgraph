@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { ModuleNameUtils } from '../../src/utils/moduleNameUtils';
 
 export interface MockModuleInfo {
   name: string;
@@ -149,23 +150,11 @@ export class MockPuppetForgeService {
     
     // If not found, try alternative naming conventions
     if (!data) {
-      // Try with / converted to -
-      const dashName = moduleName.replace('/', '-');
-      data = this.mockData.get(dashName);
-      
-      if (!data) {
-        // Try with - converted to /
-        const slashName = moduleName.replace('-', '/');
-        data = this.mockData.get(slashName);
-      }
-      
-      if (!data) {
-        // Try common module name variants (puppetlabs/puppet-nginx -> puppet/nginx)
-        const variants = this.getModuleNameVariants(moduleName);
-        for (const variant of variants) {
-          data = this.mockData.get(variant);
-          if (data) break;
-        }
+      // Use centralized variant generation
+      const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+      for (const variant of variants) {
+        data = this.mockData.get(variant);
+        if (data) break;
       }
     }
     
@@ -230,61 +219,4 @@ export class MockPuppetForgeService {
     this.initialized = false;
   }
 
-  /**
-   * Generate common module name variants
-   * Examples:
-   * - puppetlabs/puppet-nginx -> [puppet/nginx, puppet-nginx]
-   * - puppetlabs/stdlib -> [puppetlabs-stdlib] 
-   * - puppet/nginx -> [puppetlabs/puppet-nginx, puppetlabs-puppet-nginx, puppet-nginx]
-   * - puppet-nginx -> [puppet/nginx, puppetlabs/puppet-nginx]
-   */
-  private static getModuleNameVariants(moduleName: string): string[] {
-    const variants: string[] = [];
-    
-    // Handle puppetlabs/puppet-* pattern -> puppet/*
-    if (moduleName.startsWith('puppetlabs/puppet-')) {
-      const shortName = moduleName.replace('puppetlabs/puppet-', '');
-      variants.push(`puppet/${shortName}`);
-      variants.push(`puppet-${shortName}`);
-    }
-    
-    // Handle puppet/* pattern -> puppetlabs/puppet-*, puppet-*
-    if (moduleName.startsWith('puppet/')) {
-      const shortName = moduleName.replace('puppet/', '');
-      variants.push(`puppetlabs/puppet-${shortName}`);
-      variants.push(`puppetlabs-puppet-${shortName}`);
-      variants.push(`puppet-${shortName}`); // Common case: puppet/nginx -> puppet-nginx
-    }
-    
-    // Handle puppet-* pattern -> puppet/*, puppetlabs/puppet-*
-    if (moduleName.startsWith('puppet-') && !moduleName.includes('/')) {
-      const shortName = moduleName.replace('puppet-', '');
-      variants.push(`puppet/${shortName}`);
-      variants.push(`puppetlabs/puppet-${shortName}`);
-      variants.push(`puppetlabs-puppet-${shortName}`);
-    }
-    
-    // Handle dash/slash conversions with owner prefix variations
-    if (moduleName.includes('/')) {
-      const [owner, module] = moduleName.split('/', 2);
-      variants.push(`${owner}-${module}`);
-      
-      // Try alternative owners
-      if (owner === 'puppetlabs') {
-        variants.push(`puppet/${module}`);
-        variants.push(`puppet-${module}`);
-      } else if (owner === 'puppet') {
-        variants.push(`puppetlabs/${module}`);
-        variants.push(`puppetlabs-${module}`);
-      }
-    } else if (moduleName.includes('-')) {
-      // Handle dash format -> slash format
-      const [owner, module] = moduleName.split('-', 2);
-      if (owner && module) {
-        variants.push(`${owner}/${module}`);
-      }
-    }
-    
-    return variants;
-  }
 }

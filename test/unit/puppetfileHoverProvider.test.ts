@@ -1,6 +1,7 @@
 import * as sinon from 'sinon';
 import { PuppetfileHoverProvider } from '../../src/puppetfileHoverProvider';
 import { PuppetForgeService, ForgeModule } from '../../src/services/puppetForgeService';
+import { ModuleNameUtils } from '../../src/utils/moduleNameUtils';
 
 describe('PuppetfileHoverProvider Test Suite', () => {
     let consoleWarnSpy: jest.SpyInstance;
@@ -26,10 +27,10 @@ describe('PuppetfileHoverProvider Test Suite', () => {
 
     const createForgeModule = (name: string, version: string = '8.5.0', dependencies: Array<{name: string; version_requirement: string}> = []): ForgeModule => ({
         name,
-        slug: name.replace('/', '-'),
+        slug: ModuleNameUtils.toDashFormat(name),
         owner: { 
-            username: name.split('/')[0], 
-            slug: name.split('/')[0] 
+            username: ModuleNameUtils.getOwner(name), 
+            slug: ModuleNameUtils.getOwner(name) 
         },
         current_release: { 
             version, 
@@ -364,11 +365,11 @@ describe('PuppetfileHoverProvider Test Suite', () => {
         // Should return false for uncached module
         expect(PuppetForgeService.hasModuleCached('puppetlabs/stdlib')).toBe(false);
         
-        // Mock cache by calling internal cache set
+        // Mock cache by calling internal cache set with normalized key
         const moduleVersionCache = (PuppetForgeService as any).moduleVersionCache;
         const versionMap = new Map();
         versionMap.set('8.5.0', { version: '8.5.0', metadata: {} });
-        moduleVersionCache.set('puppetlabs/stdlib', versionMap);
+        moduleVersionCache.set('puppetlabs-stdlib', versionMap); // Use canonical format
         
         // Should return true for cached module
         expect(PuppetForgeService.hasModuleCached('puppetlabs/stdlib')).toBe(true);

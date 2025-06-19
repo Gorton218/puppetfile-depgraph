@@ -97,11 +97,11 @@ describe('PuppetForgeService Test Suite', () => {
         const mockVersion1 = { version: '1.0.0', created_at: '2023-01-01', updated_at: '2023-01-01', downloads: 10, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } };
         const mockVersion2 = { version: '2.0.0', created_at: '2023-02-01', updated_at: '2023-02-01', downloads: 20, file_size: 1, file_md5: '', file_uri: '', metadata: { dependencies: [] } };
         
-        // Set up two-level cache structure
+        // Set up two-level cache structure with normalized key
         const versionMap = new Map();
         versionMap.set('1.0.0', mockVersion1);
         versionMap.set('2.0.0', mockVersion2);
-        svc.moduleVersionCache.set('test/module', versionMap);
+        svc.moduleVersionCache.set('test-module', versionMap); // Use canonical format
         
         // First call should use cached version
         const result1 = await PuppetForgeService.getReleaseForVersion('test/module', '1.0.0');
@@ -111,11 +111,11 @@ describe('PuppetForgeService Test Suite', () => {
         const result2 = await PuppetForgeService.getReleaseForVersion('test/module', '2.0.0');
         expect(result2?.version).toBe('2.0.0');
         
-        // Verify cache structure
+        // Verify cache structure using canonical key
         expect(svc.moduleVersionCache.size).toBe(1);
-        expect(svc.moduleVersionCache.get('test/module').size).toBe(2);
-        expect(svc.moduleVersionCache.get('test/module').has('1.0.0')).toBe(true);
-        expect(svc.moduleVersionCache.get('test/module').has('2.0.0')).toBe(true);
+        expect(svc.moduleVersionCache.get('test-module').size).toBe(2);
+        expect(svc.moduleVersionCache.get('test-module').has('1.0.0')).toBe(true);
+        expect(svc.moduleVersionCache.get('test-module').has('2.0.0')).toBe(true);
     });
 
     // Note: These tests require network access and may be slow

@@ -2,6 +2,7 @@ import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
 import { PuppetfileParser, PuppetModule } from '../puppetfileParser';
 import { VersionParser } from '../utils/versionParser';
 import { GitMetadataService } from './gitMetadataService';
+import { ModuleNameUtils } from '../utils/moduleNameUtils';
 
 export interface VersionCompatibility {
     version: string;
@@ -115,15 +116,9 @@ export class VersionCompatibilityService {
     
     /**
      * Normalize module names to handle different formats
-     * @param name Module name to normalize
-     * @returns Normalized module name
+     * @deprecated Use ModuleNameUtils.toSlashFormat() directly
      */
     private static normalizeModuleName(name: string): string {
-        // Convert puppetlabs-stdlib to puppetlabs/stdlib format
-        if (name.includes('-') && !name.includes('/')) {
-            const dashIndex = name.indexOf('-');
-            return name.substring(0, dashIndex) + '/' + name.substring(dashIndex + 1);
-        }
-        return name;
+        return ModuleNameUtils.toSlashFormat(name);
     }
 }

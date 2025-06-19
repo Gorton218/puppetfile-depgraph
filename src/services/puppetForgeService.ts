@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import pkg from '../../package.json';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { ModuleNameUtils } from '../utils/moduleNameUtils';
 
 /**
  * Represents version information from Puppet Forge
@@ -100,13 +101,11 @@ export class PuppetForgeService {
 
     /**
      * Normalize module name for consistent cache keys
-     * Converts all variants to a canonical form: owner-module (lowercase)
-     * Examples: "puppetlabs/stdlib" -> "puppetlabs-stdlib"
-     *          "Puppetlabs/StdLib" -> "puppetlabs-stdlib"  
-     *          "puppet/nginx" -> "puppet-nginx"
+     * Uses centralized ModuleNameUtils for consistency across the codebase
+     * @deprecated Use ModuleNameUtils.toCanonicalFormat() directly
      */
-    private static normalizeModuleName(moduleName: string): string {
-        return moduleName.replace('/', '-').toLowerCase();
+    private static normalizeCacheKey(moduleName: string): string {
+        return ModuleNameUtils.toCanonicalFormat(moduleName);
     }
 
     /**
@@ -115,7 +114,7 @@ export class PuppetForgeService {
      * @returns True if the module has cached data
      */
     public static hasModuleCached(moduleName: string): boolean {
-        const normalizedKey = this.normalizeModuleName(moduleName);
+        const normalizedKey = this.normalizeCacheKey(moduleName);
         const moduleCache = this.moduleVersionCache.get(normalizedKey);
         return moduleCache !== undefined && moduleCache.size > 0;
     }
@@ -145,11 +144,9 @@ export class PuppetForgeService {
                 throw new Error(`Invalid module name format: "${moduleName}". Expected "owner/module" or "owner-module".`);
             }
             
-            // For API calls, we need "owner/module" format
-            const moduleSlug = moduleName.replace('/', '-');
-            const owner = moduleName.includes('/') 
-                ? moduleName.split('/')[0]
-                : moduleName.split('-')[0];
+            // Use centralized utility for parsing module name
+            const moduleSlug = ModuleNameUtils.toDashFormat(moduleName);
+            const owner = ModuleNameUtils.getOwner(moduleName);
             
             return {
                 name: moduleName,
@@ -179,7 +176,7 @@ export class PuppetForgeService {
      */
     public static async getModuleReleases(moduleName: string): Promise<ForgeVersion[]> {
         // Check if we already have cached versions for this module using normalized key
-        const normalizedKey = this.normalizeModuleName(moduleName);
+        const normalizedKey = this.normalizeCacheKey(moduleName);
         const moduleCache = this.moduleVersionCache.get(normalizedKey);
         if (moduleCache && moduleCache.size > 0) {
             // Return all cached versions as an array, sorted by version descending
@@ -195,7 +192,7 @@ export class PuppetForgeService {
                 {
                     ...this.getAxiosOptions(),
                     params: {
-                        module: moduleName.replace('/', '-'), // API expects puppetlabs-stdlib format
+                        module: ModuleNameUtils.toDashFormat(moduleName), // API expects puppetlabs-stdlib format
                         limit: 100,
                         sort_by: 'version',
                         order: 'desc'
@@ -218,7 +215,7 @@ export class PuppetForgeService {
         } catch (error) {
             if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400)) {
                 // Try alternative module name formats before giving up
-                const variants = this.getModuleNameVariants(moduleName);
+                const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
                 for (const variant of variants) {
                     try {
                         const response = await axios.get(
@@ -226,7 +223,7 @@ export class PuppetForgeService {
                             {
                                 ...this.getAxiosOptions(),
                                 params: {
-                                    module: variant.replace('/', '-'),
+                                    module: ModuleNameUtils.toDashFormat(variant),
                                     limit: 100,
                                     sort_by: 'version',
                                     order: 'desc'
@@ -262,7 +259,7 @@ export class PuppetForgeService {
      */
     public static async getReleaseForVersion(moduleName: string, version: string): Promise<ForgeVersion | null> {
         // Check two-level cache first using normalized key
-        const normalizedKey = this.normalizeModuleName(moduleName);
+        const normalizedKey = this.normalizeCacheKey(moduleName);
         const moduleCache = this.moduleVersionCache.get(normalizedKey);
         if (moduleCache) {
             const cachedVersion = moduleCache.get(version);
@@ -406,61 +403,4 @@ export class PuppetForgeService {
         }
     }
 
-    /**
-     * Generate common module name variants for fallback lookups
-     * Examples:
-     * - puppetlabs/puppet-nginx -> [puppet/nginx, puppet-nginx]
-     * - puppetlabs/stdlib -> [puppetlabs-stdlib] 
-     * - puppet/nginx -> [puppetlabs/puppet-nginx, puppetlabs-puppet-nginx, puppet-nginx]
-     * - puppet-nginx -> [puppet/nginx, puppetlabs/puppet-nginx]
-     */
-    private static getModuleNameVariants(moduleName: string): string[] {
-        const variants: string[] = [];
-        
-        // Handle puppetlabs/puppet-* pattern -> puppet/*
-        if (moduleName.startsWith('puppetlabs/puppet-')) {
-            const shortName = moduleName.replace('puppetlabs/puppet-', '');
-            variants.push(`puppet/${shortName}`);
-            variants.push(`puppet-${shortName}`);
-        }
-        
-        // Handle puppet/* pattern -> puppetlabs/puppet-*, puppet-*
-        if (moduleName.startsWith('puppet/')) {
-            const shortName = moduleName.replace('puppet/', '');
-            variants.push(`puppetlabs/puppet-${shortName}`);
-            variants.push(`puppetlabs-puppet-${shortName}`);
-            variants.push(`puppet-${shortName}`); // Common case: puppet/nginx -> puppet-nginx
-        }
-        
-        // Handle puppet-* pattern -> puppet/*, puppetlabs/puppet-*
-        if (moduleName.startsWith('puppet-') && !moduleName.includes('/')) {
-            const shortName = moduleName.replace('puppet-', '');
-            variants.push(`puppet/${shortName}`);
-            variants.push(`puppetlabs/puppet-${shortName}`);
-            variants.push(`puppetlabs-puppet-${shortName}`);
-        }
-        
-        // Handle dash/slash conversions with owner prefix variations
-        if (moduleName.includes('/')) {
-            const [owner, module] = moduleName.split('/', 2);
-            variants.push(`${owner}-${module}`);
-            
-            // Try alternative owners
-            if (owner === 'puppetlabs') {
-                variants.push(`puppet/${module}`);
-                variants.push(`puppet-${module}`);
-            } else if (owner === 'puppet') {
-                variants.push(`puppetlabs/${module}`);
-                variants.push(`puppetlabs-${module}`);
-            }
-        } else if (moduleName.includes('-')) {
-            // Handle dash format -> slash format
-            const [owner, module] = moduleName.split('-', 2);
-            if (owner && module) {
-                variants.push(`${owner}/${module}`);
-            }
-        }
-        
-        return variants;
-    }
 }

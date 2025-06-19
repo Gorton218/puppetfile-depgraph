@@ -4,6 +4,7 @@ import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
 import { DependencyGraph, Requirement, DependencyConflict } from '../types/dependencyTypes';
 import { ConflictAnalyzer } from './conflictAnalyzer';
 import { VersionParser } from '../utils/versionParser';
+import { ModuleNameUtils } from '../utils/moduleNameUtils';
 
 /**
  * Represents a node in the dependency tree
@@ -60,7 +61,7 @@ export class DependencyTreeService {
                 return [];
             }
             if (module.version && module.source === 'forge') {
-                const normalizedName = this.normalizeModuleName(module.name);
+                const normalizedName = ModuleNameUtils.toCanonicalFormat(module.name);
                 this.directDependencies.set(normalizedName, module.version);
                 this.addRequirement(normalizedName, {
                     constraint: `= ${module.version}`,
@@ -455,10 +456,10 @@ export class DependencyTreeService {
 
     /**
      * Normalize module names to ensure consistency between Puppetfile format and Forge API format
-     * Converts both "puppetlabs/stdlib" and "puppetlabs-stdlib" to "puppetlabs-stdlib"
+     * @deprecated Use ModuleNameUtils.toCanonicalFormat() directly
      */
     private static normalizeModuleName(moduleName: string): string {
-        return moduleName.replace('/', '-');
+        return ModuleNameUtils.toCanonicalFormat(moduleName);
     }
 
     /**
@@ -506,11 +507,9 @@ export class DependencyTreeService {
 
             try {
                 // Get available versions from Forge - use original name format for API call
-                // Convert back to slash format for API if it looks like an org/module pair
+                // Convert back to slash format for API call
                 const forgeModule = await PuppetForgeService.getModule(
-                    moduleName.includes('-') && moduleName.split('-').length === 2 
-                        ? moduleName.replace('-', '/') 
-                        : moduleName
+                    ModuleNameUtils.toSlashFormat(moduleName)
                 );
                 const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
 
