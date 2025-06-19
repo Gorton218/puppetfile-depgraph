@@ -1,7 +1,7 @@
 import { CacheService } from '../../../src/services/cacheService';
 import { PuppetModule } from '../../../src/puppetfileParser';
 import { PuppetForgeService } from '../../../src/services/puppetForgeService';
-import { MockPuppetForgeService } from '../../integration/mockPuppetForgeService';
+import { MockPuppetForgeService } from '../../vscode-test/mockPuppetForgeService';
 import * as sinon from 'sinon';
 import axios from 'axios';
 
@@ -98,8 +98,8 @@ describe('Performance: Cache Tests', () => {
     const modules = [
       'puppetlabs-stdlib',
       'puppetlabs-concat', 
-      'puppetlabs-apache',
-      'puppetlabs-mysql',
+      'puppetlabs-firewall',
+      'puppet-archive',
       'puppet-nginx'
     ];
     
@@ -267,13 +267,12 @@ describe('Performance: Cache Tests', () => {
   });
 
   test('Concurrent cache access performance', async () => {
-    const modules = ['stdlib', 'concat', 'apache', 'mysql', 'nginx'];
+    const modules = ['puppetlabs-stdlib', 'puppetlabs-concat', 'puppetlabs-firewall', 'puppet-archive', 'puppet-nginx'];
     const concurrentRequests = 10; // Reduced for simpler testing
     
     // Pre-cache modules by making initial requests
     for (const module of modules) {
-      const fullName = `puppetlabs-${module}`;
-      await PuppetForgeService.getModule(fullName);
+      await PuppetForgeService.getModule(module);
     }
     
     // Reset API call count after pre-caching
