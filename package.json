@@ -122,7 +122,7 @@
     "test:performance": "jest --roots=test/e2e/performance --testMatch='**/*.test.ts'",
     "test:coverage": "jest --coverage",
     "test:debug": "jest --detectOpenHandles",
-    "test:api-integration": "npm run compile && tsc test/api/puppetForgeApi.test.ts --outDir out/test/api --module commonjs --target es2022 --lib es2022 --types node,jest --skipLibCheck && jest --roots=out/test/api --testMatch='**/*.test.js' --testTimeout=30000",
+    "test:api-integration": "jest --roots=test/api --testMatch='**/*.test.ts' --testTimeout=30000 --coverage",
     "test:all": "npm run test:coverage && npm run test:integration && npm run test:e2e",
     "test:regression": "npm run test:all",
     "package": "npx @vscode/vsce package"
