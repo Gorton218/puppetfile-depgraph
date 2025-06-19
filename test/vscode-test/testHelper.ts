@@ -13,9 +13,9 @@ export class TestHelper {
   }
 
   static async openTestPuppetfile(fixtureName: string): Promise<vscode.TextDocument> {
-    // When compiled, __dirname points to out/integration-test/test/vscode-test
+    // When compiled, __dirname points to out/test/vscode-test
     // We need to go to the source directory: test/vscode-test/fixtures
-    const sourceRoot = path.resolve(__dirname, '../../../../test/vscode-test/fixtures');
+    const sourceRoot = path.resolve(__dirname, '../../../test/vscode-test/fixtures');
     const fixturePath = path.join(sourceRoot, fixtureName);
     const content = fs.readFileSync(fixturePath, 'utf8');
     return this.createTestDocument(content);
