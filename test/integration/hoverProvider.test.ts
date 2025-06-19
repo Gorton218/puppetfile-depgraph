@@ -180,7 +180,7 @@ suite('Hover Provider Integration Tests', () => {
     // Check for markdown links
     assert.ok(hoverContent.includes('['), 'Should contain markdown links');
     assert.ok(hoverContent.includes('](https://forge.puppet.com'), 'Should link to Puppet Forge');
-    assert.ok(hoverContent.includes('/releases/'), 'Should link to specific version');
+    assert.ok(hoverContent.includes('/dependencies'), 'Should link to dependencies page');
   });
 
   test('Hover handles errors gracefully', async () => {

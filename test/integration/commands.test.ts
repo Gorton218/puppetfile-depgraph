@@ -69,11 +69,11 @@ suite('Command Integration Tests', () => {
     // Check that versions were updated to latest
     const updatedText = doc.getText();
     
-    // puppetlabs-stdlib -> 9.6.0 (latest)
-    assert.ok(updatedText.includes("mod 'puppetlabs-stdlib', '9.6.0'"), 'stdlib should be updated to latest 9.6.0');
+    // puppetlabs-stdlib -> 9.7.0 (latest from fixture)
+    assert.ok(updatedText.includes("mod 'puppetlabs-stdlib', '9.7.0'"), 'stdlib should be updated to latest 9.7.0');
     
-    // puppetlabs-concat -> 9.0.2 (latest)
-    assert.ok(updatedText.includes("mod 'puppetlabs-concat', '9.0.2'"), 'concat should be updated to latest 9.0.2');
+    // puppetlabs-concat -> 9.1.0 (latest from fixture)
+    assert.ok(updatedText.includes("mod 'puppetlabs-concat', '9.1.0'"), 'concat should be updated to latest 9.1.0');
   });
 
   test('Show dependency tree command', async () => {

@@ -29,6 +29,7 @@
         "node_modules",
         ".vscode-test",
         ".private",
-        "test"
+        "test",
+        "claude-temp"
     ]
 }
