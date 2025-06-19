@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as assert from 'assert';
 import { TestHelper } from './testHelper';
 import * as sinon from 'sinon';
-import { PuppetForgeService } from '../../src/services/puppetForgeService';
+import { PuppetForgeService } from '../../../src/services/puppetForgeService';
 import { MockPuppetForgeService } from './mockPuppetForgeService';
 
 suite('Command Integration Tests', () => {

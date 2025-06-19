@@ -16,6 +16,7 @@ tsconfig.tsbuildinfo
 
 # Prevent compiled JS files in source directory
 src/**/*.js
+src/**/*.js.map
 test/**/*.js
 test/**/*.js.map
 test/**/tsconfig.json

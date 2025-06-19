@@ -1,0 +1,18 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "./out",
+        "rootDir": "./",
+        "types": ["node", "jest", "mocha", "sinon", "vscode"]
+    },
+    "include": [
+        "src/**/*",
+        "test/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "out",
+        ".vscode-test",
+        "claude-temp"
+    ]
+}

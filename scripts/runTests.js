@@ -5,9 +5,9 @@ const isWin = process.platform === 'win32';
 const isE2E = process.argv.includes('--e2e');
 
 // Determine which tests to run
-let testPath = './out/integration-test/index';
+let testPath = './out/test/vscode-test/index';
 if (isE2E) {
-  testPath = './out/e2e-test/index';
+  testPath = './out/test/e2e/index';
 }
 
 // Set environment variables for test configuration
@@ -23,7 +23,7 @@ const args = isWin ? ['vscode-test'] : ['-a', 'npx', 'vscode-test'];
 if (isE2E) {
   console.log('Running E2E tests...');
 } else {
-  console.log('Running integration tests...');
+  console.log('Running VS Code integration tests...');
 }
 
 const testResult = spawnSync(cmd, args, { 
