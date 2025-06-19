@@ -7,15 +7,34 @@ import { MockPuppetForgeService } from './mockPuppetForgeService';
 import { PuppetfileCodeLensProvider } from '../../src/puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from '../../src/services/upgradeDiffCodeLensProvider';
 import { UpgradePlan } from '../../src/services/upgradePlannerService';
+// Remove direct activation import
 
 suite('Code Lens Provider Integration Tests', () => {
   let sandbox: sinon.SinonSandbox;
   let puppetfileCodeLensProvider: PuppetfileCodeLensProvider;
   let upgradeDiffCodeLensProvider: UpgradeDiffCodeLensProvider;
+  let extensionActivated = false;
 
   setup(async () => {
     sandbox = sinon.createSandbox();
     TestHelper.setupMockForgeService();
+    
+    // Register essential commands for testing (only once)
+    if (!extensionActivated) {
+      try {
+        vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async () => {
+          return { success: true };
+        });
+        
+        vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async () => {
+          return { success: true };
+        });
+        
+        extensionActivated = true;
+      } catch (error) {
+        console.warn('Command registration failed in test environment:', error);
+      }
+    }
     
     // Mock PuppetForgeService
     sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {

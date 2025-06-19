@@ -99,12 +99,24 @@ export class PuppetForgeService {
     }
 
     /**
+     * Normalize module name for consistent cache keys
+     * Converts all variants to a canonical form: owner-module (lowercase)
+     * Examples: "puppetlabs/stdlib" -> "puppetlabs-stdlib"
+     *          "Puppetlabs/StdLib" -> "puppetlabs-stdlib"  
+     *          "puppet/nginx" -> "puppet-nginx"
+     */
+    private static normalizeModuleName(moduleName: string): string {
+        return moduleName.replace('/', '-').toLowerCase();
+    }
+
+    /**
      * Check if a module has cached data
      * @param moduleName The full module name (e.g., "puppetlabs/stdlib")
      * @returns True if the module has cached data
      */
     public static hasModuleCached(moduleName: string): boolean {
-        const moduleCache = this.moduleVersionCache.get(moduleName);
+        const normalizedKey = this.normalizeModuleName(moduleName);
+        const moduleCache = this.moduleVersionCache.get(normalizedKey);
         return moduleCache !== undefined && moduleCache.size > 0;
     }
 
@@ -166,8 +178,9 @@ export class PuppetForgeService {
      * @returns Promise with array of releases
      */
     public static async getModuleReleases(moduleName: string): Promise<ForgeVersion[]> {
-        // Check if we already have cached versions for this module
-        const moduleCache = this.moduleVersionCache.get(moduleName);
+        // Check if we already have cached versions for this module using normalized key
+        const normalizedKey = this.normalizeModuleName(moduleName);
+        const moduleCache = this.moduleVersionCache.get(normalizedKey);
         if (moduleCache && moduleCache.size > 0) {
             // Return all cached versions as an array, sorted by version descending
             return Array.from(moduleCache.values()).sort((a, b) => 
@@ -198,12 +211,44 @@ export class PuppetForgeService {
                 for (const release of releases) {
                     versionMap.set(release.version, release);
                 }
-                this.moduleVersionCache.set(moduleName, versionMap);
+                this.moduleVersionCache.set(normalizedKey, versionMap);
             }
             
             return releases;
         } catch (error) {
             if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400)) {
+                // Try alternative module name formats before giving up
+                const variants = this.getModuleNameVariants(moduleName);
+                for (const variant of variants) {
+                    try {
+                        const response = await axios.get(
+                            `${this.BASE_URL}/${this.API_VERSION}/releases`,
+                            {
+                                ...this.getAxiosOptions(),
+                                params: {
+                                    module: variant.replace('/', '-'),
+                                    limit: 100,
+                                    sort_by: 'version',
+                                    order: 'desc'
+                                }
+                            }
+                        );
+                        
+                        const releases: ForgeVersion[] = response.data.results ?? [];
+                        if (releases.length > 0) {
+                            // Cache under the normalized key for the original module name
+                            const versionMap = new Map<string, ForgeVersion>();
+                            for (const release of releases) {
+                                versionMap.set(release.version, release);
+                            }
+                            this.moduleVersionCache.set(normalizedKey, versionMap);
+                            return releases;
+                        }
+                    } catch (variantError) {
+                        // Continue to next variant
+                        continue;
+                    }
+                }
                 return []; // Module not found or invalid module name
             }
             throw new Error(`Failed to fetch releases for ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -216,8 +261,9 @@ export class PuppetForgeService {
      * @param version Version to lookup
      */
     public static async getReleaseForVersion(moduleName: string, version: string): Promise<ForgeVersion | null> {
-        // Check two-level cache first
-        const moduleCache = this.moduleVersionCache.get(moduleName);
+        // Check two-level cache first using normalized key
+        const normalizedKey = this.normalizeModuleName(moduleName);
+        const moduleCache = this.moduleVersionCache.get(normalizedKey);
         if (moduleCache) {
             const cachedVersion = moduleCache.get(version);
             if (cachedVersion) {
@@ -229,7 +275,7 @@ export class PuppetForgeService {
         const releases = await this.getModuleReleases(moduleName);
         
         // Now check the cache again (it should be populated)
-        const updatedModuleCache = this.moduleVersionCache.get(moduleName);
+        const updatedModuleCache = this.moduleVersionCache.get(normalizedKey);
         if (updatedModuleCache) {
             return updatedModuleCache.get(version) ?? null;
         }
@@ -358,5 +404,63 @@ export class PuppetForgeService {
             console.error(`Error checking for update for ${moduleName}:`, error);
             return { hasUpdate: false, latestVersion: null, currentVersion };
         }
+    }
+
+    /**
+     * Generate common module name variants for fallback lookups
+     * Examples:
+     * - puppetlabs/puppet-nginx -> [puppet/nginx, puppet-nginx]
+     * - puppetlabs/stdlib -> [puppetlabs-stdlib] 
+     * - puppet/nginx -> [puppetlabs/puppet-nginx, puppetlabs-puppet-nginx, puppet-nginx]
+     * - puppet-nginx -> [puppet/nginx, puppetlabs/puppet-nginx]
+     */
+    private static getModuleNameVariants(moduleName: string): string[] {
+        const variants: string[] = [];
+        
+        // Handle puppetlabs/puppet-* pattern -> puppet/*
+        if (moduleName.startsWith('puppetlabs/puppet-')) {
+            const shortName = moduleName.replace('puppetlabs/puppet-', '');
+            variants.push(`puppet/${shortName}`);
+            variants.push(`puppet-${shortName}`);
+        }
+        
+        // Handle puppet/* pattern -> puppetlabs/puppet-*, puppet-*
+        if (moduleName.startsWith('puppet/')) {
+            const shortName = moduleName.replace('puppet/', '');
+            variants.push(`puppetlabs/puppet-${shortName}`);
+            variants.push(`puppetlabs-puppet-${shortName}`);
+            variants.push(`puppet-${shortName}`); // Common case: puppet/nginx -> puppet-nginx
+        }
+        
+        // Handle puppet-* pattern -> puppet/*, puppetlabs/puppet-*
+        if (moduleName.startsWith('puppet-') && !moduleName.includes('/')) {
+            const shortName = moduleName.replace('puppet-', '');
+            variants.push(`puppet/${shortName}`);
+            variants.push(`puppetlabs/puppet-${shortName}`);
+            variants.push(`puppetlabs-puppet-${shortName}`);
+        }
+        
+        // Handle dash/slash conversions with owner prefix variations
+        if (moduleName.includes('/')) {
+            const [owner, module] = moduleName.split('/', 2);
+            variants.push(`${owner}-${module}`);
+            
+            // Try alternative owners
+            if (owner === 'puppetlabs') {
+                variants.push(`puppet/${module}`);
+                variants.push(`puppet-${module}`);
+            } else if (owner === 'puppet') {
+                variants.push(`puppetlabs/${module}`);
+                variants.push(`puppetlabs-${module}`);
+            }
+        } else if (moduleName.includes('-')) {
+            // Handle dash format -> slash format
+            const [owner, module] = moduleName.split('-', 2);
+            if (owner && module) {
+                variants.push(`${owner}/${module}`);
+            }
+        }
+        
+        return variants;
     }
 }
