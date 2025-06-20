@@ -268,7 +268,7 @@ describe('Performance: Cache Tests', () => {
   });
 
   test('Concurrent cache access performance', async () => {
-    const modules = ['puppetlabs-stdlib', 'puppetlabs-concat', 'puppetlabs-firewall', 'puppet-archive', 'puppet-nginx'];
+    const modules = ['puppetlabs/stdlib', 'puppetlabs/concat', 'puppetlabs/firewall', 'puppet/archive', 'puppet/nginx'];
     const concurrentRequests = 10; // Reduced for simpler testing
     
     // Pre-cache modules by making initial requests
@@ -285,7 +285,7 @@ describe('Performance: Cache Tests', () => {
     
     for (let i = 0; i < concurrentRequests; i++) {
       const module = modules[i % modules.length];
-      promises.push(PuppetForgeService.getModule(`puppetlabs-${module}`));
+      promises.push(PuppetForgeService.getModule(module));
     }
     
     const results = await Promise.all(promises);

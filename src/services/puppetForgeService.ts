@@ -23,9 +23,264 @@ export interface ForgeVersion {
 }
 
 /**
- * Represents a module from Puppet Forge
+ * Represents a module from Puppet Forge with built-in caching and normalization
  */
-export interface ForgeModule {
+export class ForgeModule {
+    // Static cache for ForgeModule instances
+    private static readonly moduleCache: Map<string, ForgeModule> = new Map();
+    
+    // Module identification and normalization
+    public readonly originalName: string;
+    public readonly normalizedName: string;
+    public readonly authorName: string;
+    public readonly moduleName: string;
+    public readonly slashFormat: string;
+    public readonly dashFormat: string;
+    public readonly variants: readonly string[];
+    
+    // Forge API data
+    public readonly name: string;
+    public readonly slug: string;
+    public readonly owner: {
+        username: string;
+        slug: string;
+    };
+    public current_release?: {
+        version: string;
+        created_at: string;
+        metadata: {
+            dependencies?: Array<{
+                name: string;
+                version_requirement: string;
+            }>;
+        };
+    };
+    public releases?: ForgeVersion[];
+    public downloads: number;
+    public feedback_score: number;
+    
+    private constructor(
+        originalName: string,
+        data: {
+            current_release?: {
+                version: string;
+                created_at: string;
+                metadata: {
+                    dependencies?: Array<{
+                        name: string;
+                        version_requirement: string;
+                    }>;
+                };
+            };
+            releases?: ForgeVersion[];
+            downloads: number;
+            feedback_score: number;
+        }
+    ) {
+        this.originalName = originalName.trim();
+        
+        // Parse and normalize the module name
+        const parsed = ModuleNameUtils.parseModuleName(this.originalName);
+        this.authorName = parsed.owner;
+        this.moduleName = parsed.name;
+        this.slashFormat = parsed.fullName;
+        this.dashFormat = ModuleNameUtils.toDashFormat(this.originalName);
+        this.normalizedName = ModuleNameUtils.toCanonicalFormat(this.originalName);
+        this.variants = Object.freeze(ModuleNameUtils.getModuleNameVariants(this.originalName));
+        
+        // Set Forge API data
+        this.name = this.slashFormat; // API expects slash format for name
+        this.slug = this.dashFormat;  // API uses dash format for slug
+        this.owner = {
+            username: this.authorName,
+            slug: this.authorName
+        };
+        this.current_release = data.current_release;
+        this.releases = data.releases;
+        this.downloads = data.downloads;
+        this.feedback_score = data.feedback_score;
+    }
+    
+    /**
+     * Factory method to create or retrieve a ForgeModule from cache
+     * This is the primary way to get ForgeModule instances
+     */
+    public static create(
+        moduleName: string,
+        data: {
+            current_release?: {
+                version: string;
+                created_at: string;
+                metadata: {
+                    dependencies?: Array<{
+                        name: string;
+                        version_requirement: string;
+                    }>;
+                };
+            };
+            releases?: ForgeVersion[];
+            downloads: number;
+            feedback_score: number;
+        }
+    ): ForgeModule {
+        const normalizedKey = ModuleNameUtils.toCanonicalFormat(moduleName);
+        
+        // Check cache first
+        const cached = this.moduleCache.get(normalizedKey);
+        if (cached) {
+            // Update cached data with new information
+            if (data.current_release) {
+                cached.current_release = data.current_release;
+            }
+            if (data.releases) {
+                cached.releases = data.releases;
+            }
+            cached.downloads = data.downloads;
+            cached.feedback_score = data.feedback_score;
+            return cached;
+        }
+        
+        // Create new instance and cache it
+        const module = new ForgeModule(moduleName, data);
+        this.moduleCache.set(normalizedKey, module);
+        
+        // Also cache under all variants for faster lookups
+        for (const variant of module.variants) {
+            const variantKey = ModuleNameUtils.toCanonicalFormat(variant);
+            if (!this.moduleCache.has(variantKey)) {
+                this.moduleCache.set(variantKey, module);
+            }
+        }
+        
+        return module;
+    }
+    
+    /**
+     * Get a cached ForgeModule by any name variant
+     */
+    public static getCached(moduleName: string): ForgeModule | null {
+        const normalizedKey = ModuleNameUtils.toCanonicalFormat(moduleName);
+        return this.moduleCache.get(normalizedKey) || null;
+    }
+    
+    /**
+     * Check if a module is cached
+     */
+    public static isCached(moduleName: string): boolean {
+        const normalizedKey = ModuleNameUtils.toCanonicalFormat(moduleName);
+        return this.moduleCache.has(normalizedKey);
+    }
+    
+    /**
+     * Clear the module cache
+     */
+    public static clearCache(): void {
+        this.moduleCache.clear();
+    }
+    
+    /**
+     * Get all cached modules
+     */
+    public static getAllCached(): ForgeModule[] {
+        // Return unique modules (since we cache under multiple variants)
+        const uniqueModules = new Set<ForgeModule>();
+        for (const module of this.moduleCache.values()) {
+            uniqueModules.add(module);
+        }
+        return Array.from(uniqueModules);
+    }
+    
+    /**
+     * Check if this module is equivalent to another name
+     */
+    public isEquivalentTo(other: string | ForgeModule): boolean {
+        const otherName = other instanceof ForgeModule ? other.normalizedName : ModuleNameUtils.toCanonicalFormat(other);
+        return this.normalizedName === otherName || this.variants.some(variant => 
+            ModuleNameUtils.toCanonicalFormat(variant) === otherName
+        );
+    }
+    
+    /**
+     * Get the latest version of this module
+     */
+    public getLatestVersion(): string | null {
+        return this.current_release?.version || null;
+    }
+    
+    /**
+     * Get all versions sorted by semantic version (newest first)
+     */
+    public getVersions(): string[] {
+        if (!this.releases) {
+            return [];
+        }
+        
+        return this.releases
+            .map(r => r.version)
+            .sort((a, b) => PuppetForgeService.compareVersions(b, a));
+    }
+    
+    /**
+     * Get the latest safe version (excluding pre-releases)
+     */
+    public getLatestSafeVersion(): string | null {
+        if (!this.releases) {
+            return this.getLatestVersion();
+        }
+        
+        const safeVersions = this.releases
+            .filter(r => PuppetForgeService.isSafeVersion(r.version))
+            .map(r => r.version)
+            .sort((a, b) => PuppetForgeService.compareVersions(b, a));
+            
+        return safeVersions.length > 0 ? safeVersions[0] : null;
+    }
+    
+    /**
+     * Convert to the legacy interface format for backward compatibility
+     */
+    public toLegacyFormat(): LegacyForgeModule {
+        return {
+            name: this.name,
+            slug: this.slug,
+            owner: this.owner,
+            current_release: this.current_release,
+            releases: this.releases,
+            downloads: this.downloads,
+            feedback_score: this.feedback_score
+        };
+    }
+    
+    /**
+     * String representation uses normalized name
+     */
+    public toString(): string {
+        return this.normalizedName;
+    }
+    
+    /**
+     * JSON representation for debugging
+     */
+    public toJSON(): object {
+        return {
+            original: this.originalName,
+            normalized: this.normalizedName,
+            author: this.authorName,
+            module: this.moduleName,
+            slug: this.slug,
+            latestVersion: this.getLatestVersion(),
+            releaseCount: this.releases?.length || 0,
+            downloads: this.downloads,
+            variants: this.variants
+        };
+    }
+}
+
+/**
+ * Legacy interface for backward compatibility
+ * @deprecated Use ForgeModule class instead
+ */
+export interface LegacyForgeModule {
     name: string;
     slug: string;
     owner: {
@@ -87,6 +342,7 @@ export class PuppetForgeService {
      */
     public static clearCache(): void {
         this.moduleVersionCache.clear();
+        ForgeModule.clearCache();
     }
     
     /**
@@ -114,6 +370,16 @@ export class PuppetForgeService {
      * @returns True if the module has cached data
      */
     public static hasModuleCached(moduleName: string): boolean {
+        // Check both ForgeModule cache and version cache
+        return ForgeModule.isCached(moduleName) || this.hasVersionsCached(moduleName);
+    }
+    
+    /**
+     * Check if a module has cached version data (legacy cache)
+     * @param moduleName The full module name
+     * @returns True if the module has cached version data
+     */
+    private static hasVersionsCached(moduleName: string): boolean {
         const normalizedKey = this.normalizeCacheKey(moduleName);
         const moduleCache = this.moduleVersionCache.get(normalizedKey);
         return moduleCache !== undefined && moduleCache.size > 0;
@@ -126,6 +392,12 @@ export class PuppetForgeService {
      */
     public static async getModule(moduleName: string): Promise<ForgeModule | null> {
         try {
+            // Check if already cached using ForgeModule's cache
+            const cached = ForgeModule.getCached(moduleName);
+            if (cached) {
+                return cached;
+            }
+            
             // Get all releases to build module info
             const releases = await this.getModuleReleases(moduleName);
             if (releases.length === 0) {
@@ -135,26 +407,8 @@ export class PuppetForgeService {
             // The first release is the latest (API returns sorted by version desc)
             const latestRelease = releases[0];
             
-            // Construct a ForgeModule object from release data
-            // Note: This is a simplified version - some fields may be missing
-            
-            // Module names can be in format "owner/module" or "owner-module"
-            // Validate that the module name contains a separator
-            if (!(moduleName.includes('/') || moduleName.includes('-'))) {
-                throw new Error(`Invalid module name format: "${moduleName}". Expected "owner/module" or "owner-module".`);
-            }
-            
-            // Use centralized utility for parsing module name
-            const moduleSlug = ModuleNameUtils.toDashFormat(moduleName);
-            const owner = ModuleNameUtils.getOwner(moduleName);
-            
-            return {
-                name: moduleName,
-                slug: moduleSlug,
-                owner: {
-                    username: owner,
-                    slug: owner
-                },
+            // Create ForgeModule using factory method (automatically caches)
+            return ForgeModule.create(moduleName, {
                 current_release: {
                     version: latestRelease.version,
                     created_at: latestRelease.created_at,
@@ -163,7 +417,7 @@ export class PuppetForgeService {
                 releases: releases,
                 downloads: 0, // Not available from releases API
                 feedback_score: 0 // Not available from releases API
-            };
+            });
         } catch (error) {
             return null; // Return null for any error when fetching module
         }
@@ -289,7 +543,7 @@ export class PuppetForgeService {
     public static async getLatestVersion(moduleName: string): Promise<string | null> {
         try {
             const module = await this.getModule(moduleName);
-            return module?.current_release?.version ?? null;
+            return module?.getLatestVersion() ?? null;
         } catch (error) {
             console.error(`Error fetching latest version for ${moduleName}:`, error);
             return null;
@@ -314,9 +568,8 @@ export class PuppetForgeService {
      */
     public static async getLatestSafeVersion(moduleName: string): Promise<string | null> {
         try {
-            const releases = await this.getModuleReleases(moduleName);
-            const safeReleases = releases.filter(release => this.isSafeVersion(release.version));
-            return safeReleases.length > 0 ? safeReleases[0].version : null;
+            const module = await this.getModule(moduleName);
+            return module?.getLatestSafeVersion() ?? null;
         } catch (error) {
             console.error(`Error fetching latest safe version for ${moduleName}:`, error);
             return null;
