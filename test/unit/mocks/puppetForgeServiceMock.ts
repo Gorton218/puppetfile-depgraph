@@ -1376,13 +1376,7 @@ export class MockPuppetForgeService {
         const moduleSlug = ModuleNameUtils.toDashFormat(moduleName);
         const owner = ModuleNameUtils.getOwner(moduleName);
 
-        return {
-            name: moduleName,
-            slug: moduleSlug,
-            owner: {
-                username: owner,
-                slug: owner
-            },
+        return ForgeModule.create(moduleName, {
             current_release: {
                 version: latestRelease.version,
                 created_at: latestRelease.created_at,
@@ -1391,7 +1385,7 @@ export class MockPuppetForgeService {
             releases: releases,
             downloads: 0,
             feedback_score: 0
-        };
+        });
     }
 
     public static async getModuleReleases(moduleName: string): Promise<ForgeVersion[]> {

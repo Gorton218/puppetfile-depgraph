@@ -44,8 +44,33 @@ export class MockPuppetForgeService {
     console.log('MockPuppetForgeService: Initializing...');
     // Load mock data from fixtures
     // When compiled, __dirname points to out/test/vscode-test
-    // We need to go to the source directory: test/vscode-test/fixtures
-    const fixturesDir = path.join(__dirname, '../../../test/vscode-test/fixtures', 'api-responses');
+    // We need to find the actual project root, not just go up directories
+    // Since the 'out' directory might have a package.json, we need a more robust approach
+    let fixturesDir: string;
+    
+    // Try multiple approaches to find the fixtures
+    const possiblePaths = [
+      // If we're in the source directory during development
+      path.resolve(__dirname, 'fixtures/api-responses'),
+      // If we're in out/test/vscode-test (compiled)
+      path.resolve(__dirname, '../../../test/vscode-test/fixtures/api-responses'),
+      // If the project structure is different
+      path.resolve(__dirname, '../../../../puppetfile-depgraph/test/vscode-test/fixtures/api-responses'),
+      // Absolute fallback
+      '/mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses'
+    ];
+    
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        fixturesDir = possiblePath;
+        break;
+      }
+    }
+    
+    if (!fixturesDir!) {
+      console.error('Could not find fixtures directory. Tried:', possiblePaths);
+      throw new Error('Fixtures directory not found');
+    }
     console.log(`Looking for fixtures in: ${fixturesDir}`);
     const files = [
       'puppetlabs-stdlib.json', 'puppetlabs-concat.json', 'puppetlabs-firewall.json',

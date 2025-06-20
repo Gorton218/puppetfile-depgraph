@@ -14,9 +14,33 @@ export class TestHelper {
 
   static async openTestPuppetfile(fixtureName: string): Promise<vscode.TextDocument> {
     // When compiled, __dirname points to out/test/vscode-test
-    // We need to go to the source directory: test/vscode-test/fixtures
-    const sourceRoot = path.resolve(__dirname, '../../../test/vscode-test/fixtures');
-    const fixturePath = path.join(sourceRoot, fixtureName);
+    // We need to find the actual fixtures directory
+    let fixturesDir: string;
+    
+    // Try multiple approaches to find the fixtures
+    const possiblePaths = [
+      // If we're in the source directory during development
+      path.resolve(__dirname, 'fixtures'),
+      // If we're in out/test/vscode-test (compiled)
+      path.resolve(__dirname, '../../../test/vscode-test/fixtures'),
+      // If the project structure is different
+      path.resolve(__dirname, '../../../../puppetfile-depgraph/test/vscode-test/fixtures'),
+      // Absolute fallback
+      '/mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures'
+    ];
+    
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        fixturesDir = possiblePath;
+        break;
+      }
+    }
+    
+    if (!fixturesDir!) {
+      throw new Error(`Could not find fixtures directory. Tried: ${possiblePaths.join(', ')}`);
+    }
+    
+    const fixturePath = path.join(fixturesDir, fixtureName);
     const content = fs.readFileSync(fixturePath, 'utf8');
     return this.createTestDocument(content);
   }

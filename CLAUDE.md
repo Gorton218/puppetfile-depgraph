@@ -22,12 +22,15 @@ The project uses a multi-layered testing approach with different strategies for 
   - Run with: `npm test` or `npm run test:unit`
   - Coverage: `npm run test:coverage`
   - **Always use mocks** for external services (PuppetForgeService, GitMetadataService)
-- **Integration Tests**: VS Code test runner with Mocha in `test/integration/` using `suite()` and `test()` functions  
-  - Run with: `npm run test:integration`
+- **Integration Tests**: VS Code test runner with Mocha in `test/vscode-test/` using `suite()` and `test()` functions  
+  - Run with: `npm run test:vscode`
   - **Always use mocks** for external API calls (Puppet Forge, Git repositories)
 - **E2E Tests**: End-to-end workflow tests in `test/e2e/` using Mocha
   - Run with: `npm run test:e2e`
   - **Always use mocks** for external services to ensure reliability
+- **Performance Tests**: Performance benchmarks in `test/e2e/performance/`
+  - Run with: `npm run test:performance`
+  - Tests caching efficiency and large file handling
 - **API Integration Tests**: Real API tests in `test/api/`
   - Run with: `npm run test:api-integration`
   - **Only place where real API calls are allowed**
@@ -44,9 +47,14 @@ src/                            # Application source code only
 │   ├── dependencyTreeService.ts # Dependency tree building and analysis
 │   ├── puppetfileUpdateService.ts # Module version updates
 │   ├── cacheService.ts         # Caching infrastructure
-│   └── versionCompatibilityService.ts # Version compatibility checking
+│   ├── versionCompatibilityService.ts # Version compatibility checking
+│   ├── conflictAnalyzer.ts     # Version conflict detection and resolution
+│   ├── upgradePlannerService.ts # Comprehensive upgrade planning
+│   ├── upgradeDiffProvider.ts  # Interactive diff view for upgrades
+│   └── upgradeDiffCodeLensProvider.ts # Apply/Skip buttons in diff view
 ├── types/                      # TypeScript type definitions
 ├── utils/                      # Utility functions
+│   └── moduleNameUtils.ts      # Module name format normalization
 └── [source files]              # Extension entry point and core files
 
 test/                           # ALL tests organized in one place
@@ -54,7 +62,7 @@ test/                           # ALL tests organized in one place
 │   ├── mocks/                  # Mock implementations for unit tests
 │   │   └── puppetForgeServiceMock.ts # Comprehensive mock data
 │   └── [test files]            # All unit test files
-├── integration/                # VS Code integration tests (Mocha)
+├── vscode-test/                # VS Code integration tests (Mocha)
 │   ├── fixtures/               # Test data and mock fixtures
 │   │   ├── api-responses/      # Mock API responses (JSON files)
 │   │   └── puppetfiles/        # Test Puppetfile examples
@@ -62,7 +70,8 @@ test/                           # ALL tests organized in one place
 │   ├── testHelper.ts           # VS Code testing utilities
 │   └── testSetup.ts            # Mock setup helpers
 ├── e2e/                        # End-to-end workflow tests
-│   └── commands/               # Command workflow tests
+│   ├── commands/               # Command workflow tests
+│   └── performance/            # Performance testing for large files
 └── api/                        # Real API tests (separate from main tests)
     ├── puppetForgeApi.test.ts  # Tests against real Puppet Forge
     └── README.md               # API integration test documentation
@@ -77,6 +86,9 @@ claude-temp/                    # Temporary development files (Git ignored)
 - **Services support proxy configuration** via VS Code settings
 - **Parser returns structured data** with line numbers for editor integration
 - **Caching layer reduces API calls** to external services
+- **Module name normalization** ensures consistent caching across slash/dash formats
+- **Conflict detection** identifies version incompatibilities and circular dependencies
+- **Upgrade planning** provides safe upgrade paths with interactive controls
 
 ### Key Architectural Patterns
 1. **Service Isolation**: Only services make external API calls
@@ -95,6 +107,9 @@ claude-temp/                    # Temporary development files (Git ignored)
   - `puppetfile-depgraph.updateModule`: Update specific module
   - `puppetfile-depgraph.showDependencyTree`: Show dependency tree
   - `puppetfile-depgraph.clearCache`: Clear Forge API cache
+  - `puppetfile-depgraph.showUpgradePlanner`: Interactive upgrade planning with Apply/Skip buttons
+  - `puppetfile-depgraph.applySingleUpgradeFromDiff`: Apply individual upgrade from diff view
+  - `puppetfile-depgraph.skipSingleUpgradeFromDiff`: Skip individual upgrade from diff view
 
 ## Feature Implementation Status
 
@@ -105,6 +120,10 @@ claude-temp/                    # Temporary development files (Git ignored)
 - ✅ Version update commands (safe/latest)
 - ✅ Basic dependency tree visualization
 - ✅ Clickable version links in hover tooltips
+- ✅ Module name normalization (slash/dash format handling)
+- ✅ Conflict detection and circular dependency analysis
+- ✅ Interactive upgrade planner with Apply/Skip functionality
+- ✅ Diff view with inline upgrade controls
 
 ### Planned Features (from PRD)
 - ❌ Dependency analysis engine (deep dependency resolution)
@@ -113,7 +132,12 @@ claude-temp/                    # Temporary development files (Git ignored)
 - ❌ Puppetfile.lock support
 
 ## Current Development Focus
-The project is actively being enhanced with improvements to hover tooltips, caching functionality, and Puppet Forge integration. Recent work includes implementing batch caching, fixing version-specific links, and improving the dependency display for modules.
+The project is actively being enhanced with comprehensive upgrade planning features. Recent work includes:
+- Module name normalization utility for consistent caching
+- Conflict analyzer for detecting version conflicts and circular dependencies
+- Interactive upgrade planner with detailed analysis of safe upgrades
+- Diff view provider with inline Apply/Skip buttons for individual upgrades
+- Performance improvements for large Puppetfile handling
 
 ## Testing Guidelines
 
@@ -121,7 +145,7 @@ The project is actively being enhanced with improvements to hover tooltips, cach
 
 **WHEN TO USE MOCKS (99% of tests):**
 - ✅ **Unit Tests** (`test/unit/`) - ALWAYS use mocks
-- ✅ **Integration Tests** (`test/integration/`) - ALWAYS use mocks
+- ✅ **Integration Tests** (`test/vscode-test/`) - ALWAYS use mocks
 - ✅ **E2E Tests** (`test/e2e/`) - ALWAYS use mocks
 - ✅ **Performance Tests** - ALWAYS use mocks for speed
 - ✅ **CI/CD Pipeline** - ALWAYS use mocks for reliability
@@ -146,7 +170,7 @@ jest.mock('../services/puppetForgeService', () => ({
 }));
 ```
 
-#### For Integration Tests (`test/integration/`)
+#### For Integration Tests (`test/vscode-test/`)
 ```typescript
 // Use sinon to stub individual methods
 sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
@@ -172,7 +196,7 @@ suiteSetup(() => {
    - Fast, deterministic responses
    - Covers common test scenarios
 
-2. **Integration Tests**: `test/integration/fixtures/api-responses/`
+2. **Integration Tests**: `test/vscode-test/fixtures/api-responses/`
    - JSON files with realistic API responses
    - Loaded dynamically by `MockPuppetForgeService`
    - Matches real Puppet Forge API structure
@@ -216,7 +240,7 @@ describe('PuppetForgeService API Integration', () => {
 });
 ```
 
-#### 🏗️ Internal Services (dependencyTreeService, versionCompatibilityService, etc.)
+#### 🏗️ Internal Services (dependencyTreeService, versionCompatibilityService, conflictAnalyzer, upgradePlanner, etc.)
 Services that depend on external-facing services **ALWAYS use mocks** in both unit and integration tests:
 
 **Unit Tests:**
@@ -235,7 +259,7 @@ describe('DependencyTreeService', () => {
 });
 ```
 
-**Integration Tests (`test/integration/`):**
+**Integration Tests (`test/vscode-test/`):**
 ```typescript
 // ✅ Mock external-facing services, test VS Code integration
 sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {

@@ -16,20 +16,7 @@ suite('Hover Provider Integration Tests', () => {
     
     // Mock PuppetForgeService
     sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
-      const mockData = await MockPuppetForgeService.getModuleInfo(moduleName);
-      if (!mockData) {
-        return null;
-      }
-      // Convert mock data to ForgeModule format
-      return {
-        name: mockData.name,
-        slug: mockData.slug,
-        owner: mockData.owner,
-        current_release: mockData.current_release,
-        releases: mockData.releases || [],
-        downloads: mockData.downloads || 0,
-        feedback_score: mockData.feedback_score || 0
-      };
+      return MockPuppetForgeService.getModuleInfo(moduleName);
     });
     
     sandbox.stub(PuppetForgeService, 'getLatestVersion').callsFake(async (moduleName) => {
