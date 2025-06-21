@@ -15,31 +15,8 @@ suite('Command Integration Tests', () => {
     sandbox = sinon.createSandbox();
     TestHelper.setupMockForgeService();
     
-    // Check if commands are already registered before attempting to register them
-    const commands = await vscode.commands.getCommands();
-    const commandsToRegister = [
-      'puppetfile-depgraph.updateAllToSafe',
-      'puppetfile-depgraph.updateAllToLatest',
-      'puppetfile-depgraph.showDependencyTree',
-      'puppetfile-depgraph.clearForgeCache',
-      'puppetfile-depgraph.updateModuleVersion',
-      'puppetfile-depgraph.cacheAllModules',
-      'puppetfile-depgraph.showUpgradePlanner',
-      'puppetfile-depgraph.applyAllUpgrades',
-      'puppetfile-depgraph.applySingleUpgrade'
-    ];
-    
-    for (const cmd of commandsToRegister) {
-      if (!commands.includes(cmd)) {
-        try {
-          vscode.commands.registerCommand(cmd, async () => {
-            return { success: true };
-          });
-        } catch (error) {
-          // Command might already be registered, ignore
-        }
-      }
-    }
+    // Wait for extension to activate - commands will be registered by the extension itself
+    await TestHelper.wait(1000);
     
     // Mock PuppetForgeService to use our mock data
     sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
@@ -89,6 +66,18 @@ suite('Command Integration Tests', () => {
     const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
     const editor = await TestHelper.showDocument(doc);
     
+    // Mock warning dialog to automatically proceed
+    sandbox.stub(vscode.window, 'showWarningMessage').resolves('Yes' as any);
+    
+    // Mock the summary document creation
+    let summaryContent = '';
+    sandbox.stub(vscode.workspace, 'openTextDocument').callsFake(async (options: any) => {
+      if (options && options.content) {
+        summaryContent = options.content;
+      }
+      return { getText: () => summaryContent } as any;
+    });
+    
     // Execute command
     await vscode.commands.executeCommand('puppetfile-depgraph.updateAllToLatest');
     
@@ -103,6 +92,9 @@ suite('Command Integration Tests', () => {
     
     // puppetlabs-concat -> 9.1.0 (latest from fixture)
     assert.ok(updatedText.includes("mod 'puppetlabs-concat', '9.1.0'"), 'concat should be updated to latest 9.1.0');
+    
+    // Verify summary was generated
+    assert.ok(summaryContent.includes('Update Summary'), 'Should generate update summary');
   });
 
   test('Show dependency tree command', async () => {
@@ -170,6 +162,7 @@ suite('Command Integration Tests', () => {
     
     // Verify version was updated
     const updatedText = doc.getText();
+    console.log('=== Updated text:', updatedText);
     assert.ok(updatedText.includes("mod 'puppetlabs-stdlib', '9.0.0'"), 'Version should be updated to 9.0.0');
   });
 

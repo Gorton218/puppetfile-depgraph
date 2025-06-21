@@ -48,6 +48,10 @@ describe('PuppetfileCodeLensProvider', () => {
         
         mockDocument = {
             languageId: 'puppetfile',
+            uri: {
+                scheme: 'file',
+                path: '/test/Puppetfile'
+            },
             getText: jest.fn().mockReturnValue('mod "apache", "1.0.0"'),
             lineAt: jest.fn().mockReturnValue({
                 text: 'mod "apache", "1.0.0"'

@@ -19,31 +19,8 @@ suite('Code Lens Provider Integration Tests', () => {
     sandbox = sinon.createSandbox();
     TestHelper.setupMockForgeService();
     
-    // Check if commands are already registered and stub them if needed
-    const commands = await vscode.commands.getCommands();
-    
-    if (!commands.includes('puppetfile-depgraph.applySingleUpgrade')) {
-      // Only register if not already registered (shouldn't happen if extension is active)
-      try {
-        vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async (args: any) => {
-          // Actually call the implementation
-          await PuppetfileCodeLensProvider.applySingleUpgrade(args);
-          return { success: true };
-        });
-      } catch (error) {
-        // Command might already be registered, ignore
-      }
-    }
-    
-    if (!commands.includes('puppetfile-depgraph.updateModuleVersion')) {
-      try {
-        vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async () => {
-          return { success: true };
-        });
-      } catch (error) {
-        // Command might already be registered, ignore
-      }
-    }
+    // Wait for extension to activate - commands will be registered by the extension itself
+    await TestHelper.wait(1000);
     
     // Mock PuppetForgeService
     sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {

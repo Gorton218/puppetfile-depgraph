@@ -160,6 +160,8 @@ describe('Extension', () => {
     });
 
     afterEach(() => {
+        // Call deactivate to reset the extensionActivated flag
+        deactivate();
         jest.restoreAllMocks();
     });
 
