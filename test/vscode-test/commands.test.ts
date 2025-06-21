@@ -10,56 +10,34 @@ import { DependencyTreeService } from '../../src/services/dependencyTreeService'
 
 suite('Command Integration Tests', () => {
   let sandbox: sinon.SinonSandbox;
-  let extensionActivated = false;
 
   setup(async () => {
     sandbox = sinon.createSandbox();
     TestHelper.setupMockForgeService();
     
-    // Register commands manually for testing (only once)
-    if (!extensionActivated) {
-      try {
-        // Register essential commands that the tests use
-        vscode.commands.registerCommand('puppetfile-depgraph.updateAllToSafe', async () => {
-          // Simplified version for testing
-          return { success: true, updated: 0 };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.updateAllToLatest', async () => {
-          return { success: true, updated: 0 };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.showDependencyTree', async () => {
-          return { success: true };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.clearForgeCache', async () => {
-          return { success: true };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async () => {
-          return { success: true };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.cacheAllModules', async () => {
-          return { success: true };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.showUpgradePlanner', async () => {
-          return { success: true };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.applyAllUpgrades', async () => {
-          return { success: true };
-        });
-        
-        vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async () => {
-          return { success: true };
-        });
-        
-        extensionActivated = true;
-      } catch (error) {
-        console.warn('Command registration failed in test environment:', error);
+    // Check if commands are already registered before attempting to register them
+    const commands = await vscode.commands.getCommands();
+    const commandsToRegister = [
+      'puppetfile-depgraph.updateAllToSafe',
+      'puppetfile-depgraph.updateAllToLatest',
+      'puppetfile-depgraph.showDependencyTree',
+      'puppetfile-depgraph.clearForgeCache',
+      'puppetfile-depgraph.updateModuleVersion',
+      'puppetfile-depgraph.cacheAllModules',
+      'puppetfile-depgraph.showUpgradePlanner',
+      'puppetfile-depgraph.applyAllUpgrades',
+      'puppetfile-depgraph.applySingleUpgrade'
+    ];
+    
+    for (const cmd of commandsToRegister) {
+      if (!commands.includes(cmd)) {
+        try {
+          vscode.commands.registerCommand(cmd, async () => {
+            return { success: true };
+          });
+        } catch (error) {
+          // Command might already be registered, ignore
+        }
       }
     }
     

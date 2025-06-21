@@ -13,26 +13,32 @@ suite('Code Lens Provider Integration Tests', () => {
   let sandbox: sinon.SinonSandbox;
   let puppetfileCodeLensProvider: PuppetfileCodeLensProvider;
   let upgradeDiffCodeLensProvider: UpgradeDiffCodeLensProvider;
-  let extensionActivated = false;
 
   setup(async () => {
     sandbox = sinon.createSandbox();
     TestHelper.setupMockForgeService();
     
-    // Register essential commands for testing (only once)
-    if (!extensionActivated) {
+    // Check if commands are already registered and stub them if needed
+    const commands = await vscode.commands.getCommands();
+    
+    if (!commands.includes('puppetfile-depgraph.applySingleUpgrade')) {
+      // Only register if not already registered (shouldn't happen if extension is active)
       try {
         vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async () => {
           return { success: true };
         });
-        
+      } catch (error) {
+        // Command might already be registered, ignore
+      }
+    }
+    
+    if (!commands.includes('puppetfile-depgraph.updateModuleVersion')) {
+      try {
         vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async () => {
           return { success: true };
         });
-        
-        extensionActivated = true;
       } catch (error) {
-        console.warn('Command registration failed in test environment:', error);
+        // Command might already be registered, ignore
       }
     }
     
