@@ -31,6 +31,11 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
         if (document.languageId !== 'puppetfile') {
             return [];
         }
+        
+        // Don't provide code lenses for diff documents
+        if (document.uri.scheme === 'puppetfile-diff') {
+            return [];
+        }
 
         try {
             // Parse the Puppetfile
