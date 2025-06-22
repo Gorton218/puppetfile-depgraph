@@ -3,9 +3,10 @@ import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as sinon from 'sinon';
-import { TestHelper } from '../../src/integration-test/testHelper';
-import { PuppetForgeService } from '../../src/services/puppetForgeService';
-import { MockPuppetForgeService } from '../../src/integration-test/mockPuppetForgeService';
+import { TestHelper } from '../../vscode-test/testHelper';
+import { PuppetForgeService } from '../../../src/services/puppetForgeService';
+import { MockPuppetForgeService } from '../../vscode-test/mockPuppetForgeService';
+import { TestSetup } from '../../vscode-test/testSetup';
 
 /**
  * End-to-end tests for update commands
@@ -35,26 +36,10 @@ suite('E2E: Update Commands Workflow', () => {
 
   setup(async () => {
     sandbox = sinon.createSandbox();
-    TestHelper.setupMockForgeService();
     
-    // Mock PuppetForgeService to use our mock data  
-    sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getModuleInfo(moduleName);
-    });
+    // Setup all mocks including GitMetadataService
+    TestSetup.setupAll();
     
-    sandbox.stub(PuppetForgeService, 'getLatestVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getLatestVersion(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').callsFake(async (moduleName) => {
-      const currentVersion = '1.0.0'; // Mock current version
-      return MockPuppetForgeService.getSafeUpdateVersion(moduleName, currentVersion);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getModuleReleases').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getModuleReleases(moduleName);
-    });
-
     // Create a fresh Puppetfile for each test
     const puppetfileContent = `forge 'https://forge.puppet.com'
 
@@ -80,6 +65,7 @@ mod 'internal-module',
 
   teardown(async () => {
     await TestHelper.closeAllEditors();
+    TestSetup.restore();
     sandbox.restore();
   });
 

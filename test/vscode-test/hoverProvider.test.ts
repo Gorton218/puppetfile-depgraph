@@ -5,6 +5,7 @@ import * as sinon from 'sinon';
 import { PuppetForgeService } from '../../src/services/puppetForgeService';
 import { MockPuppetForgeService } from './mockPuppetForgeService';
 import { PuppetfileHoverProvider } from '../../src/puppetfileHoverProvider';
+import { TestSetup } from './testSetup';
 
 suite('Hover Provider Integration Tests', () => {
   let sandbox: sinon.SinonSandbox;
@@ -12,38 +13,9 @@ suite('Hover Provider Integration Tests', () => {
 
   setup(async () => {
     sandbox = sinon.createSandbox();
-    TestHelper.setupMockForgeService();
     
-    // Mock PuppetForgeService
-    sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getModuleInfo(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getLatestVersion(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getSafeUpdateVersion(moduleName, '1.0.0');
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getModuleReleases').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getModuleReleases(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'checkForUpdate').callsFake(async (moduleName, currentVersion, safeOnly) => {
-      const latestVersion = await MockPuppetForgeService.getLatestVersion(moduleName);
-      const hasUpdate = currentVersion ? PuppetForgeService.compareVersions(latestVersion, currentVersion) > 0 : true;
-      return {
-        hasUpdate,
-        latestVersion,
-        currentVersion
-      };
-    });
-    
-    sandbox.stub(PuppetForgeService, 'hasModuleCached').callsFake((moduleName) => {
-      return true; // Always say it's cached to avoid caching logic
-    });
+    // Setup all mocks including GitMetadataService
+    TestSetup.setupAll();
 
     // Register hover provider
     hoverProvider = new PuppetfileHoverProvider();
@@ -53,6 +25,7 @@ suite('Hover Provider Integration Tests', () => {
   });
 
   teardown(async () => {
+    TestSetup.restore();
     sandbox.restore();
     TestHelper.resetMockForgeService();
     await TestHelper.closeAllEditors();

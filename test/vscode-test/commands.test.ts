@@ -7,35 +7,25 @@ import { MockPuppetForgeService } from './mockPuppetForgeService';
 // Import command implementations directly  
 import { PuppetfileUpdateService } from '../../src/services/puppetfileUpdateService';
 import { DependencyTreeService } from '../../src/services/dependencyTreeService';
+import { TestSetup } from './testSetup';
 
 suite('Command Integration Tests', () => {
   let sandbox: sinon.SinonSandbox;
 
   setup(async () => {
     sandbox = sinon.createSandbox();
-    TestHelper.setupMockForgeService();
+    
+    // Setup all mocks including GitMetadataService
+    TestSetup.setupAll();
     
     // Wait for extension to activate - commands will be registered by the extension itself
     await TestHelper.wait(1000);
-    
-    // Mock PuppetForgeService to use our mock data
-    sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getModuleInfo(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getLatestVersion(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').callsFake(async (moduleName) => {
-      const currentVersion = '1.0.0'; // Mock current version
-      return MockPuppetForgeService.getSafeUpdateVersion(moduleName, currentVersion);
-    });
 
     await TestHelper.closeAllEditors();
   });
 
   teardown(async () => {
+    TestSetup.restore();
     sandbox.restore();
     TestHelper.resetMockForgeService();
     await TestHelper.closeAllEditors();

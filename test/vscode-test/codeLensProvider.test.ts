@@ -8,6 +8,7 @@ import { PuppetfileCodeLensProvider } from '../../src/puppetfileCodeLensProvider
 import { UpgradeDiffCodeLensProvider } from '../../src/services/upgradeDiffCodeLensProvider';
 import { UpgradePlan } from '../../src/services/upgradePlannerService';
 import { PuppetfileUpdateService } from '../../src/services/puppetfileUpdateService';
+import { TestSetup } from './testSetup';
 // Remove direct activation import
 
 suite('Code Lens Provider Integration Tests', () => {
@@ -17,39 +18,12 @@ suite('Code Lens Provider Integration Tests', () => {
 
   setup(async () => {
     sandbox = sinon.createSandbox();
-    TestHelper.setupMockForgeService();
+    
+    // Setup all mocks including GitMetadataService
+    TestSetup.setupAll();
     
     // Wait for extension to activate - commands will be registered by the extension itself
     await TestHelper.wait(1000);
-    
-    // Mock PuppetForgeService
-    sandbox.stub(PuppetForgeService, 'getModule').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getModuleInfo(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getLatestVersion(moduleName);
-    });
-    
-    sandbox.stub(PuppetForgeService, 'getLatestSafeVersion').callsFake(async (moduleName) => {
-      return MockPuppetForgeService.getSafeUpdateVersion(moduleName, '1.0.0'); // Will calculate safe version
-    });
-    
-    sandbox.stub(PuppetForgeService, 'checkForUpdate').callsFake(async (moduleName: string, currentVersion?: string, safeOnly?: boolean) => {
-      if (safeOnly) {
-        const safeVersion = await MockPuppetForgeService.getSafeUpdateVersion(moduleName, currentVersion || '0.0.0');
-        const hasUpdate = safeVersion && currentVersion ? 
-          PuppetForgeService.compareVersions(safeVersion, currentVersion) > 0 : 
-          !!safeVersion;
-        return { hasUpdate, latestVersion: safeVersion, currentVersion };
-      } else {
-        const latestVersion = await MockPuppetForgeService.getLatestVersion(moduleName);
-        const hasUpdate = currentVersion ? 
-          PuppetForgeService.compareVersions(latestVersion, currentVersion) > 0 : 
-          true;
-        return { hasUpdate, latestVersion, currentVersion };
-      }
-    });
 
     // Mock PuppetfileUpdateService to actually update the document
     sandbox.stub(PuppetfileUpdateService, 'updateModuleVersionAtLine').callsFake(async (line: number, newVersion: string) => {
@@ -81,6 +55,7 @@ suite('Code Lens Provider Integration Tests', () => {
   });
 
   teardown(async () => {
+    TestSetup.restore();
     sandbox.restore();
     TestHelper.resetMockForgeService();
     await TestHelper.closeAllEditors();
