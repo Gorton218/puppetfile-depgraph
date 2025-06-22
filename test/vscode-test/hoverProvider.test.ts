@@ -164,7 +164,8 @@ suite('Hover Provider Integration Tests', () => {
     const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
     await TestHelper.showDocument(doc);
     
-    // Mock error response
+    // Mock error response - need to restore TestSetup stubs first
+    TestSetup.restore();
     sandbox.restore();
     sandbox.stub(PuppetForgeService, 'getModule').rejects(new Error('Network error'));
     
