@@ -144,8 +144,11 @@ suite('Command Integration Tests', () => {
       description: 'Latest major version'
     } as any);
     
-    // Execute command  
-    await vscode.commands.executeCommand('puppetfile-depgraph.updateModuleVersion');
+    // Execute command with proper arguments
+    await vscode.commands.executeCommand('puppetfile-depgraph.updateModuleVersion', {
+      line: stdlibLine + 1, // VS Code uses 0-based, but the command expects 1-based line numbers
+      version: '9.0.0'
+    });
     
     // Wait for command to complete
     await TestHelper.wait(500);
@@ -203,8 +206,9 @@ suite('Command Integration Tests', () => {
     const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
     const editor = await TestHelper.showDocument(doc);
     
-    // Execute command
-    await vscode.commands.executeCommand('puppetfile-depgraph.applyAllUpgrades');
+    // Execute the updateAllToSafe command instead of applyAllUpgrades
+    // applyAllUpgrades requires an upgrade plan from the diff view
+    await vscode.commands.executeCommand('puppetfile-depgraph.updateAllToSafe');
     
     // Wait for command to complete
     await TestHelper.wait(1000);
