@@ -10,9 +10,21 @@ export const mockModuleData: Map<string, {
     latestSafeVersion: string
 }> = new Map([
     ['puppetlabs/stdlib', {
-        latestVersion: '9.0.0',
+        latestVersion: '9.7.0',
         latestSafeVersion: '8.6.0',
         releases: [
+            {
+                version: '9.7.0',
+                created_at: '2024-12-16T22:30:06Z',
+                updated_at: '2024-12-16T22:30:06Z',
+                downloads: 1200000,
+                file_size: 105000,
+                file_md5: 'xyz789',
+                file_uri: '/v3/files/puppetlabs-stdlib-9.7.0.tar.gz',
+                metadata: {
+                    dependencies: []
+                }
+            },
             {
                 version: '9.0.0',
                 created_at: '2023-09-01T00:00:00Z',
@@ -160,9 +172,23 @@ export const mockModuleData: Map<string, {
         ]
     }],
     ['puppetlabs/concat', {
-        latestVersion: '8.0.0-rc1',
+        latestVersion: '9.1.0',
         latestSafeVersion: '7.4.0',
         releases: [
+            {
+                version: '9.1.0',
+                created_at: '2024-04-03T01:32:12Z',
+                updated_at: '2024-04-03T01:32:12Z',
+                downloads: 600000,
+                file_size: 82000,
+                file_md5: 'concat910',
+                file_uri: '/v3/files/puppetlabs-concat-9.1.0.tar.gz',
+                metadata: {
+                    dependencies: [
+                        { name: 'puppetlabs/stdlib', version_requirement: '>= 4.13.0 < 10.0.0' }
+                    ]
+                }
+            },
             {
                 version: '8.0.0-rc1',
                 created_at: '2023-09-01T00:00:00Z',
