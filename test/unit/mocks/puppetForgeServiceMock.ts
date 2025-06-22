@@ -1224,6 +1224,48 @@ export const mockModuleData: Map<string, {
             }
         ]
     }],
+    ['example/test', {
+        latestVersion: '2.0.0',
+        latestSafeVersion: '1.5.0',
+        releases: [
+            {
+                version: '2.0.0',
+                created_at: '2023-09-01T00:00:00Z',
+                updated_at: '2023-09-01T00:00:00Z',
+                downloads: 100,
+                file_size: 10000,
+                file_md5: 'exampletest200',
+                file_uri: '/v3/files/example-test-2.0.0.tar.gz',
+                metadata: {
+                    dependencies: []
+                }
+            },
+            {
+                version: '1.5.0',
+                created_at: '2023-06-01T00:00:00Z',
+                updated_at: '2023-06-01T00:00:00Z',
+                downloads: 200,
+                file_size: 9000,
+                file_md5: 'exampletest150',
+                file_uri: '/v3/files/example-test-1.5.0.tar.gz',
+                metadata: {
+                    dependencies: []
+                }
+            },
+            {
+                version: '1.0.0',
+                created_at: '2023-01-01T00:00:00Z',
+                updated_at: '2023-01-01T00:00:00Z',
+                downloads: 300,
+                file_size: 8000,
+                file_md5: 'exampletest100',
+                file_uri: '/v3/files/example-test-1.0.0.tar.gz',
+                metadata: {
+                    dependencies: []
+                }
+            }
+        ]
+    }],
     ['puppetlabs/docker', {
         latestVersion: '8.0.0',
         latestSafeVersion: '7.0.0', 
@@ -1357,12 +1399,35 @@ export class MockPuppetForgeService {
     }
 
     public static hasModuleCached(moduleName: string): boolean {
+        // Check cache with original name first
         const moduleCache = this.moduleVersionCache.get(moduleName);
-        return moduleCache !== undefined && moduleCache.size > 0;
+        if (moduleCache !== undefined && moduleCache.size > 0) {
+            return true;
+        }
+        
+        // Check if the module exists in mock data using different name formats
+        const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+        for (const variant of variants) {
+            if (mockModuleData.has(variant)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     public static async getModule(moduleName: string): Promise<ForgeModule | null> {
-        const moduleData = mockModuleData.get(moduleName);
+        // Try to find the module using different name formats
+        const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+        let moduleData = null;
+        
+        for (const variant of variants) {
+            moduleData = mockModuleData.get(variant);
+            if (moduleData) {
+                break;
+            }
+        }
+        
         if (!moduleData) {
             return null;
         }
@@ -1396,7 +1461,17 @@ export class MockPuppetForgeService {
             );
         }
 
-        const moduleData = mockModuleData.get(moduleName);
+        // Try to find the module using different name formats
+        const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+        let moduleData = null;
+        
+        for (const variant of variants) {
+            moduleData = mockModuleData.get(variant);
+            if (moduleData) {
+                break;
+            }
+        }
+        
         if (!moduleData) {
             return [];
         }
@@ -1434,8 +1509,15 @@ export class MockPuppetForgeService {
     }
 
     public static async getLatestVersion(moduleName: string): Promise<string | null> {
-        const moduleData = mockModuleData.get(moduleName);
-        return moduleData?.latestVersion ?? null;
+        // Try to find the module using different name formats
+        const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+        for (const variant of variants) {
+            const moduleData = mockModuleData.get(variant);
+            if (moduleData) {
+                return moduleData.latestVersion;
+            }
+        }
+        return null;
     }
 
     public static isSafeVersion(version: string): boolean {
@@ -1443,8 +1525,15 @@ export class MockPuppetForgeService {
     }
 
     public static async getLatestSafeVersion(moduleName: string): Promise<string | null> {
-        const moduleData = mockModuleData.get(moduleName);
-        return moduleData?.latestSafeVersion ?? null;
+        // Try to find the module using different name formats
+        const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+        for (const variant of variants) {
+            const moduleData = mockModuleData.get(variant);
+            if (moduleData) {
+                return moduleData.latestSafeVersion;
+            }
+        }
+        return null;
     }
 
     public static compareVersions(version1: string, version2: string): number {
