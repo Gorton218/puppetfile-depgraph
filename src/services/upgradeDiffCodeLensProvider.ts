@@ -58,7 +58,7 @@ export class UpgradeDiffCodeLensProvider implements vscode.CodeLensProvider {
             // Look for upgrade comment lines
             if (line.includes('# ↑ UPGRADE:')) {
                 // Extract module name from the comment
-                const match = line.match(/# ↑ UPGRADE: ([^\s]+)/);
+                const match = /# ↑ UPGRADE: ([^\s]+)/.exec(line);
                 if (match) {
                     const moduleName = match[1];
                     
