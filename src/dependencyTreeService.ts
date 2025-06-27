@@ -1,6 +1,6 @@
 import { PuppetModule } from './puppetfileParser';
 import { PuppetForgeService } from './puppetForgeService';
-import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
+import { GitMetadataService } from './gitMetadataService';
 import { DependencyGraph, Requirement, DependencyConflict } from './types/dependencyTypes';
 import { ConflictAnalyzer } from './services/conflictAnalyzer';
 import { VersionParser } from './utils/versionParser';
