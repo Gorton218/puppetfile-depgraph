@@ -20,7 +20,7 @@ export class CacheService {
         }
 
         // If caching is already in progress, return the existing promise
-        if (this.isCaching && this.cachingPromise) {
+        if (this.isCaching && this.cachingPromise !== null) {
             return this.cachingPromise;
         }
 
@@ -256,7 +256,7 @@ export class CacheService {
         }
         
         // If caching is already in progress, return the existing promise
-        if (this.isCaching && this.cachingPromise) {
+        if (this.isCaching && this.cachingPromise !== null) {
             return this.cachingPromise;
         }
 
