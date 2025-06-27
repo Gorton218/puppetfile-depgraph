@@ -15,6 +15,9 @@ jest.mock('vscode', () => ({
         showErrorMessage: jest.fn(),
         withProgress: jest.fn()
     },
+    workspace: {
+        onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })), // Mocked to return a disposable
+    },
     ProgressLocation: {
         Notification: 15
     }

@@ -3,7 +3,8 @@
     "compilerOptions": {
         "outDir": "./out",
         "rootDir": "./",
-        "types": ["node", "jest", "mocha", "sinon", "vscode"]
+        "types": ["node", "jest", "mocha", "sinon", "vscode"],
+        "isolatedModules": true
     },
     "include": [
         "src/**/*",

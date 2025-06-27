@@ -584,4 +584,10 @@ export function deactivate() {
 	
 	// Clean up HTTP agents to prevent hanging connections
 	PuppetForgeService.cleanupAgents();
+
+	// Dispose of the code lens provider
+	const codeLensProvider = PuppetfileCodeLensProvider.getInstance();
+	if (codeLensProvider) {
+		codeLensProvider.dispose();
+	}
 }

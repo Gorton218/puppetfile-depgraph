@@ -22,7 +22,8 @@ describe('PuppetfileHoverProvider Test Suite', () => {
     
     const createMockDocument = (fileName: string, languageId: string) => ({
         fileName,
-        languageId
+        languageId,
+        uri: { toString: () => `file:///${fileName}` } // Mock uri property
     });
 
     const createForgeModule = (name: string, version: string = '8.5.0', dependencies: Array<{name: string; version_requirement: string}> = []): ForgeModule => ({
@@ -484,12 +485,9 @@ describe('PuppetfileHoverProvider Test Suite', () => {
     test('should return null when cursor is outside module name', async () => {
         await withServiceMocks(async (restore) => {
             const provider = createProvider();
-            const document = {
-                fileName: 'Puppetfile',
-                languageId: 'puppetfile',
-                getWordRangeAtPosition: () => ({ start: { line: 0, character: 0 }, end: { line: 0, character: 5 } }),
-                lineAt: () => ({ text: "mod 'puppetlabs/stdlib', '8.5.0'" })
-            };
+            const document = createMockDocument('Puppetfile', 'puppetfile');
+            document.getWordRangeAtPosition = () => ({ start: { line: 0, character: 0 }, end: { line: 0, character: 5 } });
+            document.lineAt = () => ({ text: "mod 'puppetlabs/stdlib', '8.5.0'" });
             const position = { line: 0, character: 50 } as any; // Position outside the line
             
             const result = await provider.provideHover(document as any, position, {} as any);
@@ -510,12 +508,9 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             };
             
             const provider = createProvider();
-            const document = {
-                fileName: 'Puppetfile',
-                languageId: 'puppetfile',
-                getWordRangeAtPosition: () => ({ start: { line: 0, character: 4 }, end: { line: 0, character: 20 } }),
-                lineAt: () => ({ text: "mod 'puppetlabs/stdlib', '8.5.0'" })
-            };
+            const document = createMockDocument('Puppetfile', 'puppetfile');
+            document.getWordRangeAtPosition = () => ({ start: { line: 0, character: 4 }, end: { line: 0, character: 20 } });
+            document.lineAt = () => ({ text: "mod 'puppetlabs/stdlib', '8.5.0'" });
             const position = { line: 0, character: 10 } as any;
             
             const result = await provider.provideHover(document as any, position, {} as any);

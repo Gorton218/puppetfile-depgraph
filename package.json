@@ -128,6 +128,7 @@
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
@@ -140,12 +141,14 @@
     "@vscode/vsce": "^3.5.0",
     "eslint": "^9.29.0",
     "jest": "^30.0.0",
+    "jest-extended": "^6.0.0",
     "sinon": "^21.0.0",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "axios": "^1.10.0",
+    "glob": "^11.0.3",
     "https-proxy-agent": "^7.0.6"
   },
   "repository": {

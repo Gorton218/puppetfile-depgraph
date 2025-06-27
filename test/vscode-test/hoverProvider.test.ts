@@ -186,21 +186,20 @@ suite('Hover Provider Integration Tests', () => {
   test('Hover performance with cached data', async () => {
     const doc = await TestHelper.openTestPuppetfile('simple-puppetfile.txt');
     await TestHelper.showDocument(doc);
-    
+
     const stdlibLine = TestHelper.findLineContaining(doc, "'puppetlabs-stdlib'");
-    
-    // First hover - will fetch from API
-    const start1 = Date.now();
+
+    const getModuleStub = PuppetForgeService.getModule as sinon.SinonStub;
+    getModuleStub.resetHistory();
+
+    // First hover should trigger fetching for all modules in the file
     await TestHelper.getHoverAtPosition(doc, stdlibLine, 10);
-    const time1 = Date.now() - start1;
-    
-    // Second hover - should use cache
-    const start2 = Date.now();
+    const initialCallCount = getModuleStub.callCount;
+    assert.ok(initialCallCount > 0, 'getModule should be called for the first hover');
+
+    // Second hover should not trigger any more calls
     await TestHelper.getHoverAtPosition(doc, stdlibLine, 10);
-    const time2 = Date.now() - start2;
-    
-    // Cached response should be faster
-    assert.ok(time2 <= time1, 'Cached hover should be faster or equal');
+    assert.strictEqual(getModuleStub.callCount, initialCallCount, 'getModule should not be called again for a cached hover');
   });
 
   test('Hover updates after module version change', async () => {

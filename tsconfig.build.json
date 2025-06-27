@@ -3,7 +3,7 @@
     "compilerOptions": {
         "outDir": "./out",
         "rootDir": "./",
-        "types": ["node", "vscode"]
+        "types": ["node", "vscode", "jest"]
     },
     "include": ["src/**/*"],
     "exclude": [

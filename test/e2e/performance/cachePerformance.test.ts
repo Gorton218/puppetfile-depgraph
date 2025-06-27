@@ -47,7 +47,7 @@ describe('Performance: Cache Tests', () => {
         // Return releases format
         return {
           data: {
-            results: mockData.releases?.map(r => ({
+            results: mockData.releases?.map((r: { version: any; created_at: any; dependencies: any; }) => ({
               version: r.version,
               created_at: r.created_at,
               dependencies: r.dependencies || []

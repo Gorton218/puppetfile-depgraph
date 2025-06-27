@@ -1,8 +1,7 @@
 {
     "extends": "./tsconfig.build.json",
     "compilerOptions": {
-        // This file exists for backward compatibility and IDE support
-        // Use tsconfig.build.json for building
-        // Use tsconfig.test.json for testing
+        "isolatedModules": true,
+        "types": ["jest"]
     }
 }
