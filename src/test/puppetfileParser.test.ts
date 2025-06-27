@@ -671,4 +671,20 @@ something else mod related but not a module`;
         expect(result.modules[0].gitRef).toBe('develop');
         expect(result.modules[0].gitTag).toBeUndefined();
     });
+
+    test('should detect git options on next line for multiline modules (RegExp.exec test)', () => {
+        // This test verifies the specific case where our RegExp.exec() change applies
+        const content = `mod 'module-name'
+    :git => 'https://github.com/user/repo.git',
+    :ref => 'main'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('module-name');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].gitRef).toBe('main');
+        expect(result.errors.length).toBe(0);
+    });
 });
