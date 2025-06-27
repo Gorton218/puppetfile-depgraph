@@ -141,7 +141,7 @@ export class StandalonePuppetfileParser {
      */
     private static parseComplexModuleLine(line: string, lineNumber: number): PuppetModule | null {
         // Extract module name
-        const modMatch = line.match(/^mod\s*['"]([^'"]+)['"]/);
+        const modMatch = /^mod\s*['"]([^'"]+)['"]/.exec(line);
         if (!modMatch) {
             throw new Error('Invalid module declaration syntax');
         }
@@ -154,14 +154,14 @@ export class StandalonePuppetfileParser {
         };
 
         // Check for git source
-        const gitMatch = line.match(/:git\s*=>\s*['"]([^'"]+)['"]/);
+        const gitMatch = /:git\s*=>\s*['"]([^'"]+)['"]/.exec(line);
         if (gitMatch) {
             module.source = 'git';
             module.gitUrl = gitMatch[1];
 
             // Look for tag or ref
-            const tagMatch = line.match(/:tag\s*=>\s*['"]([^'"]+)['"]/);
-            const refMatch = line.match(/:ref\s*=>\s*['"]([^'"]+)['"]/);
+            const tagMatch = /:tag\s*=>\s*['"]([^'"]+)['"]/.exec(line);
+            const refMatch = /:ref\s*=>\s*['"]([^'"]+)['"]/.exec(line);
 
             if (tagMatch) {
                 module.gitTag = tagMatch[1];
@@ -171,7 +171,7 @@ export class StandalonePuppetfileParser {
         } else {
             // Look for version - check if it's the second quoted string after the module name
             // But make sure it's not part of a git configuration
-            const versionMatch = line.match(/^mod\s*['"]([^'"]+)['"],\s*['"]([^'"]+)['"](?:\s*$|,)/);
+            const versionMatch = /^mod\s*['"]([^'"]+)['"],\s*['"]([^'"]+)['"](?:\s*$|,)/.exec(line);
             if (versionMatch && !line.includes(':git')) {
                 module.version = versionMatch[2];
             }
