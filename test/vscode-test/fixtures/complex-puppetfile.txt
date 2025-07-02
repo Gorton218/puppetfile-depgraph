@@ -1,0 +1,50 @@
+# Complex Puppetfile with many modules for testing
+forge 'https://forge.puppet.com'
+
+# Infrastructure modules
+mod 'puppetlabs-stdlib', '8.5.0'
+mod 'puppetlabs-concat', '7.2.0'
+mod 'puppetlabs-apache', '10.1.0'
+mod 'puppetlabs-mysql', '13.0.0'
+mod 'puppetlabs-postgresql', '8.2.1'
+mod 'puppetlabs-firewall', '5.0.0'
+mod 'puppetlabs-ntp', '9.2.0'
+
+# Application modules
+mod 'puppet-nginx', '4.3.0'
+mod 'puppet-redis', '8.5.0'
+mod 'puppet-elasticsearch', '8.0.0'
+mod 'puppet-rabbitmq', '12.0.0'
+
+# Monitoring modules  
+mod 'puppet-prometheus', '12.2.0'
+mod 'puppet-grafana', '10.0.0'
+mod 'sensu-sensu', '5.9.0'
+
+# Security modules
+mod 'puppet-selinux', '3.4.1'
+mod 'hardening-os_hardening', '2.2.0'
+mod 'puppet-fail2ban', '4.1.0'
+
+# Utility modules
+mod 'puppet-archive', '6.1.1'
+mod 'puppet-cron', '3.0.0'
+mod 'puppet-logrotate', '6.0.0'
+
+# Git modules with various configurations
+mod 'internal-base',
+  :git => 'https://github.com/company/puppet-base.git',
+  :tag => 'v2.1.0'
+
+mod 'internal-app',
+  :git => 'https://github.com/company/puppet-app.git',
+  :branch => 'production'
+
+mod 'external-tool',
+  :git => 'https://github.com/vendor/tool.git',
+  :ref => 'abc123def'
+
+# Modules without versions
+mod 'puppetlabs-docker'
+mod 'puppet-python'
+mod 'puppet-nodejs'

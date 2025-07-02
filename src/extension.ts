@@ -2,20 +2,29 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { PuppetfileParser } from './puppetfileParser';
-import { PuppetfileUpdateService } from './puppetfileUpdateService';
-import { DependencyTreeService } from './dependencyTreeService';
+import { PuppetfileUpdateService } from './services/puppetfileUpdateService';
+import { DependencyTreeService } from './services/dependencyTreeService';
 import { PuppetfileHoverProvider } from './puppetfileHoverProvider';
-import { PuppetForgeService } from './puppetForgeService';
-import { GitMetadataService } from './gitMetadataService';
-import { CacheService } from './cacheService';
+import { PuppetForgeService } from './services/puppetForgeService';
+import { GitMetadataService } from './services/gitMetadataService';
+import { CacheService } from './services/cacheService';
 import { UpgradePlannerService } from './services/upgradePlannerService';
 import { UpgradeDiffProvider } from './services/upgradeDiffProvider';
 import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from './services/upgradeDiffCodeLensProvider';
 
+// Track if extension has been activated
+let extensionActivated = false;
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+	// Prevent multiple activations
+	if (extensionActivated) {
+		console.log('Puppetfile Dependency Manager: Extension already activated, skipping re-activation');
+		return;
+	}
+	extensionActivated = true;
 
 	// Get extension version from package.json
 	const extensionVersion = context.extension.packageJSON.version;
@@ -24,8 +33,21 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log(`Puppetfile Dependency Manager v${extensionVersion} is now active!`);
 
+	// Helper function to safely register commands
+	const safeRegisterCommand = (command: string, callback: (...args: any[]) => any) => {
+		try {
+			return vscode.commands.registerCommand(command, callback);
+		} catch (error: any) {
+			if (error.message?.includes('already exists')) {
+				console.warn(`Command ${command} already registered, skipping`);
+				return { dispose: () => {} }; // Return dummy disposable
+			}
+			throw error;
+		}
+	};
+
 	// Register commands defined in package.json
-	const updateAllToSafe = vscode.commands.registerCommand('puppetfile-depgraph.updateAllToSafe', async () => {
+	const updateAllToSafe = safeRegisterCommand('puppetfile-depgraph.updateAllToSafe', async () => {
 		const parseResult = PuppetfileParser.parseActiveEditor();
 		if (parseResult.errors.length > 0) {
 			vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
@@ -59,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-	const updateAllToLatest = vscode.commands.registerCommand('puppetfile-depgraph.updateAllToLatest', async () => {
+	const updateAllToLatest = safeRegisterCommand('puppetfile-depgraph.updateAllToLatest', async () => {
 		const parseResult = PuppetfileParser.parseActiveEditor();
 		if (parseResult.errors.length > 0) {
 			vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
@@ -103,7 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-        const showDependencyTree = vscode.commands.registerCommand('puppetfile-depgraph.showDependencyTree', async () => {
+        const showDependencyTree = safeRegisterCommand('puppetfile-depgraph.showDependencyTree', async () => {
                 const parseResult = PuppetfileParser.parseActiveEditor();
 		if (parseResult.errors.length > 0) {
 			vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
@@ -339,18 +361,18 @@ export function activate(context: vscode.ExtensionContext) {
                 });
         });
 
-        const clearForgeCache = vscode.commands.registerCommand('puppetfile-depgraph.clearForgeCache', () => {
+        const clearForgeCache = safeRegisterCommand('puppetfile-depgraph.clearForgeCache', () => {
                 PuppetForgeService.clearCache();
                 vscode.window.showInformationMessage('Puppet Forge cache cleared successfully!');
         });
 
-      	const clearCache = vscode.commands.registerCommand('puppetfile-depgraph.clearCache', () => {
+      	const clearCache = safeRegisterCommand('puppetfile-depgraph.clearCache', () => {
 		PuppetForgeService.clearCache();
 		GitMetadataService.clearCache();
 		vscode.window.showInformationMessage('All caches cleared successfully! (Puppet Forge + Git metadata)');
 	});
 
-        const updateModuleVersion = vscode.commands.registerCommand('puppetfile-depgraph.updateModuleVersion', async (...args: any[]) => {
+        const updateModuleVersion = safeRegisterCommand('puppetfile-depgraph.updateModuleVersion', async (...args: any[]) => {
                 console.log('updateModuleVersion command called with args:', args);
                 
                 // Handle both direct object and array of objects
@@ -379,7 +401,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
         });
 
-        const cacheAllModules = vscode.commands.registerCommand('puppetfile-depgraph.cacheAllModules', async () => {
+        const cacheAllModules = safeRegisterCommand('puppetfile-depgraph.cacheAllModules', async () => {
                 const parseResult = PuppetfileParser.parseActiveEditor();
                 if (parseResult.errors.length > 0) {
                         vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
@@ -396,7 +418,7 @@ export function activate(context: vscode.ExtensionContext) {
                 await CacheService.cacheAllModules(forgeModules, true);
         });
 
-        const showUpgradePlanner = vscode.commands.registerCommand('puppetfile-depgraph.showUpgradePlanner', async () => {
+        const showUpgradePlanner = safeRegisterCommand('puppetfile-depgraph.showUpgradePlanner', async () => {
                 const parseResult = PuppetfileParser.parseActiveEditor();
                 if (parseResult.errors.length > 0) {
                         vscode.window.showErrorMessage(`Puppetfile parsing errors: ${parseResult.errors.join(', ')}`);
@@ -448,7 +470,7 @@ export function activate(context: vscode.ExtensionContext) {
                 await progressPromise;
         });
 
-        const showAbout = vscode.commands.registerCommand('puppetfile-depgraph.showAbout', async () => {
+        const showAbout = safeRegisterCommand('puppetfile-depgraph.showAbout', async () => {
                 const packageJSON = context.extension.packageJSON;
                 const aboutContent = `# ${packageJSON.displayName}
 
@@ -485,23 +507,23 @@ Built with ❤️ for the Puppet community`;
                 await vscode.window.showTextDocument(doc);
         });
 
-        const applyAllUpgrades = vscode.commands.registerCommand('puppetfile-depgraph.applyAllUpgrades', async () => {
+        const applyAllUpgrades = safeRegisterCommand('puppetfile-depgraph.applyAllUpgrades', async () => {
                 await UpgradeDiffProvider.applyAllUpgrades();
         });
 
-        const applySelectedUpgrades = vscode.commands.registerCommand('puppetfile-depgraph.applySelectedUpgrades', async () => {
+        const applySelectedUpgrades = safeRegisterCommand('puppetfile-depgraph.applySelectedUpgrades', async () => {
                 await UpgradeDiffProvider.applySelectedUpgrades();
         });
 
-        const applySingleUpgrade = vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgrade', async (args) => {
+        const applySingleUpgrade = safeRegisterCommand('puppetfile-depgraph.applySingleUpgrade', async (args) => {
                 await PuppetfileCodeLensProvider.applySingleUpgrade(args);
         });
 
-        const applySingleUpgradeFromDiff = vscode.commands.registerCommand('puppetfile-depgraph.applySingleUpgradeFromDiff', async (...args) => {
+        const applySingleUpgradeFromDiff = safeRegisterCommand('puppetfile-depgraph.applySingleUpgradeFromDiff', async (...args) => {
                 await UpgradeDiffProvider.applySingleUpgradeFromDiff(args);
         });
 
-        const skipSingleUpgradeFromDiff = vscode.commands.registerCommand('puppetfile-depgraph.skipSingleUpgradeFromDiff', async (...args) => {
+        const skipSingleUpgradeFromDiff = safeRegisterCommand('puppetfile-depgraph.skipSingleUpgradeFromDiff', async (...args) => {
                 await UpgradeDiffProvider.skipSingleUpgradeFromDiff(args);
         });
 
@@ -557,6 +579,15 @@ export function showTemporaryMessage(message: string, duration: number = 5000): 
 
 // This method is called when your extension is deactivated
 export function deactivate() {
+	// Reset activation flag
+	extensionActivated = false;
+	
 	// Clean up HTTP agents to prevent hanging connections
 	PuppetForgeService.cleanupAgents();
+
+	// Dispose of the code lens provider
+	const codeLensProvider = PuppetfileCodeLensProvider.getInstance();
+	if (codeLensProvider) {
+		codeLensProvider.dispose();
+	}
 }

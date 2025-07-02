@@ -1,22 +1,53 @@
-const { spawnSync } = require('child_process');
+const { runTests } = require('@vscode/test-electron');
+const path = require('path');
 
-const isWin = process.platform === 'win32';
+async function main() {
+  try {
+    const isE2E = process.argv.includes('--e2e');
+    
+    // Determine which tests to run
+    let testPath = path.resolve(__dirname, '../out/test/vscode-test/index.js');
+    if (isE2E) {
+      testPath = path.resolve(__dirname, '../out/test/e2e/index.js');
+    }
 
-// First run the tests normally
-const cmd = isWin ? 'npx.cmd' : 'xvfb-run';
-const args = isWin ? ['vscode-test'] : ['-a', 'npx', 'vscode-test'];
+    if (isE2E) {
+      console.log('Running E2E tests...');
+      console.log('Test runner path:', testPath);
+    } else {
+      console.log('Running VS Code integration tests...');
+      console.log('Test runner path:', testPath);
+    }
 
-console.log('Running tests...');
-const testResult = spawnSync(cmd, args, { stdio: 'inherit', shell: isWin });
+    // Debug environment info for CI
+    const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
+    console.log('Environment info:');
+    console.log('  Platform:', process.platform);
+    console.log('  DISPLAY:', process.env.DISPLAY || '(not set)');
+    console.log('  Will use xvfb-run:', useXvfb);
 
-console.log('Test process finished.');
+    // The folder containing the Extension Manifest package.json
+    // Passed to `--extensionDevelopmentPath`
+    const extensionDevelopmentPath = path.resolve(__dirname, '../');
 
-if (testResult.error) {
-    console.error('Failed to start or kill the test process. Error details:', testResult.error);
-    process.exit(1);
-} else if (testResult.status !== 0) {
-    console.error(`Tests failed. Exit status: ${testResult.status}, Signal: ${testResult.signal}`);
-    process.exit(testResult.status === null ? 1 : testResult.status);
-} else {
+    // Download VS Code, unzip it and run the integration test
+    await runTests({
+      extensionDevelopmentPath,
+      extensionTestsPath: testPath,
+      launchArgs: [
+        '--disable-extensions',
+        '--disable-gpu',
+        '--no-sandbox'
+      ],
+      // Use xvfb-run on Linux when no display is available
+      useXvfb: useXvfb
+    });
+
     console.log('Tests completed successfully.');
+  } catch (err) {
+    console.error('Test failed:', err);
+    process.exit(1);
+  }
 }
+
+main();

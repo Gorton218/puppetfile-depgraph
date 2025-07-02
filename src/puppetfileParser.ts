@@ -83,7 +83,7 @@ export class PuppetfileParser {
                         (isJustModuleName && nextLineHasGitOptions)) {
                         // This might be a multi-line module definition
                         const multiLineModule = this.parseMultiLineModule(lines, i);
-                        if (multiLineModule.module) {
+                        if (multiLineModule.module !== null) {
                             modules.push(multiLineModule.module);
                             i = multiLineModule.lastLine; // Skip the lines we've already processed
                             continue;

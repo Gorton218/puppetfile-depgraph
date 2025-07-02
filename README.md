@@ -24,6 +24,10 @@ A comprehensive VS Code extension for managing Puppet module dependencies with v
 - **Progress Tracking**: Real-time progress indication with cancellation support
 - **One-Click Actions**: Apply and Skip buttons integrated directly into the upgrade diff
 - **Upgrade Statistics**: Summary view showing upgradeable, blocked, and unchanged modules
+- **Smart Module Name Handling**: Automatically normalizes module names between slash and dash formats
+- **Circular Dependency Detection**: Identifies and reports circular dependency chains
+- **Safe Upgrade Path**: Prioritizes stable versions over pre-releases by default
+- **Blocked Module Explanations**: Clear explanations of why certain modules cannot be upgraded
 
 ### 🌳 **Dependency Tree Visualization**
 - **Tree View**: Hierarchical display of all dependencies and their relationships
@@ -88,6 +92,9 @@ Access these commands via:
   - Provides Apply/Skip buttons for selective upgrades
   - Detects and explains dependency conflicts
   - Displays upgrade statistics and recommendations
+  - **Interactive Controls**: Click "Apply" to immediately upgrade a specific module, or "Skip" to exclude it from the upgrade
+  - **Automatic Refresh**: The diff view automatically updates after each applied upgrade
+  - **Conflict Resolution**: Clearly shows which dependencies are blocking upgrades and why
 
 - **`Puppetfile: Cache info for all modules`**
   - Pre-caches information for all Puppet Forge modules in the Puppetfile
@@ -101,6 +108,22 @@ Simply hover over any module name in your Puppetfile to see:
 - Current and latest version information
 - Direct dependencies
 - Links to Puppet Forge or Git repositories
+
+### Interactive Upgrade Diff View
+
+When using the Upgrade Planner, the extension provides an interactive diff view:
+
+1. **Side-by-side Comparison**: See your current Puppetfile on the left and the proposed changes on the right
+2. **Inline Controls**: Each upgradeable module has "Apply" and "Skip" buttons directly in the diff view
+3. **Real-time Updates**: After clicking "Apply", the diff automatically refreshes to show remaining upgrades
+4. **Clear Visual Indicators**: 
+   - Green highlights for modules that can be safely upgraded
+   - Red highlights for modules with conflicts
+   - Gray text for modules that are already up-to-date
+5. **Detailed Information**: Each module shows:
+   - Current version → Proposed version
+   - Reason for upgrade (new features, bug fixes, etc.)
+   - Any blocking dependencies or conflicts
 
 ## Supported Puppetfile Syntax
 
@@ -155,13 +178,20 @@ The extension works out of the box with no configuration required. It automatica
 
 ### Testing
 
-The extension includes comprehensive unit tests covering:
-- Puppetfile parsing for various syntax formats
-- Puppet Forge API integration
-- Dependency tree building and visualization
-- Version comparison and update logic
+The extension includes comprehensive test coverage:
+- **Unit Tests**: Fast, isolated tests using Jest framework
+- **VS Code Integration Tests**: Tests for extension functionality with mocked services
+- **End-to-End Tests**: Complete workflow tests including upgrade planning
+- **Performance Tests**: Benchmarks for caching and large file handling
+- **API Integration Tests**: Separate tests for real Puppet Forge API validation
 
-Run tests with: `npm test`
+Run tests with:
+- `npm test` - Run all tests (unit + integration + e2e)
+- `npm run test:unit` - Unit tests only
+- `npm run test:vscode` - VS Code integration tests
+- `npm run test:e2e` - End-to-end workflow tests
+- `npm run test:performance` - Performance benchmarks
+- `npm run test:api-integration` - Real API tests (requires internet)
 
 ## API Integration
 

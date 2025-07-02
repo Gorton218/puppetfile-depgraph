@@ -1,8 +1,8 @@
 // Mock VS Code API
 const vscode = {
   Uri: {
-    file: jest.fn((path) => ({ fsPath: path, scheme: 'file' })),
-    parse: jest.fn()
+    file: jest.fn((path) => ({ fsPath: path, scheme: 'file', toString: () => `file:///${path}` })),
+    parse: jest.fn(),
   },
   Range: jest.fn(),
   Position: jest.fn(),
@@ -44,7 +44,8 @@ const vscode = {
       get: jest.fn()
     })),
     openTextDocument: jest.fn(),
-    applyEdit: jest.fn()
+    applyEdit: jest.fn(),
+    onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })),
   },
   commands: {
     registerCommand: jest.fn()
