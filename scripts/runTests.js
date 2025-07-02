@@ -8,7 +8,7 @@ async function main() {
     // Determine which tests to run
     let testPath = path.resolve(__dirname, '../out/test/vscode-test/index.js');
     if (isE2E) {
-      testPath = path.resolve(__dirname, '../out/test/e2e/test/e2e/index.js');
+      testPath = path.resolve(__dirname, '../out/test/e2e/index.js');
     }
 
     if (isE2E) {
