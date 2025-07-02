@@ -66,6 +66,9 @@ Thumbs.db
 *.swo
 *~
 
+# SonarLint
+.sonarlint/
+
 # Temporary files
 *.tmp
 *.temp
