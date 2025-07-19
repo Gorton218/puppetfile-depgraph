@@ -40,6 +40,9 @@ suite('E2E: Update Commands Workflow', () => {
     // Setup all mocks including GitMetadataService
     TestSetup.setupAll();
     
+    // Close all editors first to ensure we don't have cached documents
+    await TestHelper.closeAllEditors();
+    
     // Create a fresh Puppetfile for each test
     const puppetfileContent = `forge 'https://forge.puppet.com'
 
@@ -60,7 +63,9 @@ mod 'internal-module',
 `;
     
     fs.writeFileSync(puppetfilePath, puppetfileContent);
-    await TestHelper.closeAllEditors();
+    
+    // Wait a bit to ensure file system operations complete
+    await TestHelper.wait(100);
   });
 
   teardown(async () => {
@@ -107,13 +112,19 @@ mod 'internal-module',
   });
 
   test('Complete workflow: Update specific module interactively', async () => {
-    // Step 1: Open Puppetfile
+    // Step 1: Ensure we close all editors and reopen fresh
+    await TestHelper.closeAllEditors();
+    
     const puppetfileUri = vscode.Uri.file(puppetfilePath);
     const doc = await vscode.workspace.openTextDocument(puppetfileUri);
     const editor = await vscode.window.showTextDocument(doc);
     
-    // Step 2: Position cursor on stdlib module
-    const stdlibLine = TestHelper.findLineContaining(doc, "'puppetlabs-stdlib', '8.5.0'");
+    // Step 2: Position cursor on stdlib module - look for the module name rather than specific version
+    const stdlibLine = TestHelper.findLineContaining(doc, "puppetlabs-stdlib");
+    
+    // Validate that we found the line
+    assert.ok(stdlibLine >= 0, `Should find puppetlabs-stdlib line. Document content: ${doc.getText()}`);
+    
     editor.selection = new vscode.Selection(stdlibLine, 0, stdlibLine, 0);
     
     // Step 3: Show hover to check available versions
