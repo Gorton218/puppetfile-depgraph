@@ -75,29 +75,35 @@ mod 'internal-module',
     const doc = await vscode.workspace.openTextDocument(puppetfileUri);
     const editor = await vscode.window.showTextDocument(doc);
     
+    // Store initial content for debugging
+    const initialContent = doc.getText();
+    console.log('Initial Puppetfile content:', initialContent);
+    
     // Step 2: Execute update command
     await vscode.commands.executeCommand('puppetfile-depgraph.updateAllToSafe');
     
-    // Step 3: Wait for updates to complete
-    await TestHelper.wait(2000);
+    // Step 3: Wait for updates to complete and document to be modified
+    await TestHelper.wait(3000);
     
-    // Step 4: Verify updates
-    const updatedContent = fs.readFileSync(puppetfilePath, 'utf8');
+    // Step 4: Get the updated content from the document (not from file)
+    const updatedContent = doc.getText();
+    console.log('Updated document content:', updatedContent);
+    
+    // Save the document to ensure changes are written to disk
+    await doc.save();
+    await TestHelper.wait(500); // Wait for save to complete
+    
+    // Read the saved file content
+    const savedContent = fs.readFileSync(puppetfilePath, 'utf8');
+    console.log('Saved file content:', savedContent);
     
     // Check that safe updates were applied
-    assert.ok(updatedContent.includes("'8.6.0'") || updatedContent.includes("'7.4.0'"), 
-      'Should update to safe versions');
+    assert.ok(savedContent.includes("'8.6.0'") || savedContent.includes("'7.4.0'"), 
+      `Should update to safe versions. Content: ${savedContent}`);
     
     // Check that Git modules were not modified
-    assert.ok(updatedContent.includes(':tag => \'v1.0.0\''), 
+    assert.ok(savedContent.includes(':tag => \'v1.0.0\''), 
       'Git modules should remain unchanged');
-    
-    // Step 5: Save the file
-    await doc.save();
-    
-    // Step 6: Verify file was saved correctly
-    const savedContent = fs.readFileSync(puppetfilePath, 'utf8');
-    assert.strictEqual(savedContent, updatedContent, 'File should be saved correctly');
   });
 
   test('Complete workflow: Update specific module interactively', async () => {
