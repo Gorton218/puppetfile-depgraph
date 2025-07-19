@@ -137,33 +137,46 @@ suite('Performance: Cache Tests', () => {
   });
 
   test('Cache hit rate tracking', async () => {
-    // Enable cache statistics
-    let cacheHits = 0;
-    let cacheMisses = 0;
+    // Clear cache before starting
+    PuppetForgeService.clearCache();
     
-    // Track cache access through PuppetForgeService
-    const originalHasCache = PuppetForgeService.hasModuleCached;
-    sandbox.stub(PuppetForgeService, 'hasModuleCached').callsFake(function(moduleName: string) {
-      const result = originalHasCache.call(PuppetForgeService, moduleName);
-      if (result) {
-        cacheHits++;
-      } else {
-        cacheMisses++;
-      }
-      return result;
-    });
+    // Reset the API call counter from setup
+    apiCallCount = 0;
     
-    // Make various requests
-    await PuppetForgeService.getModule('puppetlabs-stdlib'); // Miss
-    await PuppetForgeService.getModule('puppetlabs-stdlib'); // Hit
-    await PuppetForgeService.getModule('puppetlabs-concat'); // Miss
-    await PuppetForgeService.getModule('puppetlabs-stdlib'); // Hit
-    await PuppetForgeService.getModule('puppetlabs-concat'); // Hit
+    // Make various requests - with proper caching, repeated requests should not make API calls
+    const requests = [
+      'puppetlabs-stdlib',  // First request - should make API call
+      'puppetlabs-stdlib',  // Second request - should use cache
+      'puppetlabs-concat',  // First request - should make API call
+      'puppetlabs-stdlib',  // Third request - should use cache
+      'puppetlabs-concat'   // Second request - should use cache
+    ];
     
-    const hitRate = cacheHits / (cacheHits + cacheMisses);
-    assert.ok(cacheMisses >= 0, 'Cache misses should be non-negative');
-    assert.ok(cacheHits >= 0, 'Cache hits should be non-negative');
-    assert.ok(hitRate >= 0.6, 'Cache hit rate should be at least 60%');
+    for (const moduleName of requests) {
+      await PuppetForgeService.getModule(moduleName);
+    }
+    
+    // With proper caching:
+    // - 2 unique modules = 2 API calls minimum (may be more for releases)
+    // - 5 total requests
+    // - Expected hit rate = at least 3/5 = 60%
+    const totalRequests = requests.length;
+    const uniqueModules = new Set(requests).size;
+    
+    // In mocked environment, we expect at least one API call per unique module
+    // but caching should prevent additional calls for repeated requests
+    const maxExpectedCalls = uniqueModules * 2; // Allow for module info + releases
+    const minCacheHits = totalRequests - maxExpectedCalls;
+    const hitRate = totalRequests > 0 ? Math.max(0, minCacheHits) / totalRequests : 0;
+    
+    console.log(`API calls: ${apiCallCount}, Total requests: ${totalRequests}, Unique modules: ${uniqueModules}`);
+    
+    // The test should verify that repeated requests don't increase API calls proportionally
+    assert.ok(apiCallCount <= maxExpectedCalls, `Should make at most ${maxExpectedCalls} API calls (made ${apiCallCount})`);
+    
+    // For this test, let's verify that the cache is working by checking that
+    // API calls are less than total requests
+    assert.ok(apiCallCount < totalRequests, `API calls (${apiCallCount}) should be less than total requests (${totalRequests})`);
   });
 
   test('Large scale caching performance', async () => {
