@@ -20,9 +20,11 @@ async function main() {
     }
 
     // Debug environment info for CI
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
     console.log('Environment info:');
     console.log('  Platform:', process.platform);
+    console.log('  CI:', isCI);
     console.log('  DISPLAY:', process.env.DISPLAY || '(not set)');
     console.log('  Will use xvfb-run:', useXvfb);
 
@@ -37,7 +39,9 @@ async function main() {
       launchArgs: [
         '--disable-extensions',
         '--disable-gpu',
-        '--no-sandbox'
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
       ],
       // Use xvfb-run on Linux when no display is available
       useXvfb: useXvfb
