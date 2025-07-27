@@ -11,6 +11,15 @@ yarn-error.log*
 out/
 dist/
 *.js.map
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Prevent compiled JS files in source directory
+src/**/*.js
+src/**/*.js.map
+test/**/*.js
+test/**/*.js.map
+test/**/tsconfig.json
 
 # VS Code extension packaging
 *.vsix
@@ -56,6 +65,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# SonarLint
+.sonarlint/
 
 # Temporary files
 *.tmp

@@ -1,0 +1,23 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "../../out",
+        "rootDir": "../../",
+        "types": ["node", "mocha", "sinon", "vscode"],
+        "resolveJsonModule": true,
+        "declaration": true
+    },
+    "include": [
+        "../../src/**/*.ts",
+        "./**/*.ts"
+    ],
+    "exclude": [
+        "../../node_modules",
+        "../../.vscode-test",
+        "../../claude-temp",
+        "../../test/unit",
+        "../../test/e2e",
+        "../../test/api",
+        "../../test/performance"
+    ]
+}

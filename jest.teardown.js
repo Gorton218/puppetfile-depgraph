@@ -1,5 +1,5 @@
 // Global teardown for Jest
-const { PuppetForgeService } = require('./out/puppetForgeService');
+const { PuppetForgeService } = require('./out/src/services/puppetForgeService');
 
 module.exports = async () => {
     // Cleanup any HTTP agents

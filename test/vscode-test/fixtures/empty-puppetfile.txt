@@ -1,0 +1,2 @@
+# Empty Puppetfile for edge case testing
+forge 'https://forge.puppet.com'

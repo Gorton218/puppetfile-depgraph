@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { UpgradePlan, UpgradePlannerService } from './upgradePlannerService';
-import { PuppetfileUpdateService, UpdateResult } from '../puppetfileUpdateService';
+import { PuppetfileUpdateService, UpdateResult } from './puppetfileUpdateService';
 import { PuppetfileParser } from '../puppetfileParser';
 import { PuppetfileCodeLensProvider } from '../puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from './upgradeDiffCodeLensProvider';

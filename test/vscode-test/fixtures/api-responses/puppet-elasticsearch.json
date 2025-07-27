@@ -1,0 +1,161 @@
+{
+  "name": "puppet-elasticsearch",
+  "slug": "puppet-elasticsearch",
+  "owner": {
+    "username": "puppet",
+    "slug": "puppet"
+  },
+  "current_release": {
+    "version": "9.0.0",
+    "metadata": {
+      "name": "puppet-elasticsearch",
+      "version": "9.0.0",
+      "dependencies": [
+        {
+          "name": "puppet/elastic_stack",
+          "version_requirement": ">= 8.0.0 < 10.0.0"
+        },
+        {
+          "name": "puppetlabs/java",
+          "version_requirement": ">= 1.0.0 < 11.0.0"
+        },
+        {
+          "name": "puppetlabs/java_ks",
+          "version_requirement": ">= 1.5.0 < 6.0.0"
+        },
+        {
+          "name": "puppetlabs/stdlib",
+          "version_requirement": ">= 6.1.0 < 10.0.0"
+        }
+      ]
+    },
+    "created_at": "2024-02-21 15:13:30 -0800"
+  },
+  "releases": [
+    {
+      "version": "9.0.0",
+      "created_at": "2024-02-21 15:13:30 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": [
+          {
+            "name": "puppet/elastic_stack",
+            "version_requirement": ">= 8.0.0 < 10.0.0"
+          },
+          {
+            "name": "puppetlabs/java",
+            "version_requirement": ">= 1.0.0 < 11.0.0"
+          },
+          {
+            "name": "puppetlabs/java_ks",
+            "version_requirement": ">= 1.5.0 < 6.0.0"
+          },
+          {
+            "name": "puppetlabs/stdlib",
+            "version_requirement": ">= 6.1.0 < 10.0.0"
+          }
+        ]
+      }
+    },
+    {
+      "version": "8.1.0",
+      "created_at": "2023-01-05 02:12:25 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": [
+          {
+            "name": "puppet/elastic_stack",
+            "version_requirement": ">= 8.0.0 < 9.0.0"
+          },
+          {
+            "name": "puppetlabs/java",
+            "version_requirement": ">= 1.0.0 < 9.0.0"
+          },
+          {
+            "name": "puppetlabs/java_ks",
+            "version_requirement": ">= 1.5.0 < 5.0.0"
+          },
+          {
+            "name": "puppetlabs/stdlib",
+            "version_requirement": ">= 4.13.0 < 9.0.0"
+          }
+        ]
+      }
+    },
+    {
+      "version": "8.0.2",
+      "created_at": "2022-04-08 11:05:33 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": [
+          {
+            "name": "puppet/elastic_stack",
+            "version_requirement": ">= 8.0.0 < 9.0.0"
+          },
+          {
+            "name": "richardc/datacat",
+            "version_requirement": ">= 0.6.2 < 1.0.0"
+          },
+          {
+            "name": "puppetlabs/java",
+            "version_requirement": ">= 1.0.0 < 9.0.0"
+          },
+          {
+            "name": "puppetlabs/stdlib",
+            "version_requirement": ">= 4.13.0 < 9.0.0"
+          }
+        ]
+      }
+    },
+    {
+      "version": "8.0.1",
+      "created_at": "2022-03-18 00:59:25 -0700",
+      "supported": true,
+      "metadata": {
+        "dependencies": [
+          {
+            "name": "puppet/elastic_stack",
+            "version_requirement": ">= 8.0.0 < 9.0.0"
+          },
+          {
+            "name": "richardc/datacat",
+            "version_requirement": ">= 0.6.2 < 1.0.0"
+          },
+          {
+            "name": "puppetlabs/java",
+            "version_requirement": ">= 1.0.0 < 8.0.0"
+          },
+          {
+            "name": "puppetlabs/stdlib",
+            "version_requirement": ">= 4.13.0 < 9.0.0"
+          }
+        ]
+      }
+    },
+    {
+      "version": "8.0.0",
+      "created_at": "2022-01-07 13:53:54 -0800",
+      "supported": true,
+      "metadata": {
+        "dependencies": [
+          {
+            "name": "puppet/elastic_stack",
+            "version_requirement": ">= 8.0.0 < 9.0.0"
+          },
+          {
+            "name": "richardc/datacat",
+            "version_requirement": ">= 0.6.2 < 1.0.0"
+          },
+          {
+            "name": "puppetlabs/java",
+            "version_requirement": ">= 1.0.0 < 8.0.0"
+          },
+          {
+            "name": "puppetlabs/stdlib",
+            "version_requirement": ">= 4.13.0 < 9.0.0"
+          }
+        ]
+      }
+    }
+  ]
+}

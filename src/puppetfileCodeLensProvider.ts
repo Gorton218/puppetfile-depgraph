@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser } from './puppetfileParser';
-import { PuppetForgeService } from './puppetForgeService';
-import { PuppetfileUpdateService } from './puppetfileUpdateService';
+import { PuppetForgeService } from './services/puppetForgeService';
+import { PuppetfileUpdateService } from './services/puppetfileUpdateService';
 import { showTemporaryMessage } from './extension';
 
 /**
@@ -10,6 +10,22 @@ import { showTemporaryMessage } from './extension';
 export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
+    private documentChangeListener: vscode.Disposable;
+
+    constructor() {
+        this.documentChangeListener = vscode.workspace.onDidChangeTextDocument(event => {
+            if (event.document.languageId === 'puppetfile') {
+                this.refresh();
+            }
+        });
+    }
+
+    /**
+     * Dispose the event listener
+     */
+    public dispose(): void {
+        this.documentChangeListener.dispose();
+    }
 
     /**
      * Refresh CodeLenses when upgrades are available
@@ -29,6 +45,11 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
         token: vscode.CancellationToken
     ): Promise<vscode.CodeLens[]> {
         if (document.languageId !== 'puppetfile') {
+            return [];
+        }
+        
+        // Don't provide code lenses for diff documents
+        if (document.uri.scheme === 'puppetfile-diff') {
             return [];
         }
 
