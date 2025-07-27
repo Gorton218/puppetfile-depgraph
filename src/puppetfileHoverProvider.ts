@@ -1,14 +1,16 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
-import { PuppetForgeService, ForgeModule } from './puppetForgeService';
-import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
-import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
-import { CacheService } from './cacheService';
+import { PuppetForgeService, ForgeModule } from './services/puppetForgeService';
+import { GitMetadataService, GitModuleMetadata } from './services/gitMetadataService';
+import { VersionCompatibilityService, VersionCompatibility } from './services/versionCompatibilityService';
+import { CacheService } from './services/cacheService';
 
 /**
  * Provides hover information for Puppetfile modules
  */
 export class PuppetfileHoverProvider implements vscode.HoverProvider {
+    private hoverCache = new Map<string, { hover: vscode.Hover, timestamp: number }>();
+    private readonly CACHE_TTL = 5000; // Cache for 5 seconds
 
     async provideHover(
         document: vscode.TextDocument,
@@ -32,6 +34,13 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         const module = this.parseModuleFromPosition(document, position);
         if (!module) {
             return null;
+        }
+
+        // Check cache first
+        const cacheKey = `${document.uri.toString()}:${module.name}:${module.version}`;
+        const cached = this.hoverCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
+            return cached.hover;
         }
 
         // Check if the cursor is over the module name
@@ -60,7 +69,9 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             ]);
 
             if (moduleInfo) {
-                return new vscode.Hover(moduleInfo);
+                const hover = new vscode.Hover(moduleInfo);
+                this.hoverCache.set(cacheKey, { hover: hover, timestamp: Date.now() });
+                return hover;
             }
         } catch (error) {
             console.warn(`Error in hover provider for ${module.name}:`, error);

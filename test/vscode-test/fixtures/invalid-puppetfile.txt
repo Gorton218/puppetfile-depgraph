@@ -1,0 +1,17 @@
+# Invalid Puppetfile for error testing
+forge 'https://forge.puppet.com'
+
+# Missing quotes
+mod puppetlabs-stdlib, 8.5.0
+
+# Invalid version format  
+mod 'puppetlabs-concat', 'invalid-version'
+
+# Incomplete git module
+mod 'broken-module',
+  :git => 'https://github.com/example/broken.git'
+  # Missing comma and tag/branch
+
+# Duplicate module
+mod 'puppetlabs-apache', '10.0.0'
+mod 'puppetlabs-apache', '11.0.0'
