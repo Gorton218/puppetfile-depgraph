@@ -3,7 +3,7 @@
     "compilerOptions": {
         "outDir": "../../out",
         "rootDir": "../../",
-        "types": ["node", "mocha", "sinon", "vscode", "assert"],
+        "types": ["node", "mocha", "sinon", "vscode"],
         "resolveJsonModule": true
     },
     "include": [
