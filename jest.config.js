@@ -1,29 +1,17 @@
 module.exports = {
-  preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src/test'],
+  roots: ['<rootDir>/test/unit'],
   testMatch: [
     '**/**.test.ts'
   ],
-  testPathIgnorePatterns: [
-    'node_modules/'
-  ],
   transform: {
-    '^.+\\.ts$': ['ts-jest', {
-      tsconfig: {
-        isolatedModules: true
-      }
-    }]
+    '^.+\.ts$': ['ts-jest', {
+      tsconfig: '<rootDir>/tsconfig.test.json'
+    }],
   },
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.test.ts',
-    '!src/**/*.spec.ts',
-    '!src/test/**/*'
-  ],
+  moduleNameMapper: {
+    "^ts-jest$": "<rootDir>/node_modules/ts-jest",
+  },
   moduleFileExtensions: ['ts', 'js', 'json'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   globalTeardown: '<rootDir>/jest.teardown.js',

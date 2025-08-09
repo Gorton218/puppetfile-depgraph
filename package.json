@@ -13,7 +13,7 @@
   "activationEvents": [
     "onLanguage:puppetfile"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/src/extension.js",
   "contributes": {
     "languages": [
       {
@@ -111,19 +111,24 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "tsc -p tsconfig.build.json",
+    "watch": "tsc -watch -p tsconfig.build.json",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "jest",
     "test:unit": "jest",
-    "test:integration": "node ./scripts/runTests.js",
+    "test:vscode": "npm run compile && npx tsc -p ./test/vscode-test/tsconfig.json && node ./scripts/runTests.js",
+    "test:e2e": "npm run compile && npx tsc -p ./test/e2e/tsconfig.json && node ./scripts/runTests.js --e2e",
+    "test:performance": "jest --roots=test/e2e/performance --testMatch='**/*.test.ts'",
     "test:coverage": "jest --coverage",
     "test:debug": "jest --detectOpenHandles",
-    "test:all": "npm run test:coverage && npm run test:integration",
+    "test:api-integration": "jest --roots=test/api --testMatch='**/*.test.ts' --testTimeout=30000 --coverage",
+    "test:all": "npm run test:coverage && npm run test:vscode && npm run test:e2e",
+    "test:regression": "npm run test:all",
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
@@ -136,12 +141,14 @@
     "@vscode/vsce": "^3.5.0",
     "eslint": "^9.29.0",
     "jest": "^30.0.0",
+    "jest-extended": "^6.0.0",
     "sinon": "^21.0.0",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "axios": "^1.10.0",
+    "glob": "^11.0.3",
     "https-proxy-agent": "^7.0.6"
   },
   "repository": {

@@ -1,8 +1,8 @@
 import { PuppetModule } from '../puppetfileParser';
-import { PuppetForgeService, ForgeVersion } from '../puppetForgeService';
-import { VersionCompatibilityService, VersionCompatibility } from '../versionCompatibilityService';
+import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
+import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
 import { VersionParser } from '../utils/versionParser';
-import { CacheService } from '../cacheService';
+import { CacheService } from './cacheService';
 
 export interface UpgradeCandidate {
     module: PuppetModule;

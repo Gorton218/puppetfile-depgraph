@@ -1,0 +1,20 @@
+# Simple Puppetfile for testing
+forge 'https://forge.puppet.com'
+
+# Forge modules with different version formats
+mod 'puppetlabs-stdlib', '8.5.0'
+mod 'puppetlabs-concat', '7.2.0'
+mod 'puppetlabs-apache', '10.1.0'
+mod 'example-test', '1.0.0'
+
+# Module without version (latest)
+mod 'puppetlabs-mysql'
+
+# Git modules
+mod 'custom-module',
+  :git => 'https://github.com/example/custom-module.git',
+  :tag => 'v1.2.3'
+
+mod 'another-module',
+  :git => 'https://github.com/example/another-module.git',
+  :branch => 'main'

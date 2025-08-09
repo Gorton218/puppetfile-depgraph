@@ -1,0 +1,18 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "../../out/test/e2e",
+        "rootDir": "../..",
+        "types": ["node", "mocha"],
+        "esModuleInterop": true
+    },
+    "include": [
+        "**/*.ts",
+        "../vscode-test/testHelper.ts",
+        "../vscode-test/mockPuppetForgeService.ts",
+        "../vscode-test/testSetup.ts"
+    ],
+    "exclude": [
+        "node_modules/@types/jest"
+    ]
+}
