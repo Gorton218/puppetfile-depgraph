@@ -188,8 +188,8 @@ The extension includes comprehensive test coverage:
 Run tests with:
 - `npm test` - Run all tests (unit + integration + e2e)
 - `npm run test:unit` - Unit tests only
-- `npm run test:vscode` - VS Code integration tests
-- `npm run test:e2e` - End-to-end workflow tests
+- `npm run test:vscode` - VS Code integration tests (supports headless mode for CI)
+- `npm run test:e2e` - End-to-end workflow tests (supports headless mode for CI)
 - `npm run test:performance` - Performance benchmarks
 - `npm run test:api-integration` - Real API tests (requires internet)
 
