@@ -76,7 +76,7 @@ export class PuppetfileParser {
                     // 2. Is just a module name (no version or git options) and the next line has git options as continuation
                     const isJustModuleName = /^mod\s*['"][^'"]+['"]\s*$/.test(cleanLine);
                     const nextLineHasGitOptions = i + 1 < lines.length && 
-                        lines[i + 1].trim().match(/^\s*:git\s*=>/); // Must start with :git, not just contain it
+                        /^\s*:git\s*=>/.exec(lines[i + 1].trim()) !== null; // Must start with :git, not just contain it
                     
                     
                     if ((cleanLine.endsWith(',') && !cleanLine.includes(';')) || 
