@@ -122,6 +122,35 @@ describe('PuppetfileCodeLensProvider', () => {
             expect(result[0].command?.command).toBe('puppetfile-depgraph.applySingleUpgrade');
         });
 
+        test('should handle unversioned modules correctly', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: undefined, // Unversioned module
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValue({
+                hasUpdate: true,
+                latestVersion: '2.0.0',
+                currentVersion: undefined
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toHaveLength(1);
+            expect(result[0].command?.tooltip).toContain('unversioned');
+            expect(result[0].command?.tooltip).toContain('Update apache from unversioned to 2.0.0');
+        });
+
         test('should handle cancellation token', async () => {
             // Arrange
             const { PuppetfileParser } = require('../../src/puppetfileParser');

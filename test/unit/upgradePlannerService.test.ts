@@ -16,6 +16,52 @@ describe('UpgradePlannerService', () => {
     });
 
     describe('createUpgradePlan', () => {
+        test('should handle unversioned modules correctly', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: undefined, source: 'forge', line: 1 },
+                { name: 'puppetlabs/apache', version: null as any, source: 'forge', line: 2 }
+            ];
+
+            // Mock Forge service responses
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                name: 'puppetlabs-stdlib',
+                slug: 'puppetlabs-stdlib',
+                owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+                downloads: 1000,
+                feedback_score: 5,
+                releases: [
+                    { 
+                        version: '9.0.0', 
+                        created_at: '2023-01-01',
+                        updated_at: '2023-01-01',
+                        downloads: 100,
+                        file_size: 1000,
+                        file_md5: 'abc123',
+                        file_uri: 'http://example.com',
+                        metadata: {} 
+                    }
+                ],
+                current_release: {
+                    version: '9.0.0',
+                    metadata: {
+                        dependencies: []
+                    }
+                } as any
+            } as any);
+
+            mockVersionCompatibilityService.checkVersionCompatibility.mockResolvedValue({
+                isCompatible: true,
+                conflicts: [],
+                warnings: []
+            });
+
+            const plan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(plan.candidates).toHaveLength(2);
+            expect(plan.candidates[0].currentVersion).toBe('unversioned');
+            expect(plan.candidates[1].currentVersion).toBe('unversioned');
+            expect(plan.candidates[0].isUpgradeable).toBe(true);
+        });
         test('should create upgrade plan with upgradeable modules', async () => {
             const modules: PuppetModule[] = [
                 { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 },

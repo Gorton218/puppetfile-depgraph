@@ -232,6 +232,48 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             );
         });
 
+        test('should handle unversioned modules in upgrade plan', async () => {
+            const originalContent = 'test content';
+            const upgradePlan: UpgradePlan = {
+                candidates: [
+                    {
+                        module: {
+                            name: 'puppetlabs/apache',
+                            source: 'forge' as const,
+                            version: undefined, // Unversioned module
+                            line: 1
+                        },
+                        currentVersion: undefined,
+                        maxSafeVersion: '5.0.0',
+                        availableVersions: ['5.0.0', '4.0.0'],
+                        isUpgradeable: true,
+                        blockedBy: []
+                    }
+                ] as UpgradeCandidate[],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+
+            (mockVscode as any)._mockShowQuickPick.mockResolvedValue({
+                label: 'Show All Safe Upgrades',
+                action: 'all'
+            });
+
+            await UpgradeDiffProvider.showInteractiveUpgradePlanner(originalContent, upgradePlan);
+
+            // Should handle unversioned modules without errors
+            expect((mockVscode as any)._mockExecuteCommand).toHaveBeenCalledWith(
+                'vscode.diff',
+                expect.anything(),
+                expect.anything(),
+                expect.stringContaining('Puppetfile Upgrade Plan'),
+                expect.anything()
+            );
+        });
+
         test('should handle "all" action selection', async () => {
             const originalContent = 'test content';
             const upgradePlan: UpgradePlan = {
