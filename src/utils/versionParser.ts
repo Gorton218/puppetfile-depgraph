@@ -1,7 +1,7 @@
 import { VersionRequirement, VersionRange } from '../types/dependencyTypes';
 
 export class VersionParser {
-  private static versionRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
+  private static readonly versionRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
   
   static parse(constraint: string): VersionRequirement[] {
     const requirements: VersionRequirement[] = [];
