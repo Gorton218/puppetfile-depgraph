@@ -3,6 +3,7 @@ import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
 import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
 import { VersionParser } from '../utils/versionParser';
 import { CacheService } from './cacheService';
+import { getVersionDisplay } from '../utils/versionUtils';
 
 export interface UpgradeCandidate {
     module: PuppetModule;
@@ -77,7 +78,7 @@ export class UpgradePlannerService {
         allModules: PuppetModule[]
     ): Promise<UpgradeCandidate> {
         // Handle unversioned modules by treating them as having no current version
-        const currentVersion = module.version ?? 'unversioned';
+        const currentVersion = getVersionDisplay(module.version);
         
         try {
             // Get all available versions for this module
@@ -174,7 +175,7 @@ export class UpgradePlannerService {
         }
         
         // No safe upgrade found, return current version or 'unversioned' for unversioned modules
-        return module.version ?? 'unversioned';
+        return getVersionDisplay(module.version);
     }
     
     /**
