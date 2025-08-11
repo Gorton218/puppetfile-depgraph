@@ -34,7 +34,7 @@ suite('Code Lens Provider Integration Tests', () => {
       const lineText = document.lineAt(line).text;
       
       // Update the version in the line
-      const versionMatch = lineText.match(/(['"])([^'"]+)\1\s*,\s*(['"])([^'"]+)\3/);
+      const versionMatch = /(['"])([^'"]+)\1\s*,\s*(['"])([^'"]+)\3/.exec(lineText);
       if (versionMatch) {
         const newLineText = lineText.replace(versionMatch[0], `${versionMatch[1]}${versionMatch[2]}${versionMatch[1]}, ${versionMatch[3]}${newVersion}${versionMatch[3]}`);
         const edit = new vscode.WorkspaceEdit();
