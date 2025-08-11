@@ -495,7 +495,7 @@ export function activate(context: vscode.ExtensionContext) {
 - Cache info for all modules
 
 ## Repository
-${packageJSON.repository?.url || 'Not specified'}
+${packageJSON.repository?.url ?? 'Not specified'}
 
 ---
 Built with ❤️ for the Puppet community`;

@@ -407,7 +407,7 @@ export class UpgradeDiffProvider {
                 
                 // Generate summary
                 const summary = updates.map(u => 
-                    `• ${u.moduleName}: ${u.currentVersion || 'unversioned'} → ${u.newVersion}`
+                    `• ${u.moduleName}: ${u.currentVersion ?? 'unversioned'} → ${u.newVersion}`
                 ).join('\n');
                 
                 vscode.window.showInformationMessage(
@@ -451,7 +451,7 @@ export class UpgradeDiffProvider {
             // Create quick pick items
             const items = upgradeableCandidates.map(candidate => ({
                 label: `$(package) ${candidate.module.name}`,
-                description: `${candidate.currentVersion || 'unversioned'} → ${candidate.maxSafeVersion}`,
+                description: `${candidate.currentVersion ?? 'unversioned'} → ${candidate.maxSafeVersion}`,
                 detail: candidate.availableVersions[0] !== candidate.maxSafeVersion 
                     ? `Latest: ${candidate.availableVersions[0]} (using safe version)`
                     : undefined,
@@ -495,7 +495,7 @@ export class UpgradeDiffProvider {
                 
                 // Generate summary
                 const summary = updates.map(u => 
-                    `• ${u.moduleName}: ${u.currentVersion || 'unversioned'} → ${u.newVersion}`
+                    `• ${u.moduleName}: ${u.currentVersion ?? 'unversioned'} → ${u.newVersion}`
                 ).join('\n');
                 
                 vscode.window.showInformationMessage(
@@ -537,7 +537,7 @@ export class UpgradeDiffProvider {
             }, async (progress) => {
                 progress.report({ 
                     increment: 0, 
-                    message: `${currentVersion || 'unversioned'} → ${newVersion}` 
+                    message: `${currentVersion ?? 'unversioned'} → ${newVersion}` 
                 });
                 
                 // Helper function to check if a document is a Puppetfile
