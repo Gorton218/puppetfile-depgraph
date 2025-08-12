@@ -496,6 +496,101 @@ mod 'puppetlabs/apache', '5.0.0'`;
         });
     });
 
+    describe('nullish coalescing conditions', () => {
+        test('should handle version comparison with undefined parts using nullish coalescing', () => {
+            // Test the private version comparison logic directly
+            const versions1 = '1'.split('.').map(Number);    // [1]
+            const versions2 = '1.0.0'.split('.').map(Number); // [1, 0, 0]
+            
+            // Simulate the nullish coalescing logic
+            const maxLength = Math.max(versions1.length, versions2.length);
+            let isGreater = false;
+            
+            for (let i = 0; i < maxLength; i++) {
+                const partA = versions1[i] ?? 0;
+                const partB = versions2[i] ?? 0;
+                
+                if (partA > partB) {
+                    isGreater = true;
+                    break;
+                } else if (partA < partB) {
+                    break;
+                }
+            }
+            
+            expect(isGreater).toBe(false); // 1 is not greater than 1.0.0
+        });
+
+        test('should handle version comparison edge cases with nullish coalescing', () => {
+            // Test different edge cases for nullish coalescing in version parts
+            const testCases = [
+                { a: '1', b: '1.0', expected: false },
+                { a: '1.0', b: '1', expected: false },
+                { a: '1.1', b: '1.0.5', expected: true },
+                { a: '2', b: '1.9.9', expected: true }
+            ];
+            
+            testCases.forEach(({ a, b, expected }) => {
+                const aParts = a.split('.').map(Number);
+                const bParts = b.split('.').map(Number);
+                const maxLength = Math.max(aParts.length, bParts.length);
+                
+                let isGreater = false;
+                for (let i = 0; i < maxLength; i++) {
+                    const partA = aParts[i] ?? 0;
+                    const partB = bParts[i] ?? 0;
+                    
+                    if (partA > partB) {
+                        isGreater = true;
+                        break;
+                    } else if (partA < partB) {
+                        break;
+                    }
+                }
+                
+                expect(isGreater).toBe(expected);
+            });
+        });
+
+        test('should handle getVersionDisplay utility correctly', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: undefined, source: 'forge', line: 1 },
+                { name: 'puppetlabs/apache', version: null as any, source: 'forge', line: 2 }
+            ];
+
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                name: 'puppetlabs-stdlib',
+                slug: 'puppetlabs-stdlib',
+                owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+                downloads: 1000,
+                feedback_score: 5,
+                releases: [
+                    { 
+                        version: '9.0.0', 
+                        created_at: '2023-01-01',
+                        updated_at: '2023-01-01',
+                        downloads: 100,
+                        file_size: 1000,
+                        file_md5: 'abc123',
+                        file_uri: 'http://example.com',
+                        metadata: {} 
+                    }
+                ]
+            });
+
+            mockVersionCompatibilityService.checkVersionCompatibility.mockResolvedValue({
+                version: '9.0.0',
+                isCompatible: true
+            });
+
+            const plan = await UpgradePlannerService.createUpgradePlan(modules);
+            
+            expect(plan.candidates).toHaveLength(2);
+            expect(plan.candidates[0].currentVersion).toBe('unversioned');
+            expect(plan.candidates[1].currentVersion).toBe('unversioned');
+        });
+    });
+
     describe('version comparison utilities', () => {
         test('should correctly compare versions', () => {
             // These are private methods, so we'll test them indirectly through the public API

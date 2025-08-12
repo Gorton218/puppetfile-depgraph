@@ -591,6 +591,32 @@ something else mod related but not a module`;
         expect(result.modules[0].version).toBeUndefined();
     });
 
+    test('should handle git module with neither tag nor ref match', () => {
+        const content = `mod 'git-module', :git => 'https://github.com/user/repo.git'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('git-module');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].gitTag).toBeUndefined();
+        expect(result.modules[0].gitRef).toBeUndefined();
+    });
+
+    test('should handle git module with only ref match (no tag)', () => {
+        const content = `mod 'git-module', :git => 'https://github.com/user/repo.git', :ref => 'abc123'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('git-module');
+        expect(result.modules[0].source).toBe('git');
+        expect(result.modules[0].gitUrl).toBe('https://github.com/user/repo.git');
+        expect(result.modules[0].gitRef).toBe('abc123');
+        expect(result.modules[0].gitTag).toBeUndefined();
+    });
+
 
     test('should handle isPuppetfile method with various file patterns', () => {
         // Test file ending with "puppetfile"

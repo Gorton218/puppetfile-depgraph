@@ -232,6 +232,20 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             );
         });
 
+        test('should handle formatVersionTransition with undefined/null versions', () => {
+            // Import the utility function to test nullish coalescing directly
+            const { formatVersionTransition } = require('../../src/utils/versionUtils');
+            
+            // Test the nullish coalescing logic for version transitions
+            const result1 = formatVersionTransition(undefined, '9.0.0');
+            const result2 = formatVersionTransition(null, '9.0.0');
+            const result3 = formatVersionTransition('8.0.0', undefined ?? 'unknown');
+            
+            expect(result1).toBe('unversioned → 9.0.0');
+            expect(result2).toBe('unversioned → 9.0.0'); 
+            expect(result3).toBe('8.0.0 → unknown');
+        });
+
         test('should handle unversioned modules in upgrade plan', async () => {
             const originalContent = 'test content';
             const upgradePlan: UpgradePlan = {

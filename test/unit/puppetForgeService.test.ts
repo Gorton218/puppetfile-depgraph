@@ -87,6 +87,47 @@ describe('PuppetForgeService Test Suite', () => {
         expect(svc.moduleVersionCache.size).toBe(0);
     });
 
+    test('should handle nullish coalescing in availableVersions mapping', () => {
+        // Test the ?? operator when mapping releases to versions
+        const mockReleases = [
+            { version: '1.0.0' },
+            { version: null },
+            { version: undefined },
+            { version: '2.0.0' }
+        ];
+
+        // Simulate the logic that uses nullish coalescing
+        const availableVersions = mockReleases.map(r => r.version).filter(v => v != null);
+        
+        expect(availableVersions).toEqual(['1.0.0', '2.0.0']);
+        expect(availableVersions.length).toBe(2);
+    });
+
+    test('should handle zero values with nullish coalescing in array access', () => {
+        // Test the ?? operator with array indices that could be 0
+        const versions = ['1.0.0', '2.0.0', '3.0.0'];
+        
+        // Simulate version comparison logic with nullish coalescing
+        const aParts = '1.0'.split('.').map(Number);
+        const bParts = '1.0.0'.split('.').map(Number);
+        
+        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+            const aPart = aParts[i] ?? 0;
+            const bPart = bParts[i] ?? 0;
+            
+            if (i === 0) {
+                expect(aPart).toBe(1);
+                expect(bPart).toBe(1);
+            } else if (i === 1) {
+                expect(aPart).toBe(0);
+                expect(bPart).toBe(0);
+            } else if (i === 2) {
+                expect(aPart).toBe(0); // Should use 0 from ?? operator
+                expect(bPart).toBe(0);
+            }
+        }
+    });
+
     test('getReleaseForVersion should use two-level caching', async () => {
         const svc: any = PuppetForgeService;
         

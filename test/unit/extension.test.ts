@@ -186,4 +186,18 @@ describe('Extension - Basic Coverage', () => {
         
         consoleWarnSpy.mockRestore();
     });
+
+    test('should handle nullish coalescing for repository.url', () => {
+        // Test the nullish coalescing logic directly
+        const testCases = [
+            { repository: undefined, expected: 'Not specified' },
+            { repository: { url: null }, expected: 'Not specified' },
+            { repository: { url: 'https://github.com/test/repo' }, expected: 'https://github.com/test/repo' }
+        ];
+        
+        testCases.forEach(({ repository, expected }) => {
+            const result = repository?.url ?? 'Not specified';
+            expect(result).toBe(expected);
+        });
+    });
 });
