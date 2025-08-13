@@ -1817,4 +1817,204 @@ describe('DependencyTreeService Test Suite', () => {
             // Should handle recursion properly without infinite loops
         });
     });
+
+    describe('Cancellation Token Support', () => {
+        test('should handle cancellation during initial module processing', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: '9.0.0', source: 'forge', line: 1 },
+                { name: 'puppetlabs/apache', version: '8.0.0', source: 'forge', line: 2 }
+            ];
+
+            const cancellationToken = { isCancellationRequested: true };
+            const result = await DependencyTreeService.buildDependencyTree(
+                modules,
+                undefined,
+                cancellationToken
+            );
+
+            expect(result).toEqual([]);
+        });
+
+        test('should handle cancellation during tree building', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: '9.0.0', source: 'forge', line: 1 }
+            ];
+
+            let callCount = 0;
+            const cancellationToken = {
+                get isCancellationRequested() {
+                    callCount++;
+                    // Cancel after a few calls to simulate cancellation during processing
+                    return callCount > 3;
+                }
+            };
+
+            const result = await DependencyTreeService.buildDependencyTree(
+                modules,
+                undefined,
+                cancellationToken
+            );
+
+            expect(result).toEqual([]);
+        });
+
+        test('should handle cancellation before conflict analysis', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: '9.0.0', source: 'forge', line: 1 }
+            ];
+
+            let callCount = 0;
+            const cancellationToken = {
+                get isCancellationRequested() {
+                    callCount++;
+                    // Cancel earlier in the process to ensure we exit before tree is built
+                    return callCount > 5;
+                }
+            };
+
+            const result = await DependencyTreeService.buildDependencyTree(
+                modules,
+                undefined,
+                cancellationToken
+            );
+
+            expect(result).toEqual([]);
+        });
+
+        test('should handle cancellation during dependency processing', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: '9.0.0', source: 'forge', line: 1 }
+            ];
+
+            // Mock the service to simulate a module with many dependencies
+            const originalGetModule = PuppetForgeService.getModule;
+            PuppetForgeService.getModule = jest.fn().mockResolvedValue({
+                current_release: {
+                    version: '9.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'dep1', version_requirement: '>= 1.0.0' },
+                            { name: 'dep2', version_requirement: '>= 1.0.0' },
+                            { name: 'dep3', version_requirement: '>= 1.0.0' }
+                        ]
+                    }
+                },
+                releases: [{ version: '9.0.0', metadata: { dependencies: [] } }]
+            });
+
+            let callCount = 0;
+            const cancellationToken = {
+                get isCancellationRequested() {
+                    callCount++;
+                    // Cancel very early to ensure we exit
+                    return callCount > 2;
+                }
+            };
+
+            const result = await DependencyTreeService.buildDependencyTree(
+                modules,
+                undefined,
+                cancellationToken
+            );
+
+            // Restore original function
+            PuppetForgeService.getModule = originalGetModule;
+
+            // Should return empty array due to cancellation
+            expect(result).toEqual([]);
+        });
+
+        test('should handle cancellation with git modules', async () => {
+            const modules: PuppetModule[] = [
+                { 
+                    name: 'mymodule', 
+                    source: 'git', 
+                    gitUrl: 'https://github.com/user/repo.git',
+                    gitTag: 'v1.0.0',
+                    line: 1 
+                }
+            ];
+
+            // Mock git metadata service
+            const originalGetMetadata = GitMetadataService.getModuleMetadataWithFallback;
+            GitMetadataService.getModuleMetadataWithFallback = jest.fn().mockResolvedValue({
+                dependencies: [
+                    { name: 'puppetlabs/stdlib', version_requirement: '>= 4.0.0' }
+                ]
+            });
+
+            const cancellationToken = {
+                isCancellationRequested: false
+            };
+
+            // Start the build
+            const resultPromise = DependencyTreeService.buildDependencyTree(
+                modules,
+                undefined,
+                cancellationToken
+            );
+
+            // Cancel mid-way
+            setTimeout(() => {
+                cancellationToken.isCancellationRequested = true;
+            }, 10);
+
+            const result = await resultPromise;
+
+            // Restore original function
+            GitMetadataService.getModuleMetadataWithFallback = originalGetMetadata;
+
+            // May return partial results or empty array depending on timing
+            expect(Array.isArray(result)).toBe(true);
+        });
+    });
+
+    describe('findBestMatchingVersion error handling', () => {
+        test('should handle parsing errors in findBestMatchingVersion', async () => {
+            // This test specifically covers the error path in findBestMatchingVersion (lines 667-669)
+            const modules: PuppetModule[] = [
+                { name: 'test/module', version: undefined, source: 'forge', line: 1 }
+            ];
+
+            // Mock the service to return a module with dependencies that have unparseable constraints
+            const originalGetModule = PuppetForgeService.getModule;
+            PuppetForgeService.getModule = jest.fn().mockResolvedValue({
+                current_release: {
+                    version: '1.0.0',
+                    metadata: {
+                        dependencies: [
+                            { name: 'dep/module', version_requirement: 'invalid constraint !!!' }
+                        ]
+                    }
+                },
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } }
+                ]
+            });
+
+            // Mock VersionParser to throw an error
+            const originalParse = VersionParser.parse;
+            VersionParser.parse = jest.fn().mockImplementation((constraint) => {
+                if (constraint.includes('invalid')) {
+                    throw new Error('Invalid constraint');
+                }
+                return originalParse.call(VersionParser, constraint);
+            });
+
+            const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+            await DependencyTreeService.buildDependencyTree(modules);
+
+            // The warning should be logged
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Could not parse constraint'),
+                expect.any(Error)
+            );
+
+            // Restore mocks
+            PuppetForgeService.getModule = originalGetModule;
+            VersionParser.parse = originalParse;
+            consoleWarnSpy.mockRestore();
+        });
+    });
 });

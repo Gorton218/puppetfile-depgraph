@@ -473,6 +473,68 @@ mod 'puppetlabs-apache', '2.11.0'`;
         expect(Array.isArray(result.errors)).toBe(true);
     });
 
+    // Test to cover line 162 - parseModuleLine error in accumulateMultiLineModule
+    test('should handle parseModuleLine error in multi-line accumulation', () => {
+        // Create a content that would trigger parseModuleLine to throw an error
+        // when called from accumulateMultiLineModule
+        const content = `mod "test",
+    :invalid_option => 'value'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        // The parser should handle the error gracefully
+        expect(Array.isArray(result.modules)).toBe(true);
+        expect(Array.isArray(result.errors)).toBe(true);
+    });
+
+    // Test to cover lines 258-267 - parseComplexModuleLine git module with tag/ref
+    test('should handle complex git module with tag using parseComplexModuleLine', () => {
+        // Create a content that triggers the complex module parsing path
+        const content = `mod 'complex-git-module', :git => 'https://github.com/user/repo.git', :tag => 'v2.0.0', :extra => 'option'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.errors.length).toBe(0);
+        expect(result.modules.length).toBe(1);
+        assertModule(result.modules[0], {
+            name: 'complex-git-module',
+            source: 'git',
+            gitUrl: 'https://github.com/user/repo.git',
+            gitTag: 'v2.0.0'
+        });
+    });
+
+    test('should handle complex git module with ref using parseComplexModuleLine', () => {
+        // Create a content that triggers the complex module parsing path
+        const content = `mod 'complex-git-ref', :git => 'https://github.com/user/repo.git', :ref => 'master', :extra => 'option'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.errors.length).toBe(0);
+        expect(result.modules.length).toBe(1);
+        assertModule(result.modules[0], {
+            name: 'complex-git-ref',
+            source: 'git',
+            gitUrl: 'https://github.com/user/repo.git',
+            gitRef: 'master'
+        });
+    });
+
+    test('should handle complex git module without tag or ref', () => {
+        // Create a content that triggers the complex module parsing path without tag/ref
+        const content = `mod 'complex-git-plain', :git => 'https://github.com/user/repo.git', :extra => 'option'`;
+        
+        const result = PuppetfileParser.parseContent(content);
+        
+        expect(result.errors.length).toBe(0);
+        expect(result.modules.length).toBe(1);
+        assertModule(result.modules[0], {
+            name: 'complex-git-plain',
+            source: 'git',
+            gitUrl: 'https://github.com/user/repo.git'
+        });
+    });
+
     // Test complex parsing scenarios that might trigger error paths
     test('should handle complex parsing edge cases', () => {
         const content = `
