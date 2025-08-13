@@ -193,8 +193,8 @@ export class VersionParser {
     if (patch1 !== patch2) {return patch1 - patch2;}
     
     // Handle pre-release versions
-    const pre1 = parse1[4] || '';
-    const pre2 = parse2[4] || '';
+    const pre1 = parse1[4] ?? '';
+    const pre2 = parse2[4] ?? '';
     
     if (!pre1 && pre2) {return 1;} // 1.0.0 > 1.0.0-beta
     if (pre1 && !pre2) {return -1;} // 1.0.0-beta < 1.0.0

@@ -178,7 +178,7 @@ export class DependencyTreeService {
         
         const node: DependencyNode = {
             name: module.name,
-            version: module.version || resolvedVersion,
+            version: module.version ?? resolvedVersion,
             source: module.source,
             children: [],
             depth,
@@ -259,7 +259,7 @@ export class DependencyTreeService {
                 if (depth > 0) {
                     progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`, 'tree');
                 }
-                const ref = module.gitTag || module.gitRef;
+                const ref = module.gitTag ?? module.gitRef;
                 const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 
                 if (gitMetadata?.dependencies) {
@@ -511,7 +511,7 @@ export class DependencyTreeService {
                 const forgeModule = await PuppetForgeService.getModule(
                     ModuleNameUtils.toSlashFormat(moduleName)
                 );
-                const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
+                const availableVersions = forgeModule?.releases?.map(r => r.version) ?? [];
 
                 // Analyze for conflicts
                 const result = ConflictAnalyzer.analyzeModule(
@@ -656,8 +656,8 @@ export class DependencyTreeService {
                 const bParts = b.split('.').map(Number);
                 
                 for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-                    const aPart = aParts[i] || 0;
-                    const bPart = bParts[i] || 0;
+                    const aPart = aParts[i] ?? 0;
+                    const bPart = bParts[i] ?? 0;
                     if (aPart !== bPart) {
                         return bPart - aPart; // Descending order
                     }

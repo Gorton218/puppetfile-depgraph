@@ -4,6 +4,7 @@ import { PuppetfileUpdateService, UpdateResult } from './puppetfileUpdateService
 import { PuppetfileParser } from '../puppetfileParser';
 import { PuppetfileCodeLensProvider } from '../puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from './upgradeDiffCodeLensProvider';
+import { formatVersionTransition } from '../utils/versionUtils';
 
 export interface DiffOptions {
     showUpgradeableLonly?: boolean;
@@ -407,7 +408,7 @@ export class UpgradeDiffProvider {
                 
                 // Generate summary
                 const summary = updates.map(u => 
-                    `• ${u.moduleName}: ${u.currentVersion || 'unversioned'} → ${u.newVersion}`
+                    `• ${u.moduleName}: ${formatVersionTransition(u.currentVersion, u.newVersion ?? 'unknown')}`
                 ).join('\n');
                 
                 vscode.window.showInformationMessage(
@@ -451,7 +452,7 @@ export class UpgradeDiffProvider {
             // Create quick pick items
             const items = upgradeableCandidates.map(candidate => ({
                 label: `$(package) ${candidate.module.name}`,
-                description: `${candidate.currentVersion || 'unversioned'} → ${candidate.maxSafeVersion}`,
+                description: formatVersionTransition(candidate.currentVersion, candidate.maxSafeVersion),
                 detail: candidate.availableVersions[0] !== candidate.maxSafeVersion 
                     ? `Latest: ${candidate.availableVersions[0]} (using safe version)`
                     : undefined,
@@ -495,7 +496,7 @@ export class UpgradeDiffProvider {
                 
                 // Generate summary
                 const summary = updates.map(u => 
-                    `• ${u.moduleName}: ${u.currentVersion || 'unversioned'} → ${u.newVersion}`
+                    `• ${u.moduleName}: ${formatVersionTransition(u.currentVersion, u.newVersion ?? 'unknown')}`
                 ).join('\n');
                 
                 vscode.window.showInformationMessage(
@@ -537,7 +538,7 @@ export class UpgradeDiffProvider {
             }, async (progress) => {
                 progress.report({ 
                     increment: 0, 
-                    message: `${currentVersion || 'unversioned'} → ${newVersion}` 
+                    message: formatVersionTransition(currentVersion, newVersion) 
                 });
                 
                 // Helper function to check if a document is a Puppetfile

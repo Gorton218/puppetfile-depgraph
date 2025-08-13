@@ -18,6 +18,43 @@ describe('GitMetadataService Test Suite', () => {
     sinon.restore();
   });
 
+  test('should handle undefined ref in cache key generation', async () => {
+    const gitUrl = 'https://github.com/theforeman/puppet-foreman.git';
+    const metadata = {
+      name: 'foreman',
+      version: '1.0.0',
+      dependencies: []
+    };
+
+    axiosGetStub.resolves({ data: metadata });
+
+    // Call with undefined ref
+    const result = await GitMetadataService.getGitModuleMetadata(gitUrl);
+    
+    expect(result).toEqual(metadata);
+    // Should use 'default' in cache key when ref is undefined
+    expect(GitMetadataService.isCached(gitUrl)).toBe(true);
+    expect(GitMetadataService.isCached(gitUrl, undefined)).toBe(true);
+  });
+
+  test('should handle empty string ref in cache key generation', async () => {
+    const gitUrl = 'https://github.com/theforeman/puppet-foreman.git';
+    const metadata = {
+      name: 'foreman',
+      version: '1.0.0',
+      dependencies: []
+    };
+
+    axiosGetStub.resolves({ data: metadata });
+
+    // Call with empty string ref
+    const result = await GitMetadataService.getGitModuleMetadata(gitUrl, '');
+    
+    expect(result).toEqual(metadata);
+    // Should preserve empty string in cache key
+    expect(GitMetadataService.isCached(gitUrl, '')).toBe(true);
+  });
+
   test('convertToRawUrl should handle GitHub URLs', () => {
     // Access private method for testing
     const convertToRawUrl = (GitMetadataService as any).convertToRawUrl;

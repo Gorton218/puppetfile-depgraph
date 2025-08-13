@@ -282,7 +282,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         // Try to fetch metadata.json from the Git repository
         if (module.gitUrl) {
             try {
-                const ref = module.gitTag || module.gitRef;
+                const ref = module.gitTag ?? module.gitRef;
                 console.debug(`Fetching Git metadata for ${module.name} from ${module.gitUrl}`);
                 const metadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 

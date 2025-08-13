@@ -1,0 +1,437 @@
+
+> puppetfile-depgraph@0.1.0 test:all
+> npm run test:coverage && npm run test:vscode && npm run test:e2e
+
+
+> puppetfile-depgraph@0.1.0 test:coverage
+> jest --coverage
+
+---------------------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------------------------------
+File                             | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                            
+---------------------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------------------------------
+All files                        |   82.06 |    75.16 |   84.94 |    82.1 |                                                                                                              
+ src                             |   63.55 |    59.65 |   59.75 |    64.1 |                                                                                                              
+  extension.ts                   |    20.5 |     1.76 |   17.14 |   21.34 | 24-25,41-45,51-79,85-123,129-359,365-366,370-372,376-400,405-418,422-470,474-507,511,515,519,523,527,573-574 
+  puppetfileCodeLensProvider.ts  |   83.92 |    69.56 |      80 |   83.63 | 18-28,54,112-129,137,179                                                                                     
+  puppetfileHoverProvider.ts     |   89.23 |    86.82 |   92.59 |   89.28 | 36,43,50,77-88,126-129,171-173,182,219,307-312,436-442,510,597                                               
+  puppetfileParser.ts            |    93.1 |    91.95 |     100 |   92.98 | 162,258-267                                                                                                  
+ src/services                    |   90.58 |    80.37 |   93.68 |   90.41 |                                                                                                              
+  cacheService.ts                |   97.24 |    89.47 |     100 |   97.05 | 105,149-150                                                                                                  
+  conflictAnalyzer.ts            |   98.11 |    87.09 |     100 |   98.11 | 152                                                                                                          
+  dependencyTreeService.ts       |   86.82 |    79.22 |   82.14 |   87.39 | 61,79,91,101,131,213-217,226,260,269,498,643-669                                                             
+  gitMetadataService.ts          |   96.61 |      100 |     100 |   96.61 | 160-161                                                                                                      
+  puppetForgeService.ts          |   85.94 |    73.52 |   97.29 |   85.79 | 133,329,333-335,353-354,422,437-438,488-496,505,531,548-549,574-575,648,654-655                              
+  puppetfileUpdateService.ts     |   99.12 |    91.07 |     100 |   99.05 | 65                                                                                                           
+  upgradeDiffCodeLensProvider.ts |     100 |      100 |     100 |     100 |                                                                                                              
+  upgradeDiffProvider.ts         |   85.51 |    70.74 |   85.71 |   84.98 | 62-64,73-76,162-163,170-173,338,355,357,387-388,439-440,509,577,580,615-641,713,719,746,764-765,788-793,803  
+  upgradePlannerService.ts       |   91.36 |    77.27 |     100 |   90.62 | 89,133-134,202,208-209,234,301-306                                                                           
+  versionCompatibilityService.ts |     100 |     92.3 |     100 |     100 | 49,79,103                                                                                                    
+ src/utils                       |   96.03 |    86.87 |     100 |   96.77 |                                                                                                              
+  moduleNameUtils.ts             |   98.18 |    94.44 |     100 |   98.18 | 110                                                                                                          
+  versionParser.ts               |   94.77 |    84.84 |     100 |   95.76 | 85-87,113-116                                                                                                
+  versionUtils.ts                |     100 |      100 |     100 |     100 |                                                                                                              
+---------------------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------------------------------
+
+> puppetfile-depgraph@0.1.0 test:vscode
+> npm run compile && npx tsc -p ./test/vscode-test/tsconfig.json && node ./scripts/runTests.js
+
+
+> puppetfile-depgraph@0.1.0 compile
+> tsc -p tsconfig.build.json
+
+Running VS Code integration tests...
+Test runner path: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/vscode-test/index.js
+Environment info:
+  Platform: linux
+  CI: false
+  GITHUB_ACTIONS: undefined
+  DISPLAY: :0
+  Needs xvfb-run wrapper: false
+[90m[main 2025-08-12T01:14:07.870Z][0m update#setState disabled
+[90m[main 2025-08-12T01:14:07.874Z][0m update#ctor - updates are disabled by the environment
+ChatSessionStore: Migrating 0 chat sessions from storage service to file system
+Started local extension host with pid 7820.
+Loading development extension at /mnt/d/CodingProjects/puppetfile-depgraph
+Settings Sync: Account status changed from uninitialized to unavailable
+Test discovery starting...
+Tests root: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/vscode-test
+Found test files: [
+  'hoverProvider.test.js',
+  'extension.test.js',
+  'commands.test.js',
+  'codeLensProvider.test.js'
+]
+Adding test file: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/vscode-test/hoverProvider.test.js
+Adding test file: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/vscode-test/extension.test.js
+Adding test file: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/vscode-test/commands.test.js
+Adding test file: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/vscode-test/codeLensProvider.test.js
+Starting mocha run...
+Loading extension test file...
+typeof suite: function
+typeof test: function
+Inside suite definition...
+[0m[0m
+[0m  Hover Provider Integration Tests[0m
+Puppetfile Dependency Manager v0.1.0 is now active!
+  [32m  ✔[0m[90m Hover shows version information for Forge modules[0m[31m (486ms)[0m
+  [32m  ✔[0m[90m Hover shows safe update version when available[0m[31m (141ms)[0m
+  [32m  ✔[0m[90m Hover shows dependencies information[0m[31m (143ms)[0m
+  [32m  ✔[0m[90m Hover shows version for modules without specified version[0m[31m (134ms)[0m
+Name mismatch detected: Puppetfile="custom-module", metadata.json="company-internal"
+Name mismatch detected: Puppetfile="custom-module", metadata.json="company-internal"
+Name mismatch detected: Puppetfile="custom-module", metadata.json="company-internal"
+Name mismatch detected: Puppetfile="custom-module", metadata.json="company-internal"
+Name mismatch detected: Puppetfile="custom-module", metadata.json="company-internal"
+  [32m  ✔[0m[90m Hover handles Git modules correctly[0m[31m (132ms)[0m
+  [32m  ✔[0m[90m Hover provides clickable links to Puppet Forge[0m[31m (111ms)[0m
+  [32m  ✔[0m[90m Hover handles errors gracefully[0m[31m (142ms)[0m
+  [32m  ✔[0m[90m Hover performance with cached data[0m[31m (3353ms)[0m
+  [32m  ✔[0m[90m Hover updates after module version change[0m[31m (138ms)[0m
+[0m  Extension Integration Test Suite[0m
+  [32m  ✔[0m[90m Sample integration test[0m
+  [32m  ✔[0m[90m Extension should be present[0m
+  [32m  ✔[0m[90m Extension should be installable[0m
+[0m  Command Integration Tests[0m
+  [32m  ✔[0m[90m Update all to safe versions command[0m[31m (1564ms)[0m
+  [32m  ✔[0m[90m Update all to latest versions command[0m[31m (1166ms)[0m
+  [32m  ✔[0m[90m Show dependency tree command[0m[31m (2115ms)[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+  [32m  ✔[0m[90m Clear forge cache command[0m[31m (103ms)[0m
+updateModuleVersion command called with args: [ { line: 5, version: '9.0.0' } ]
+=== Updated text: # Simple Puppetfile for testing
+forge 'https://forge.puppet.com'
+
+# Forge modules with different version formats
+mod 'puppetlabs-stdlib', '9.0.0'
+mod 'puppetlabs-concat', '7.2.0'
+mod 'puppetlabs-apache', '10.1.0'
+mod 'example-test', '1.0.0'
+
+# Module without version (latest)
+mod 'puppetlabs-mysql'
+
+# Git modules
+mod 'custom-module',
+  :git => 'https://github.com/example/custom-module.git',
+  :tag => 'v1.2.3'
+
+mod 'another-module',
+  :git => 'https://github.com/example/another-module.git',
+  :branch => 'main'
+  [32m  ✔[0m[90m Update module version command[0m[31m (2077ms)[0m
+  [32m  ✔[0m[90m Cache all modules command[0m[31m (1447ms)[0m
+  [32m  ✔[0m[90m Show upgrade planner command[0m[31m (1545ms)[0m
+  [32m  ✔[0m[90m Apply all safe upgrades command[0m[31m (1212ms)[0m
+  [32m  ✔[0m[90m Handle errors gracefully[0m[33m (38ms)[0m
+  [32m  ✔[0m[90m Handle empty Puppetfile[0m[31m (120ms)[0m
+[0m  Code Lens Provider Integration Tests[0m
+  [32m  ✔[0m[90m Code lens shows update options for modules[0m[33m (73ms)[0m
+  [32m  ✔[0m[90m Code lens shows safe update when available[0m[33m (67ms)[0m
+  [32m  ✔[0m[90m Code lens shows latest version option[0m[33m (75ms)[0m
+  [32m  ✔[0m[90m Code lens not shown for modules without version[0m[33m (73ms)[0m
+  [32m  ✔[0m[90m Code lens not shown for Git modules[0m[31m (77ms)[0m
+  [32m  ✔[0m[90m Code lens command execution updates module version[0m[31m (664ms)[0m
+  [32m  ✔[0m[90m Code lens updates after document changes[0m[33m (51ms)[0m
+  [32m  ✔[0m[90m Upgrade diff code lens provider shows apply options[0m[31m (549ms)[0m
+  [32m  ✔[0m[90m Code lens handles errors gracefully[0m[31m (76ms)[0m
+  [32m  ✔[0m[90m Code lens performance with multiple modules[0m[31m (91ms)[0m
+[92m [0m[32m 32 passing[0m[90m (39s)[0m
+Mocha run completed with 0 failures
+[90m[main 2025-08-12T01:15:06.629Z][0m Extension host with pid 7820 exited with code: 0, signal: unknown.
+Exit code:   0
+Tests completed successfully.
+
+> puppetfile-depgraph@0.1.0 test:e2e
+> npm run compile && npx tsc -p ./test/e2e/tsconfig.json && node ./scripts/runTests.js --e2e
+
+
+> puppetfile-depgraph@0.1.0 compile
+> tsc -p tsconfig.build.json
+
+Running E2E tests...
+Test runner path: /mnt/d/CodingProjects/puppetfile-depgraph/out/test/e2e/index.js
+Environment info:
+  Platform: linux
+  CI: false
+  GITHUB_ACTIONS: undefined
+  DISPLAY: :0
+  Needs xvfb-run wrapper: false
+[90m[main 2025-08-12T01:15:24.866Z][0m update#setState disabled
+[90m[main 2025-08-12T01:15:24.871Z][0m update#ctor - updates are disabled by the environment
+Started local extension host with pid 8272.
+ChatSessionStore: Migrating 0 chat sessions from storage service to file system
+Loading development extension at /mnt/d/CodingProjects/puppetfile-depgraph
+Settings Sync: Account status changed from uninitialized to unavailable
+[0m[0m
+[0m  Performance: Cache Tests[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+First request: 111ms, Second request: 0ms, API calls: 1 -> 1
+  [32m  ✔[0m[90m Cache improves response time for repeated requests[0m[31m (113ms)[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+  [32m  ✔[0m[90m Batch caching reduces total API calls[0m[31m (116ms)[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+API calls: 2, Total requests: 5, Unique modules: 2
+  [32m  ✔[0m[90m Cache hit rate tracking[0m[31m (223ms)[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+  [32m  ✔[0m[90m Large scale caching performance[0m[31m (2359ms)[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+  [32m  ✔[0m[90m Cache memory usage is reasonable[0m[31m (10401ms)[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+  [32m  ✔[0m[90m Cache expiration performance[0m
+MockPuppetForgeService: Initializing...
+Looking for fixtures in: /mnt/d/CodingProjects/puppetfile-depgraph/test/vscode-test/fixtures/api-responses
+Loaded: puppetlabs-stdlib
+Loaded: puppetlabs-concat
+Loaded: puppetlabs-firewall
+Loaded: hardening-os_hardening
+Loaded: puppet-archive
+Loaded: puppet-cron
+Loaded: puppet-elasticsearch
+Loaded: puppet-fail2ban
+Loaded: puppet-grafana
+Loaded: puppet-logrotate
+Loaded: puppet-nodejs
+Loaded: puppet-prometheus
+Loaded: puppet-python
+Loaded: puppet-rabbitmq
+Loaded: puppet-redis
+Loaded: puppet-selinux
+Loaded: puppetlabs-ntp
+Loaded: puppetlabs-postgresql
+Loaded: sensu-sensu
+Loaded: puppet-nginx
+  [32m  ✔[0m[90m Concurrent cache access performance[0m[31m (555ms)[0m
+[0m  E2E: Update Commands Workflow[0m
+Initial Puppetfile content: forge 'https://forge.puppet.com'
+
+# Production modules
+mod 'puppetlabs-stdlib', '8.5.0'
+mod 'puppetlabs-concat', '7.2.0'
+mod 'puppetlabs-apache', '10.1.0'
+mod 'puppetlabs-mysql', '13.0.0'
+mod 'puppet-nginx', '4.3.0'
+
+# Module without version
+mod 'puppetlabs-docker'
+
+# Git module
+mod 'internal-module',
+  :git => 'https://github.com/company/internal.git',
+  :tag => 'v1.0.0'
+
+Puppetfile Dependency Manager v0.1.0 is now active!
+Updated document content: forge 'https://forge.puppet.com'
+
+# Production modules
+mod 'puppetlabs-stdlib', '8.6.0'
+mod 'puppetlabs-concat', '7.4.0'
+mod 'puppetlabs-apache', '10.1.1'
+mod 'puppetlabs-mysql', '13.3.0'
+mod 'puppet-nginx', '4.4.0'
+
+# Module without version
+mod 'puppetlabs-docker', '7.0.0'
+
+# Git module
+mod 'internal-module',
+  :git => 'https://github.com/company/internal.git',
+  :tag => 'v1.0.0'
+
+Saved file content: forge 'https://forge.puppet.com'
+
+# Production modules
+mod 'puppetlabs-stdlib', '8.6.0'
+mod 'puppetlabs-concat', '7.4.0'
+mod 'puppetlabs-apache', '10.1.1'
+mod 'puppetlabs-mysql', '13.3.0'
+mod 'puppet-nginx', '4.4.0'
+
+# Module without version
+mod 'puppetlabs-docker', '7.0.0'
+
+# Git module
+mod 'internal-module',
+  :git => 'https://github.com/company/internal.git',
+  :tag => 'v1.0.0'
+
+  [32m  ✔[0m[90m Complete workflow: Update all modules to safe versions[0m[31m (4728ms)[0m
+updateModuleVersion command called with args: []
+  [32m  ✔[0m[90m Complete workflow: Update specific module interactively[0m[31m (176ms)[0m
+Step 1: Opened Puppetfile
+Step 2: Skipping showDependencyTree (requires user interaction)
+Step 3: Executing cacheAllModules...
+Step 3: cacheAllModules completed
+Step 4: Skipping updateAllToLatest (requires user confirmation)
+Step 5: Verifying document state...
+Final content: forge 'https://forge.puppet.com'
+
+# Production modules
+mod 'puppetlabs-stdlib', '8.5.0'
+mod 'puppetlabs-concat', '7.2.0'
+mod 'puppetlabs-apache', '10.1.0'
+mod 'puppetlabs-mysql', '13.0.0'
+mod 'puppet-nginx', '4.3.0'
+
+# Module without version
+mod 'puppetlabs-docker'
+
+# Git module
+mod 'internal-module',
+  :git => 'https://github.com/company/internal.git',
+  :tag => 'v1.0.0'
+
+Test completed successfully
+  [32m  ✔[0m[90m Complete workflow: Cache modules workflow[0m[31m (1147ms)[0m
+  [32m  ✔[0m[90m Error handling: Invalid module names[0m[31m (1240ms)[0m
+  [32m  ✔[0m[90m Performance: Update large Puppetfile[0m[31m (2101ms)[0m
+[92m [0m[32m 12 passing[0m[90m (25s)[0m
+[90m[main 2025-08-12T01:16:06.050Z][0m Extension host with pid 8272 exited with code: 0, signal: unknown.
+Exit code:   0
+Tests completed successfully.
