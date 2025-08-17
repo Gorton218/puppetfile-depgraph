@@ -14,7 +14,11 @@ import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from './services/upgradeDiffCodeLensProvider';
 
 // Track if extension has been activated
-let extensionActivated = false;
+export let extensionActivated = false;
+
+export function __test_only_reset_extension_activated() {
+  extensionActivated = false;
+}
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -153,8 +157,8 @@ export function activate(context: vscode.ExtensionContext) {
 			// Animation variables for Phase 2 (scoped to entire progress function)
 			let phase2AnimationActive = false;
 			let phase2Animation: NodeJS.Timeout | null = null;
-			
-			try {
+		
+try {
 				// Three-phase progress system:
 				// Phase 1 (0-30%): Direct module caching
 				// Phase 2 (30-70%): Transitive dependency resolution  
@@ -276,10 +280,11 @@ export function activate(context: vscode.ExtensionContext) {
 										message: `Phase 3: ${message}` 
 									});
 									currentTotalProgress = targetPhase3Progress;
-								} else {
-									// Just update message without changing progress
-									progress.report({ increment: 0, message: `Phase 3: ${message}` });
 								}
+                                                                else {
+                                                                        // Just update message without changing progress
+                                                                        progress.report({ increment: 0, message: `Phase 3: ${message}` });
+                                                                }
 							} else {
 								// Still in Phase 2: Update message and pause animation briefly
 								currentPhase2Message = `Phase 2: ${message}`;
@@ -387,7 +392,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
                 
                 if (!commandArgs || typeof commandArgs.line !== 'number' || typeof commandArgs.version !== 'string') {
-                    console.error('Invalid arguments for updateModuleVersion command:', commandArgs);
+                    console.error('Invalid arguments for version update command:', commandArgs);
                     vscode.window.showErrorMessage('Invalid arguments for version update command');
                     return;
                 }

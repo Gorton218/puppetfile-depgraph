@@ -12,6 +12,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
     private documentChangeListener: vscode.Disposable;
+    public isSaving = false;
 
     constructor() {
         this.documentChangeListener = vscode.workspace.onDidChangeTextDocument(event => {
@@ -45,6 +46,9 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
         document: vscode.TextDocument,
         token: vscode.CancellationToken
     ): Promise<vscode.CodeLens[]> {
+        if (document.isDirty) {
+            return [];
+        }
         if (document.languageId !== 'puppetfile') {
             return [];
         }
