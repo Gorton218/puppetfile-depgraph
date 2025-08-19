@@ -547,7 +547,6 @@ mod 'incomplete-git-module',
 
 mod 'another-valid', '2.0.0'
 `;
-
         const result = PuppetfileParser.parseContent(content);
 
         // Should handle mixed valid and problematic content
@@ -558,6 +557,45 @@ mod 'another-valid', '2.0.0'
         const validModules = result.modules.filter(m => m.name === 'valid-module' || m.name === 'another-valid');
         expect(validModules.length >= 2).toBe(true);
     });
+
+    // Add test for multi-line git module with tag
+    test('should handle multi-line git module with tag', () => {
+        const content = `
+mod 'multi-line-git',
+  :git => 'https://github.com/example/repo.git',
+  :tag => 'v1.2.3'
+`;
+        const result = PuppetfileParser.parseContent(content);
+        expect(result.errors.length).toBe(0);
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].gitTag).toBe('v1.2.3');
+    });
+
+    // Add test for multi-line git module with ref
+    test('should handle multi-line git module with ref', () => {
+        const content = `
+mod 'multi-line-git-ref',
+  :git => 'https://github.com/example/repo.git',
+  :ref => 'abcd1234'
+`;
+        const result = PuppetfileParser.parseContent(content);
+        expect(result.errors.length).toBe(0);
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].gitRef).toBe('abcd1234');
+    });
+
+    // Test for malformed multi-line module that falls back to regular parsing
+    test('should handle malformed multi-line module gracefully', () => {
+        const content = `
+mod 'malformed-module',
+  :invalid_option => 'value'
+`;
+        const result = PuppetfileParser.parseContent(content);
+        // This should trigger the error path and fall back to regular parsing
+        expect(result.modules.length).toBe(1);
+        expect(result.modules[0].name).toBe('malformed-module');
+    });
+
 
     test('should handle invalid module declaration syntax', () => {
         const content = `mod bad-syntax-without-quotes`;

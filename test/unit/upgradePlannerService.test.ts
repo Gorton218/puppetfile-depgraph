@@ -494,6 +494,59 @@ mod 'puppetlabs/apache', '5.0.0'`;
             expect(modifiedContent).toContain("mod 'puppetlabs/stdlib', '9.0.0'"); // Version added
             expect(modifiedContent).toContain("mod 'puppetlabs/apache', '5.5.0'"); // Version updated
         });
+
+        test('should handle module with no available versions', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'test/empty', version: '1.0.0', source: 'forge', line: 1 }
+            ];
+
+            // Mock service to return module with no releases
+            (PuppetForgeService.getModule as sinon.SinonStub).resolves({
+                slug: 'test/empty',
+                name: 'empty',
+                releases: [] // No available versions
+            });
+
+            const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(upgradePlan.candidates.length).toBe(1);
+            expect(upgradePlan.candidates[0].isUpgradeable).toBe(false);
+            expect(upgradePlan.candidates[0].availableVersions).toEqual([]);
+            expect(upgradePlan.candidates[0].maxSafeVersion).toBe('1.0.0');
+        });
+
+        test('should handle module without current version', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'test/unversioned', source: 'forge', line: 1 } // No version
+            ];
+
+            (PuppetForgeService.getModule as sinon.SinonStub).resolves({
+                slug: 'test/unversioned',
+                name: 'unversioned',
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } }
+                ]
+            });
+
+            const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(upgradePlan.candidates.length).toBe(1);
+            expect(upgradePlan.candidates[0].currentVersion).toBe('latest');
+        });
+
+        test('should handle git modules with no metadata', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'git/module', source: 'git', gitUrl: 'https://github.com/user/repo.git', line: 1 }
+            ];
+
+            (GitMetadataService.getGitModuleMetadata as sinon.SinonStub).resolves(null);
+
+            const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(upgradePlan.gitModules.length).toBe(1);
+            expect(upgradePlan.gitModules[0].hasMetadata).toBe(false);
+            expect(upgradePlan.gitModules[0].version).toBe('unknown');
+        });
     });
 
     describe('nullish coalescing conditions', () => {
