@@ -195,9 +195,12 @@ describe('Extension', () => {
         });
 
         it('should handle invalid arguments for update module version', async () => {
+          const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
           const command = commands.get('puppetfile-depgraph.updateModuleVersion');
           await command?.({});
+          expect(consoleErrorSpy).toHaveBeenCalledWith('Invalid arguments for version update command:', {});
           expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Invalid arguments for version update command');
+          consoleErrorSpy.mockRestore();
         });
 
         it('should throw error on show upgrade planner with no active editor', async () => {
