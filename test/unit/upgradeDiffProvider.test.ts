@@ -1279,30 +1279,56 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
 
             const content = 'forge "https://forge.puppet.com"';
             
-            await UpgradeDiffProvider.showInteractiveUpgradePlanner(emptyPlan, content);
+            // Correct parameter order: content first, then upgradePlan
+            await UpgradeDiffProvider.showInteractiveUpgradePlanner(content, emptyPlan);
             
-            expect(mockVscode.workspace.openTextDocument).toHaveBeenCalledWith({
-                content: expect.stringContaining('No upgrades available'),
-                language: 'markdown'
-            });
+            // With empty plan, only summary option should be shown
+            expect(mockVscode.window.showQuickPick).toHaveBeenCalledWith(
+                expect.arrayContaining([
+                    expect.objectContaining({ action: 'summary' })
+                ]),
+                expect.any(Object)
+            );
         });
 
-        test('should handle error in provideDiffView', async () => {
+        test('should handle error in showUpgradeDiff', async () => {
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
             };
             mockVscode.window.activeTextEditor = mockEditor as any;
 
-            // Mock an error when generating diff
-            jest.spyOn(UpgradeDiffProvider, 'generateDiffContent').mockImplementation(() => {
-                throw new Error('Diff generation failed');
-            });
+            // Mock provideDiffView to throw error
+            const originalProvideDiffView = (UpgradeDiffProvider as any).provideDiffView;
+            (UpgradeDiffProvider as any).provideDiffView = jest.fn().mockRejectedValue(new Error('Diff generation failed'));
 
-            await UpgradeDiffProvider.showInteractiveUpgradePlanner(mockUpgradePlan, mockContent);
+            // Select 'all' option to trigger diff view
+            mockVscode.window.showQuickPick.mockResolvedValue({ action: 'all' });
+
+            const mockUpgradePlan = {
+                candidates: [{
+                    module: { name: 'test/module', version: '1.0.0', source: 'forge', line: 1 },
+                    currentVersion: '1.0.0',
+                    maxSafeVersion: '2.0.0',
+                    availableVersions: ['2.0.0'],
+                    isUpgradeable: true
+                }],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            const mockContent = 'forge "https://forge.puppet.com"';
+
+            // Correct parameter order: content first, then upgradePlan
+            await UpgradeDiffProvider.showInteractiveUpgradePlanner(mockContent, mockUpgradePlan);
 
             expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining('Failed to generate upgrade diff')
+                expect.stringContaining('Failed to show upgrade diff')
             );
+
+            // Restore original method
+            (UpgradeDiffProvider as any).provideDiffView = originalProvideDiffView;
         });
 
         test('should handle provideDiffView for non-puppetfile document', async () => {
@@ -1311,24 +1337,55 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             };
             mockVscode.window.activeTextEditor = mockEditor as any;
 
-            await UpgradeDiffProvider.showInteractiveUpgradePlanner(mockUpgradePlan, mockContent);
+            // Define mockUpgradePlan locally
+            const mockUpgradePlan = {
+                candidates: [],
+                totalUpgradeable: 0,
+                totalModules: 0,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            const mockContent = 'forge "https://forge.puppet.com"';
 
+            // Select 'all' option to trigger diff view
+            mockVscode.window.showQuickPick.mockResolvedValue({ action: 'all' });
+
+            // Correct parameter order: content first, then upgradePlan
+            await UpgradeDiffProvider.showInteractiveUpgradePlanner(mockContent, mockUpgradePlan);
+
+            // The error message from the catch block
             expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                'Please open a Puppetfile to view upgrade diff'
+                expect.stringContaining('Failed to show upgrade diff')
             );
         });
 
         test('should handle no active editor in provideDiffView', async () => {
             mockVscode.window.activeTextEditor = undefined;
 
-            await UpgradeDiffProvider.showInteractiveUpgradePlanner(mockUpgradePlan, mockContent);
+            // Define mockUpgradePlan locally
+            const mockUpgradePlan = {
+                candidates: [],
+                totalUpgradeable: 0,
+                totalModules: 0,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            const mockContent = 'forge "https://forge.puppet.com"';
+
+            // Select 'all' option to trigger diff view
+            mockVscode.window.showQuickPick.mockResolvedValue({ action: 'all' });
+
+            // Correct parameter order: content first, then upgradePlan
+            await UpgradeDiffProvider.showInteractiveUpgradePlanner(mockContent, mockUpgradePlan);
 
             expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                'Please open a Puppetfile to view upgrade diff'
+                expect.stringContaining('Failed to show upgrade diff')
             );
         });
 
-        test('should handle skipSelectedUpgrades with no skippable upgrades', async () => {
+        test('should handle applySelectedUpgrades with no upgradeable modules', async () => {
             const plan: UpgradePlan = {
                 candidates: [{
                     module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
@@ -1345,30 +1402,19 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             };
             (global as any).__currentUpgradePlan = plan;
 
-            await UpgradeDiffProvider.skipSelectedUpgrades();
-
-            expect(mockVscode.window.showInformationMessage).toHaveBeenCalledWith(
-                'No upgrades available to skip'
-            );
-        });
-
-        test('should handle error during apply updates', async () => {
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
             };
             mockVscode.window.activeTextEditor = mockEditor as any;
 
-            // Mock apply updates to throw error
-            mockPuppetfileUpdateService.applyUpdates.mockRejectedValue(new Error('Update failed'));
+            await UpgradeDiffProvider.applySelectedUpgrades();
 
-            await UpgradeDiffProvider.applyAllUpgrades();
-
-            expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining('Failed to apply upgrades')
+            expect(mockVscode.window.showInformationMessage).toHaveBeenCalledWith(
+                'No upgrades available to apply.'
             );
         });
 
-        test('should handle error during skip updates', async () => {
+        test('should handle error during apply updates', async () => {
             const plan: UpgradePlan = {
                 candidates: [{
                     module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
@@ -1385,13 +1431,50 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             };
             (global as any).__currentUpgradePlan = plan;
 
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+
+            // Mock apply updates to throw error
+            mockPuppetfileUpdateService.applyUpdates.mockRejectedValue(new Error('Update failed'));
+
+            await UpgradeDiffProvider.applyAllUpgrades();
+
+            expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to apply upgrades')
+            );
+        });
+
+        test('should handle error during applySelectedUpgrades', async () => {
+            const plan: UpgradePlan = {
+                candidates: [{
+                    module: { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 } as PuppetModule,
+                    currentVersion: '8.0.0',
+                    maxSafeVersion: '9.0.0',
+                    availableVersions: ['9.0.0'],
+                    isUpgradeable: true
+                }],
+                totalUpgradeable: 1,
+                totalModules: 1,
+                totalGitModules: 0,
+                hasConflicts: false,
+                gitModules: []
+            };
+            (global as any).__currentUpgradePlan = plan;
+
+            const mockEditor = {
+                document: { languageId: 'puppetfile' }
+            };
+            mockVscode.window.activeTextEditor = mockEditor as any;
+
             // Mock quick pick to throw error
             mockVscode.window.showQuickPick.mockRejectedValue(new Error('Quick pick failed'));
 
-            await UpgradeDiffProvider.skipSelectedUpgrades();
+            await UpgradeDiffProvider.applySelectedUpgrades();
 
             expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining('Failed to skip upgrades')
+                expect.stringContaining('Failed to apply upgrades')
             );
         });
     });

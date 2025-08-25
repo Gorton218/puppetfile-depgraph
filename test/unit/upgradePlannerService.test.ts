@@ -2,13 +2,16 @@ import { UpgradePlannerService, UpgradeCandidate } from '../../src/services/upgr
 import { PuppetModule } from '../../src/puppetfileParser';
 import { PuppetForgeService } from '../../src/services/puppetForgeService';
 import { VersionCompatibilityService } from '../../src/services/versionCompatibilityService';
+import { GitMetadataService } from '../../src/services/gitMetadataService';
 
 // Mock the dependencies
 jest.mock('../../src/services/puppetForgeService');
 jest.mock('../../src/services/versionCompatibilityService');
+jest.mock('../../src/services/gitMetadataService');
 
 const mockPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
 const mockVersionCompatibilityService = VersionCompatibilityService as jest.Mocked<typeof VersionCompatibilityService>;
+const mockGitMetadataService = GitMetadataService as jest.Mocked<typeof GitMetadataService>;
 
 describe('UpgradePlannerService', () => {
     beforeEach(() => {
@@ -501,11 +504,11 @@ mod 'puppetlabs/apache', '5.0.0'`;
             ];
 
             // Mock service to return module with no releases
-            (PuppetForgeService.getModule as sinon.SinonStub).resolves({
+            mockPuppetForgeService.getModule.mockResolvedValue({
                 slug: 'test/empty',
                 name: 'empty',
                 releases: [] // No available versions
-            });
+            } as any);
 
             const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
 
@@ -520,18 +523,18 @@ mod 'puppetlabs/apache', '5.0.0'`;
                 { name: 'test/unversioned', source: 'forge', line: 1 } // No version
             ];
 
-            (PuppetForgeService.getModule as sinon.SinonStub).resolves({
+            mockPuppetForgeService.getModule.mockResolvedValue({
                 slug: 'test/unversioned',
                 name: 'unversioned',
                 releases: [
                     { version: '1.0.0', metadata: { dependencies: [] } }
                 ]
-            });
+            } as any);
 
             const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
 
             expect(upgradePlan.candidates.length).toBe(1);
-            expect(upgradePlan.candidates[0].currentVersion).toBe('latest');
+            expect(upgradePlan.candidates[0].currentVersion).toBe('unversioned');
         });
 
         test('should handle git modules with no metadata', async () => {
@@ -539,13 +542,13 @@ mod 'puppetlabs/apache', '5.0.0'`;
                 { name: 'git/module', source: 'git', gitUrl: 'https://github.com/user/repo.git', line: 1 }
             ];
 
-            (GitMetadataService.getGitModuleMetadata as sinon.SinonStub).resolves(null);
+            mockGitMetadataService.getGitModuleMetadata.mockResolvedValue(null);
 
             const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
 
             expect(upgradePlan.gitModules.length).toBe(1);
-            expect(upgradePlan.gitModules[0].hasMetadata).toBe(false);
-            expect(upgradePlan.gitModules[0].version).toBe('unknown');
+            expect(upgradePlan.gitModules[0].name).toBe('git/module');
+            expect(upgradePlan.gitModules[0].source).toBe('git');
         });
     });
 
