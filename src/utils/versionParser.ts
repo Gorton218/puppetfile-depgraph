@@ -30,9 +30,9 @@ export class VersionParser {
       const parts = constraint.split('.');
       const nonWildcardParts: string[] = [];
       
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i] === 'x') {break;}
-        nonWildcardParts.push(parts[i]);
+      for (const part of parts) {
+        if (part === 'x') {break;}
+        nonWildcardParts.push(part);
       }
       
       if (nonWildcardParts.length > 0) {
