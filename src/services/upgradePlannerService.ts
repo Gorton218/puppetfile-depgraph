@@ -3,6 +3,7 @@ import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
 import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
 import { VersionParser } from '../utils/versionParser';
 import { CacheService } from './cacheService';
+import { getVersionDisplay } from '../utils/versionUtils';
 
 export interface UpgradeCandidate {
     module: PuppetModule;
@@ -77,12 +78,12 @@ export class UpgradePlannerService {
         allModules: PuppetModule[]
     ): Promise<UpgradeCandidate> {
         // Handle unversioned modules by treating them as having no current version
-        const currentVersion = module.version || 'unversioned';
+        const currentVersion = getVersionDisplay(module.version);
         
         try {
             // Get all available versions for this module
             const forgeModule = await PuppetForgeService.getModule(module.name);
-            const availableVersions = forgeModule?.releases?.map(r => r.version) || [];
+            const availableVersions = forgeModule?.releases?.map(r => r.version) ?? [];
             
             if (availableVersions.length === 0) {
                 return {
@@ -174,7 +175,7 @@ export class UpgradePlannerService {
         }
         
         // No safe upgrade found, return current version or 'unversioned' for unversioned modules
-        return module.version || 'unversioned';
+        return getVersionDisplay(module.version);
     }
     
     /**
@@ -191,8 +192,8 @@ export class UpgradePlannerService {
             const maxLength = Math.max(partsA.length, partsB.length);
             
             for (let i = 0; i < maxLength; i++) {
-                const partA = partsA[i] || 0;
-                const partB = partsB[i] || 0;
+                const partA = partsA[i] ?? 0;
+                const partB = partsB[i] ?? 0;
                 
                 if (partA > partB) {
                     return true;
@@ -222,8 +223,8 @@ export class UpgradePlannerService {
             const maxLength = Math.max(partsA.length, partsB.length);
             
             for (let i = 0; i < maxLength; i++) {
-                const partA = partsA[i] || 0;
-                const partB = partsB[i] || 0;
+                const partA = partsA[i] ?? 0;
+                const partB = partsB[i] ?? 0;
                 
                 if (partA !== partB) {
                     return partB - partA; // Descending order
@@ -258,9 +259,9 @@ export class UpgradePlannerService {
             lines.push('The following modules are sourced from Git repositories and cannot be automatically upgraded:');
             lines.push('');
             for (const gitModule of plan.gitModules) {
-                const ref = gitModule.gitRef || gitModule.gitTag;
+                const ref = gitModule.gitRef ?? gitModule.gitTag;
                 const refStr = ref ? ` @ ${ref}` : '';
-                lines.push(`- **${gitModule.name}**${refStr} (${gitModule.gitUrl || 'git'})`);
+                lines.push(`- **${gitModule.name}**${refStr} (${gitModule.gitUrl ?? 'git'})`);
             }
             lines.push('');
             lines.push('💡 **Note:** Git modules must be manually updated by modifying their ref/tag/branch in the Puppetfile.');

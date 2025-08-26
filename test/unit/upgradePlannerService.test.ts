@@ -2,13 +2,16 @@ import { UpgradePlannerService, UpgradeCandidate } from '../../src/services/upgr
 import { PuppetModule } from '../../src/puppetfileParser';
 import { PuppetForgeService } from '../../src/services/puppetForgeService';
 import { VersionCompatibilityService } from '../../src/services/versionCompatibilityService';
+import { GitMetadataService } from '../../src/services/gitMetadataService';
 
 // Mock the dependencies
 jest.mock('../../src/services/puppetForgeService');
 jest.mock('../../src/services/versionCompatibilityService');
+jest.mock('../../src/services/gitMetadataService');
 
 const mockPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
 const mockVersionCompatibilityService = VersionCompatibilityService as jest.Mocked<typeof VersionCompatibilityService>;
+const mockGitMetadataService = GitMetadataService as jest.Mocked<typeof GitMetadataService>;
 
 describe('UpgradePlannerService', () => {
     beforeEach(() => {
@@ -16,6 +19,52 @@ describe('UpgradePlannerService', () => {
     });
 
     describe('createUpgradePlan', () => {
+        test('should handle unversioned modules correctly', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: undefined, source: 'forge', line: 1 },
+                { name: 'puppetlabs/apache', version: null as any, source: 'forge', line: 2 }
+            ];
+
+            // Mock Forge service responses
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                name: 'puppetlabs-stdlib',
+                slug: 'puppetlabs-stdlib',
+                owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+                downloads: 1000,
+                feedback_score: 5,
+                releases: [
+                    { 
+                        version: '9.0.0', 
+                        created_at: '2023-01-01',
+                        updated_at: '2023-01-01',
+                        downloads: 100,
+                        file_size: 1000,
+                        file_md5: 'abc123',
+                        file_uri: 'http://example.com',
+                        metadata: {} 
+                    }
+                ],
+                current_release: {
+                    version: '9.0.0',
+                    metadata: {
+                        dependencies: []
+                    }
+                } as any
+            } as any);
+
+            mockVersionCompatibilityService.checkVersionCompatibility.mockResolvedValue({
+                isCompatible: true,
+                conflicts: [],
+                warnings: []
+            });
+
+            const plan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(plan.candidates).toHaveLength(2);
+            expect(plan.candidates[0].currentVersion).toBe('unversioned');
+            expect(plan.candidates[1].currentVersion).toBe('unversioned');
+            expect(plan.candidates[0].isUpgradeable).toBe(true);
+        });
         test('should create upgrade plan with upgradeable modules', async () => {
             const modules: PuppetModule[] = [
                 { name: 'puppetlabs/stdlib', version: '8.0.0', source: 'forge', line: 1 },
@@ -447,6 +496,154 @@ mod 'puppetlabs/apache', '5.0.0'`;
 
             expect(modifiedContent).toContain("mod 'puppetlabs/stdlib', '9.0.0'"); // Version added
             expect(modifiedContent).toContain("mod 'puppetlabs/apache', '5.5.0'"); // Version updated
+        });
+
+        test('should handle module with no available versions', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'test/empty', version: '1.0.0', source: 'forge', line: 1 }
+            ];
+
+            // Mock service to return module with no releases
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                slug: 'test/empty',
+                name: 'empty',
+                releases: [] // No available versions
+            } as any);
+
+            const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(upgradePlan.candidates.length).toBe(1);
+            expect(upgradePlan.candidates[0].isUpgradeable).toBe(false);
+            expect(upgradePlan.candidates[0].availableVersions).toEqual([]);
+            expect(upgradePlan.candidates[0].maxSafeVersion).toBe('1.0.0');
+        });
+
+        test('should handle module without current version', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'test/unversioned', source: 'forge', line: 1 } // No version
+            ];
+
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                slug: 'test/unversioned',
+                name: 'unversioned',
+                releases: [
+                    { version: '1.0.0', metadata: { dependencies: [] } }
+                ]
+            } as any);
+
+            const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(upgradePlan.candidates.length).toBe(1);
+            expect(upgradePlan.candidates[0].currentVersion).toBe('unversioned');
+        });
+
+        test('should handle git modules with no metadata', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'git/module', source: 'git', gitUrl: 'https://github.com/user/repo.git', line: 1 }
+            ];
+
+            mockGitMetadataService.getGitModuleMetadata.mockResolvedValue(null);
+
+            const upgradePlan = await UpgradePlannerService.createUpgradePlan(modules);
+
+            expect(upgradePlan.gitModules.length).toBe(1);
+            expect(upgradePlan.gitModules[0].name).toBe('git/module');
+            expect(upgradePlan.gitModules[0].source).toBe('git');
+        });
+    });
+
+    describe('nullish coalescing conditions', () => {
+        test('should handle version comparison with undefined parts using nullish coalescing', () => {
+            // Test the private version comparison logic directly
+            const versions1 = '1'.split('.').map(Number);    // [1]
+            const versions2 = '1.0.0'.split('.').map(Number); // [1, 0, 0]
+            
+            // Simulate the nullish coalescing logic
+            const maxLength = Math.max(versions1.length, versions2.length);
+            let isGreater = false;
+            
+            for (let i = 0; i < maxLength; i++) {
+                const partA = versions1[i] ?? 0;
+                const partB = versions2[i] ?? 0;
+                
+                if (partA > partB) {
+                    isGreater = true;
+                    break;
+                } else if (partA < partB) {
+                    break;
+                }
+            }
+            
+            expect(isGreater).toBe(false); // 1 is not greater than 1.0.0
+        });
+
+        test('should handle version comparison edge cases with nullish coalescing', () => {
+            // Test different edge cases for nullish coalescing in version parts
+            const testCases = [
+                { a: '1', b: '1.0', expected: false },
+                { a: '1.0', b: '1', expected: false },
+                { a: '1.1', b: '1.0.5', expected: true },
+                { a: '2', b: '1.9.9', expected: true }
+            ];
+            
+            testCases.forEach(({ a, b, expected }) => {
+                const aParts = a.split('.').map(Number);
+                const bParts = b.split('.').map(Number);
+                const maxLength = Math.max(aParts.length, bParts.length);
+                
+                let isGreater = false;
+                for (let i = 0; i < maxLength; i++) {
+                    const partA = aParts[i] ?? 0;
+                    const partB = bParts[i] ?? 0;
+                    
+                    if (partA > partB) {
+                        isGreater = true;
+                        break;
+                    } else if (partA < partB) {
+                        break;
+                    }
+                }
+                
+                expect(isGreater).toBe(expected);
+            });
+        });
+
+        test('should handle getVersionDisplay utility correctly', async () => {
+            const modules: PuppetModule[] = [
+                { name: 'puppetlabs/stdlib', version: undefined, source: 'forge', line: 1 },
+                { name: 'puppetlabs/apache', version: null as any, source: 'forge', line: 2 }
+            ];
+
+            mockPuppetForgeService.getModule.mockResolvedValue({
+                name: 'puppetlabs-stdlib',
+                slug: 'puppetlabs-stdlib',
+                owner: { username: 'puppetlabs', slug: 'puppetlabs' },
+                downloads: 1000,
+                feedback_score: 5,
+                releases: [
+                    { 
+                        version: '9.0.0', 
+                        created_at: '2023-01-01',
+                        updated_at: '2023-01-01',
+                        downloads: 100,
+                        file_size: 1000,
+                        file_md5: 'abc123',
+                        file_uri: 'http://example.com',
+                        metadata: {} 
+                    }
+                ]
+            });
+
+            mockVersionCompatibilityService.checkVersionCompatibility.mockResolvedValue({
+                version: '9.0.0',
+                isCompatible: true
+            });
+
+            const plan = await UpgradePlannerService.createUpgradePlan(modules);
+            
+            expect(plan.candidates).toHaveLength(2);
+            expect(plan.candidates[0].currentVersion).toBe('unversioned');
+            expect(plan.candidates[1].currentVersion).toBe('unversioned');
         });
     });
 

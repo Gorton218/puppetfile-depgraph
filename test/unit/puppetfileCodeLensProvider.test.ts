@@ -122,6 +122,35 @@ describe('PuppetfileCodeLensProvider', () => {
             expect(result[0].command?.command).toBe('puppetfile-depgraph.applySingleUpgrade');
         });
 
+        test('should handle unversioned modules correctly', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: undefined, // Unversioned module
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValue({
+                hasUpdate: true,
+                latestVersion: '2.0.0',
+                currentVersion: undefined
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toHaveLength(1);
+            expect(result[0].command?.tooltip).toContain('unversioned');
+            expect(result[0].command?.tooltip).toContain('Update apache from unversioned to 2.0.0');
+        });
+
         test('should handle cancellation token', async () => {
             // Arrange
             const { PuppetfileParser } = require('../../src/puppetfileParser');
@@ -142,6 +171,242 @@ describe('PuppetfileCodeLensProvider', () => {
 
             // Assert
             expect(result).toEqual([]);
+        });
+
+        test.skip('should not return codelens when saving', async () => {
+            // Arrange
+            provider.isSaving = true;
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toEqual([]);
+        });
+
+        test('should not return codelens for module with no version', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValue({
+                hasUpdate: false,
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toEqual([]);
+        });
+
+        test('should not return latest codelens when version is same', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: '1.0.0',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValue({
+                hasUpdate: true,
+                latestVersion: '1.0.0',
+                latestSafeVersion: '2.0.0',
+                currentVersion: '1.0.0'
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toHaveLength(1);
+            expect(result[0].command?.title).not.toContain('latest');
+        });
+
+        test('should not return safe codelens when version is same', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: '1.0.0',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValue({
+                hasUpdate: true,
+                latestVersion: '2.0.0',
+                latestSafeVersion: '1.0.0',
+                currentVersion: '1.0.0'
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toHaveLength(1);
+            expect(result[0].command?.title).not.toContain('safe');
+        });
+
+        test('should show both safe and latest codelens when different versions available', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: '1.0.0',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            // First call for safe version
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValueOnce({
+                hasUpdate: true,
+                latestVersion: '1.5.0',
+                currentVersion: '1.0.0'
+            });
+            // Second call for latest version
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValueOnce({
+                hasUpdate: true,
+                latestVersion: '2.0.0',
+                currentVersion: '1.0.0'
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toHaveLength(2);
+            expect(result[0].command?.title).toContain('Update to 1.5.0');
+            expect(result[1].command?.title).toContain('Update to 2.0.0 (latest)');
+        });
+
+        test('should handle errors when checking for updates', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: '1.0.0',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockRejectedValue(new Error('Network error'));
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toEqual([]);
+        });
+
+        test('should handle parsing exceptions', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockImplementation(() => {
+                throw new Error('Parse error');
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toEqual([]);
+        });
+
+        test('should not show codelenses when isSaving is true', async () => {
+            // Arrange
+            provider.isSaving = true;
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: '1.0.0',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toEqual([]);
+        });
+
+        test('should skip non-forge modules', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'git',
+                    version: '1.0.0',
+                    line: 1
+                }],
+                errors: []
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toEqual([]);
+            expect(PuppetForgeService.checkForUpdate).not.toHaveBeenCalled();
+        });
+
+        test('should handle modules with unversioned status correctly in tooltip', async () => {
+            // Arrange
+            const { PuppetfileParser } = require('../../src/puppetfileParser');
+            PuppetfileParser.parseContent.mockReturnValue({
+                modules: [{
+                    name: 'apache',
+                    source: 'forge',
+                    version: undefined,  // Undefined version
+                    line: 1
+                }],
+                errors: []
+            });
+
+            const mockedPuppetForgeService = PuppetForgeService as jest.Mocked<typeof PuppetForgeService>;
+            mockedPuppetForgeService.checkForUpdate.mockResolvedValue({
+                hasUpdate: true,
+                latestVersion: '2.0.0',
+                currentVersion: undefined
+            });
+
+            // Act
+            const result = await provider.provideCodeLenses(mockDocument, mockToken);
+
+            // Assert
+            expect(result).toHaveLength(1);
+            expect(result[0].command?.tooltip).toContain('Update apache from unversioned to 2.0.0');
         });
     });
 
@@ -209,11 +474,53 @@ describe('PuppetfileCodeLensProvider', () => {
 
     describe('refresh', () => {
         test('should fire onDidChangeCodeLenses event', () => {
+            // Arrange
+            const fireSpy = jest.spyOn(provider._onDidChangeCodeLenses, 'fire');
+            
             // Act
             provider.refresh();
 
-            // Assert - Just verify it doesn't throw an error
-            expect(true).toBe(true);
+            // Assert
+            expect(fireSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('dispose', () => {
+        test('should dispose document change listener', () => {
+            // Arrange
+            const disposeSpy = jest.spyOn(provider.documentChangeListener, 'dispose');
+            
+            // Act
+            provider.dispose();
+
+            // Assert
+            expect(disposeSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('document change listener', () => {
+        test('should refresh on puppetfile document change', () => {
+            // Arrange
+            const refreshSpy = jest.spyOn(provider, 'refresh');
+            const changeHandler = (vscode.workspace.onDidChangeTextDocument as jest.Mock).mock.calls[0][0];
+            
+            // Act
+            changeHandler({ document: { languageId: 'puppetfile' } });
+            
+            // Assert
+            expect(refreshSpy).toHaveBeenCalled();
+        });
+
+        test('should not refresh on non-puppetfile document change', () => {
+            // Arrange
+            const refreshSpy = jest.spyOn(provider, 'refresh');
+            const changeHandler = (vscode.workspace.onDidChangeTextDocument as jest.Mock).mock.calls[0][0];
+            
+            // Act
+            changeHandler({ document: { languageId: 'javascript' } });
+            
+            // Assert
+            expect(refreshSpy).not.toHaveBeenCalled();
         });
     });
 

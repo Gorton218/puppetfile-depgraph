@@ -160,7 +160,7 @@ export class ForgeModule {
      */
     public static getCached(moduleName: string): ForgeModule | null {
         const normalizedKey = ModuleNameUtils.toCanonicalFormat(moduleName);
-        return this.moduleCache.get(normalizedKey) || null;
+        return this.moduleCache.get(normalizedKey) ?? null;
     }
     
     /**
@@ -204,7 +204,7 @@ export class ForgeModule {
      * Get the latest version of this module
      */
     public getLatestVersion(): string | null {
-        return this.current_release?.version || null;
+        return this.current_release?.version ?? null;
     }
     
     /**
@@ -269,7 +269,7 @@ export class ForgeModule {
             module: this.moduleName,
             slug: this.slug,
             latestVersion: this.getLatestVersion(),
-            releaseCount: this.releases?.length || 0,
+            releaseCount: this.releases?.length ?? 0,
             downloads: this.downloads,
             variants: this.variants
         };
@@ -590,7 +590,7 @@ export class PuppetForgeService {
                 const num = parseInt(part, 10);
                 return isNaN(num) ? 0 : num;
             });
-            return { parts, preRelease: preRelease || '' };
+            return { parts, preRelease: preRelease ?? '' };
         };
 
         const v1 = parseVersion(version1);

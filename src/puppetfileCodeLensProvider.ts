@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser } from './puppetfileParser';
 import { PuppetForgeService } from './services/puppetForgeService';
+import { getVersionDisplay, formatVersionTransition } from './utils/versionUtils';
 import { PuppetfileUpdateService } from './services/puppetfileUpdateService';
 import { showTemporaryMessage } from './extension';
 
@@ -11,6 +12,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
     private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
     private documentChangeListener: vscode.Disposable;
+    public isSaving = false;
 
     constructor() {
         this.documentChangeListener = vscode.workspace.onDidChangeTextDocument(event => {
@@ -44,6 +46,12 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
         document: vscode.TextDocument,
         token: vscode.CancellationToken
     ): Promise<vscode.CodeLens[]> {
+        // Skip dirty check for untitled documents (used in tests)
+        if (document.uri.scheme === 'file' && document.isDirty) {
+            // For real files, don't show code lenses if document is dirty
+            return [];
+        }
+        
         if (document.languageId !== 'puppetfile') {
             return [];
         }
@@ -85,7 +93,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
                         // Create CodeLens for safe upgrade
                         const safeUpgradeCodeLens = new vscode.CodeLens(range, {
                             title: `$(arrow-up) Update to ${updateInfo.latestVersion}`,
-                            tooltip: `Update ${module.name} from ${module.version || 'unversioned'} to ${updateInfo.latestVersion} (safe upgrade)`,
+                            tooltip: `Update ${module.name} from ${getVersionDisplay(module.version)} to ${updateInfo.latestVersion} (safe upgrade)`,
                             command: 'puppetfile-depgraph.applySingleUpgrade',
                             arguments: [{
                                 line: module.line,
@@ -157,7 +165,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
             }, async (progress) => {
                 progress.report({ 
                     increment: 0, 
-                    message: `${currentVersion || 'unversioned'} → ${newVersion}` 
+                    message: formatVersionTransition(currentVersion, newVersion) 
                 });
 
                 // Apply the update
