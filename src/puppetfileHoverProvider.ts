@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { PuppetfileParser, PuppetModule } from './puppetfileParser';
-import { PuppetForgeService, ForgeModule } from './services/puppetForgeService';
+import { PuppetForgeService, ForgeModule, ForgeVersion } from './services/puppetForgeService';
 import { GitMetadataService, GitModuleMetadata } from './services/gitMetadataService';
 import { VersionCompatibilityService, VersionCompatibility } from './services/versionCompatibilityService';
 import { CacheService } from './services/cacheService';
@@ -231,7 +231,11 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         markdown.appendMarkdown(`## 📦 ${module.name}\n\n`);
     }
 
-    private appendVersionInfo(markdown: vscode.MarkdownString, module: PuppetModule, updateInfo: any): void {
+    private appendVersionInfo(
+        markdown: vscode.MarkdownString, 
+        module: PuppetModule, 
+        updateInfo: { hasUpdate: boolean; latestVersion: string | null; currentVersion?: string }
+    ): void {
         // Current version info
         if (module.version) {
             markdown.appendMarkdown(`**Current Version:** \`${module.version}\`\n\n`);
@@ -249,7 +253,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     private async appendAvailableVersions(
         markdown: vscode.MarkdownString,
         module: PuppetModule,
-        allReleases: Array<{version: string}>,
+        allReleases: ForgeVersion[],
         allModules: PuppetModule[]
     ): Promise<void> {
         const { versionsToShow, sectionTitle } = this.getVersionsToShow(module, allReleases);
@@ -260,8 +264,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
     }
 
-    private getVersionsToShow(module: PuppetModule, allReleases: Array<{version: string}>): {
-        versionsToShow: Array<{version: string}>;
+    private getVersionsToShow(module: PuppetModule, allReleases: ForgeVersion[]): {
+        versionsToShow: ForgeVersion[];
         sectionTitle: string;
     } {
         if (module.version) {
@@ -281,7 +285,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         markdown: vscode.MarkdownString,
         module: PuppetModule,
         forgeModule: ForgeModule,
-        allReleases: any[]
+        allReleases: ForgeVersion[]
     ): void {
         const dependencies = this.getModuleDependencies(module, forgeModule, allReleases);
 
@@ -297,7 +301,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     private getModuleDependencies(
         module: PuppetModule,
         forgeModule: ForgeModule,
-        allReleases: any[]
+        allReleases: ForgeVersion[]
     ): Array<{name: string; version_requirement: string}> | undefined {
         if (module.version) {
             const release = allReleases.find(r => r.version === module.version);
@@ -556,7 +560,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
      */
     private async checkVersionCompatibilities(
         module: PuppetModule, 
-        versions: Array<{version: string}>, 
+        versions: ForgeVersion[], 
         allModules: PuppetModule[]
     ): Promise<Map<string, VersionCompatibility>> {
         const compatibilityMap = new Map<string, VersionCompatibility>();
@@ -622,7 +626,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
     private async appendVersionsWithCompatibility(
         markdown: vscode.MarkdownString,
         module: PuppetModule,
-        versions: Array<{version: string}>,
+        versions: ForgeVersion[],
         allModules: PuppetModule[]
     ): Promise<void> {
         // Check compatibility for each version
