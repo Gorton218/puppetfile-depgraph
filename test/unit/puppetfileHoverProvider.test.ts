@@ -547,10 +547,10 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             
             const result = (provider as any).extractCompleteModuleDefinition(document, 0);
             
-            expect(result.includes('puppetlabs/stdlib'));
-            expect(result.includes(':git'));
-            expect(result.includes(':ref'));
-            expect(result.includes(':tag'));
+            expect(result.includes('puppetlabs/stdlib')).toBe(true);
+            expect(result.includes(':git')).toBe(true);
+            expect(result.includes(':ref')).toBe(true);
+            expect(result.includes(':tag')).toBe(true);
             restore();
         });
     });
@@ -564,7 +564,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             await (provider as any).checkAndInitializeCache();
             
             // Should complete without throwing
-            expect(true);
+            expect(true).toBe(true);
             restore();
         });
     });
@@ -593,7 +593,7 @@ describe('PuppetfileHoverProvider Test Suite', () => {
             );
             
             // Should handle error gracefully and return a Map
-            expect(result instanceof Map);
+            expect(result instanceof Map).toBe(true);
             
             consoleErrorStub.restore();
             consoleWarnStub.restore();
