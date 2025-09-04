@@ -135,7 +135,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         let currentLine = startLine + 1;
         
         // Check consecutive lines for Git module parameters
-        const gitParameterPattern = /^[\t\s]+:(git|ref|tag|branch)\s*=>/;
+        const gitParameterPattern = /^\s+:(git|ref|tag|branch)\s*=>/;
         while (currentLine < document.lineCount) {
             const lineText = document.lineAt(currentLine).text;
             
