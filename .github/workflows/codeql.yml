@@ -1,0 +1,66 @@
+# CodeQL Analysis workflow for GitHub Advanced Security
+# Analyzes code for security vulnerabilities and coding errors
+# Documentation: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors
+
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ "main", "release/*" ]
+  pull_request:
+    branches: [ "main", "release/*" ]
+  schedule:
+    # Run at 6:00 AM UTC every Monday
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+          - language: actions
+            build-mode: none
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        # Specify queries: security-extended for more comprehensive analysis
+        queries: security-extended
+
+    # Only build for javascript-typescript
+    - name: Setup Node.js
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@v6
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+
+    - name: Install dependencies
+      if: matrix.language == 'javascript-typescript'
+      run: npm ci
+
+    - name: Compile TypeScript
+      if: matrix.language == 'javascript-typescript'
+      run: npm run compile
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{ matrix.language }}"
