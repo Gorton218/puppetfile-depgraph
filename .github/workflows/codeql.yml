@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - language: javascript-typescript
-            build-mode: autobuild
+            build-mode: none
           - language: actions
             build-mode: none
 
@@ -40,6 +40,22 @@ jobs:
         build-mode: ${{ matrix.build-mode }}
         # Specify queries: security-extended for more comprehensive analysis
         queries: security-extended
+
+    # Only build for javascript-typescript
+    - name: Setup Node.js
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@v6
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+
+    - name: Install dependencies
+      if: matrix.language == 'javascript-typescript'
+      run: npm ci
+
+    - name: Compile TypeScript
+      if: matrix.language == 'javascript-typescript'
+      run: npm run compile
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
