@@ -149,5 +149,16 @@ describe('ConflictAnalyzer Test Suite', () => {
       
       expect(conflict).toBeNull();
     });
+    
+    test('should suggest removing the last module in cycle', () => {
+      const path = ['moduleA', 'moduleB', 'moduleC', 'moduleD'];
+      const conflict = ConflictAnalyzer.checkForCircularDependencies('moduleB', path);
+      
+      expect(conflict).toBeTruthy();
+      expect(conflict!.suggestedFixes).toHaveLength(1);
+      expect(conflict!.suggestedFixes[0].module).toBe('moduleD');
+      expect(conflict!.suggestedFixes[0].suggestedVersion).toBe('none');
+      expect(conflict!.suggestedFixes[0].reason).toContain('break the circular reference');
+    });
   });
 });
