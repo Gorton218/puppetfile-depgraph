@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as assert from 'assert';
+import * as assert from 'node:assert';
 import { TestHelper } from './testHelper';
 import * as sinon from 'sinon';
 import { PuppetForgeService } from '../../src/services/puppetForgeService';

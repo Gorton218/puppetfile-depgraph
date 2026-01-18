@@ -1,6 +1,6 @@
 // VS Code Integration Tests - Uses Mocha syntax for VS Code test runner
 import * as vscode from 'vscode';
-import * as assert from 'assert';
+import * as assert from 'node:assert';
 
 console.log('Loading extension test file...');
 console.log('typeof suite:', typeof suite);
