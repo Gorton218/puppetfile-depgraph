@@ -3,7 +3,7 @@ import { PuppetModule } from '../../../src/puppetfileParser';
 import { PuppetForgeService } from '../../../src/services/puppetForgeService';
 import { MockPuppetForgeService } from '../../vscode-test/mockPuppetForgeService';
 import * as sinon from 'sinon';
-import * as assert from 'assert';
+import * as assert from 'node:assert';
 import axios from 'axios';
 import { ModuleNameUtils } from '../../../src/utils/moduleNameUtils';
 

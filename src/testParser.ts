@@ -1,6 +1,6 @@
 import { PuppetfileParser } from './puppetfileParser';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // Simple test script to validate our parser works
 const puppetfilePath = path.join(__dirname, '..', 'Puppetfile');
