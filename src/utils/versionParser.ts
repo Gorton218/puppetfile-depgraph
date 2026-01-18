@@ -16,8 +16,8 @@ export class VersionParser {
           requirements.push({ operator: '>=', version });
           
           // Calculate upper bound
-          const major = parseInt(parts[0]);
-          const minor = parseInt(parts[1]);
+          const major = Number.parseInt(parts[0], 10);
+          const minor = Number.parseInt(parts[1], 10);
           const upperBound = `${major}.${minor + 1}.0`;
           requirements.push({ operator: '<', version: upperBound });
         }
@@ -40,11 +40,11 @@ export class VersionParser {
         requirements.push({ operator: '>=', version: baseVersion + '.0'.repeat(3 - nonWildcardParts.length) });
         
         if (nonWildcardParts.length === 1) {
-          const major = parseInt(nonWildcardParts[0]);
+          const major = Number.parseInt(nonWildcardParts[0], 10);
           requirements.push({ operator: '<', version: `${major + 1}.0.0` });
         } else if (nonWildcardParts.length === 2) {
-          const major = parseInt(nonWildcardParts[0]);
-          const minor = parseInt(nonWildcardParts[1]);
+          const major = Number.parseInt(nonWildcardParts[0], 10);
+          const minor = Number.parseInt(nonWildcardParts[1], 10);
           requirements.push({ operator: '<', version: `${major}.${minor + 1}.0` });
         }
       }
@@ -180,16 +180,16 @@ export class VersionParser {
       return v1.localeCompare(v2);
     }
     
-    const major1 = parseInt(parse1[1]);
-    const major2 = parseInt(parse2[1]);
+    const major1 = Number.parseInt(parse1[1], 10);
+    const major2 = Number.parseInt(parse2[1], 10);
     if (major1 !== major2) {return major1 - major2;}
     
-    const minor1 = parseInt(parse1[2]);
-    const minor2 = parseInt(parse2[2]);
+    const minor1 = Number.parseInt(parse1[2], 10);
+    const minor2 = Number.parseInt(parse2[2], 10);
     if (minor1 !== minor2) {return minor1 - minor2;}
     
-    const patch1 = parseInt(parse1[3]);
-    const patch2 = parseInt(parse2[3]);
+    const patch1 = Number.parseInt(parse1[3], 10);
+    const patch2 = Number.parseInt(parse2[3], 10);
     if (patch1 !== patch2) {return patch1 - patch2;}
     
     // Handle pre-release versions
