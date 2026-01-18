@@ -38,7 +38,7 @@ export class VersionCompatibilityService {
         for (const dep of targetDependencies) {
             // Find if this dependency is in the Puppetfile
             const dependentModule = allModules.find(m => 
-                m.source === 'forge' && this.normalizeModuleName(m.name) === this.normalizeModuleName(dep.name)
+                m.source === 'forge' && ModuleNameUtils.toSlashFormat(m.name) === ModuleNameUtils.toSlashFormat(dep.name)
             );
             
             if (dependentModule && dependentModule.version) {
@@ -89,7 +89,7 @@ export class VersionCompatibilityService {
             
             // Check if this module depends on the target module
             const targetDep = dependencies.find(d => 
-                this.normalizeModuleName(d.name) === this.normalizeModuleName(targetModule.name)
+                ModuleNameUtils.toSlashFormat(d.name) === ModuleNameUtils.toSlashFormat(targetModule.name)
             );
             
             if (targetDep) {
