@@ -162,7 +162,7 @@ export class DependencyTreeService {
 
         // Collect requirement information
         if (imposedBy && versionRequirement) {
-            const normalizedName = this.normalizeModuleName(module.name);
+            const normalizedName = ModuleNameUtils.toCanonicalFormat(module.name);
             this.addRequirement(normalizedName, {
                 constraint: versionRequirement,
                 imposedBy,
@@ -172,7 +172,7 @@ export class DependencyTreeService {
         }
 
         // Determine how to display this dependency
-        const resolvedVersion = this.getResolvedVersion(this.normalizeModuleName(module.name));
+        const resolvedVersion = this.getResolvedVersion(ModuleNameUtils.toCanonicalFormat(module.name));
         const displayVersion = this.determineDisplayVersion(module, versionRequirement, resolvedVersion, isDirectDependency);
         const isConstraintViolated = this.checkConstraintViolation(resolvedVersion, versionRequirement);
         
@@ -226,7 +226,7 @@ export class DependencyTreeService {
                             break;
                         }
                         
-                        const normalizedDepName = this.normalizeModuleName(dep.name);
+                        const normalizedDepName = ModuleNameUtils.toCanonicalFormat(dep.name);
                         
                         // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
                         const childModule: PuppetModule = {
@@ -269,7 +269,7 @@ export class DependencyTreeService {
                             break;
                         }
                         
-                        const normalizedDepName = this.normalizeModuleName(dep.name);
+                        const normalizedDepName = ModuleNameUtils.toCanonicalFormat(dep.name);
                         
                         // Git module dependencies are typically Forge modules
                         const childModule: PuppetModule = {
@@ -537,7 +537,7 @@ export class DependencyTreeService {
      */
     private static annotateNodesWithConflicts(nodes: DependencyNode[]): void {
         const annotate = (node: DependencyNode) => {
-            const normalizedName = this.normalizeModuleName(node.name);
+            const normalizedName = ModuleNameUtils.toCanonicalFormat(node.name);
             const info = this.dependencyGraph[normalizedName];
             if (info?.conflict) {
                 node.conflict = info.conflict;
