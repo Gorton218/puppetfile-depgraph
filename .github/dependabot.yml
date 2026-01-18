@@ -13,8 +13,7 @@ updates:
       time: "09:00"
     # Limit to security updates and minor/patch versions for dev dependencies
     open-pull-requests-limit: 5
-    reviewers:
-      - "@gorton218"
+
     assignees:
       - "@gorton218"
     commit-message:
@@ -44,8 +43,7 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 3
-    reviewers:
-      - "@gorton218"
+
     assignees:
       - "@gorton218"
     commit-message:
