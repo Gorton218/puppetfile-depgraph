@@ -88,7 +88,7 @@ export class ConflictAnalyzer {
     availableVersions: string[]
   ): string {
     const constraintStr = VersionParser.formatRange(mergedConstraint);
-    const latest = availableVersions.length > 0 ? availableVersions[availableVersions.length - 1] : 'none';
+    const latest = availableVersions.length > 0 ? availableVersions.at(-1) : 'none';
     
     return `${moduleName} requires ${constraintStr}, but only versions ${availableVersions.slice(0, 3).join(', ')}${availableVersions.length > 3 ? '...' : ''} are available (latest: ${latest})`;
   }
@@ -143,7 +143,7 @@ export class ConflictAnalyzer {
     const fixes: Fix[] = [];
     
     // Suggest relaxing constraints if possible
-    const latest = availableVersions.length > 0 ? availableVersions[availableVersions.length - 1] : null;
+    const latest = availableVersions.length > 0 ? availableVersions.at(-1) : null;
     
     if (latest && mergedConstraint.max && VersionParser['compareVersions'](latest, mergedConstraint.max.version) < 0) {
       // Latest available is older than required minimum
@@ -174,7 +174,7 @@ export class ConflictAnalyzer {
         type: 'circular',
         details: `Circular dependency detected: ${cycle.join(' -> ')} -> ${moduleName}`,
         suggestedFixes: [{
-          module: cycle[cycle.length - 1],
+          module: cycle.at(-1)!,
           currentVersion: 'current',
           suggestedVersion: 'none',
           reason: 'Remove this dependency to break the circular reference'
