@@ -220,35 +220,14 @@ export class DependencyTreeService {
                 }
                 
                 if (releaseToUse?.metadata?.dependencies) {
-                    for (const dep of releaseToUse.metadata.dependencies) {
-                        // Check for cancellation before processing each dependency
-                        if (cancellationToken?.isCancellationRequested) {
-                            break;
-                        }
-                        
-                        const normalizedDepName = ModuleNameUtils.toCanonicalFormat(dep.name);
-                        
-                        // For transitive dependencies, we want to show the constraint, not resolve to Puppetfile version
-                        const childModule: PuppetModule = {
-                            name: normalizedDepName,
-                            version: undefined, // Will be set in buildNodeTree based on context
-                            source: 'forge',
-                            line: -1 // Not from a file line
-                        };
-
-                        const childNode = await this.buildNodeTree(
-                            childModule, 
-                            depth + 1, 
-                            false,
-                            module.name,
-                            dep.version_requirement,
-                            progressCallback,
-                            cancellationToken
-                        );
-                        if (childNode) {
-                            node.children.push(childNode);
-                        }
-                    }
+                    await this.processDependencies(
+                        releaseToUse.metadata.dependencies,
+                        module.name,
+                        node,
+                        depth,
+                        progressCallback,
+                        cancellationToken
+                    );
                 }
             } catch (error) {
                 console.warn(`Could not fetch dependencies for ${module.name}:`, error);
@@ -263,35 +242,14 @@ export class DependencyTreeService {
                 const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 
                 if (gitMetadata?.dependencies) {
-                    for (const dep of gitMetadata.dependencies) {
-                        // Check for cancellation before processing each dependency
-                        if (cancellationToken?.isCancellationRequested) {
-                            break;
-                        }
-                        
-                        const normalizedDepName = ModuleNameUtils.toCanonicalFormat(dep.name);
-                        
-                        // Git module dependencies are typically Forge modules
-                        const childModule: PuppetModule = {
-                            name: normalizedDepName,
-                            version: undefined,
-                            source: 'forge', // Most dependencies are from Forge
-                            line: -1
-                        };
-
-                        const childNode = await this.buildNodeTree(
-                            childModule, 
-                            depth + 1, 
-                            false,
-                            module.name,
-                            dep.version_requirement,
-                            progressCallback,
-                            cancellationToken
-                        );
-                        if (childNode) {
-                            node.children.push(childNode);
-                        }
-                    }
+                    await this.processDependencies(
+                        gitMetadata.dependencies,
+                        module.name,
+                        node,
+                        depth,
+                        progressCallback,
+                        cancellationToken
+                    );
                 }
             } catch (error) {
                 console.warn(`Could not fetch Git metadata for ${module.name}:`, error);
@@ -301,6 +259,53 @@ export class DependencyTreeService {
         this.visitedModules.delete(module.name);
         this.currentPath.pop();
         return node;
+    }
+
+    /**
+     * Process dependencies and add them as children to the parent node
+     * @param dependencies Array of dependencies to process
+     * @param parentModule The parent module name
+     * @param parentNode The parent dependency node to add children to
+     * @param depth Current depth in the tree
+     * @param progressCallback Optional callback for progress updates
+     * @param cancellationToken Optional cancellation token
+     */
+    private static async processDependencies(
+        dependencies: Array<{name: string; version_requirement: string}>,
+        parentModule: string,
+        parentNode: DependencyNode,
+        depth: number,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
+    ): Promise<void> {
+        for (const dep of dependencies) {
+            // Check for cancellation before processing each dependency
+            if (cancellationToken?.isCancellationRequested) {
+                break;
+            }
+            
+            const normalizedDepName = ModuleNameUtils.toCanonicalFormat(dep.name);
+            
+            const childModule: PuppetModule = {
+                name: normalizedDepName,
+                version: undefined,
+                source: 'forge',
+                line: -1
+            };
+
+            const childNode = await this.buildNodeTree(
+                childModule, 
+                depth + 1, 
+                false,
+                parentModule,
+                dep.version_requirement,
+                progressCallback,
+                cancellationToken
+            );
+            if (childNode) {
+                parentNode.children.push(childNode);
+            }
+        }
     }
 
     /**
