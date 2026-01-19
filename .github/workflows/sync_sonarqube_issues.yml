@@ -1,4 +1,4 @@
-name: SonarCloud Sync (reusable)
+name: SonarCloud Issues Sync
 
 on:
   workflow_dispatch:
@@ -9,7 +9,6 @@ jobs:
     permissions:
       contents: read
       issues: write
-      metadata: read
     with:
       sonar_project: my-org_my-project           # required
       issue_types: BUG,VULNERABILITY,CODE_SMELL  # optional
