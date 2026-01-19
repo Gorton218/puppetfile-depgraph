@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Sync SonarCloud Issues
         uses: Gorton218/sonarqube-to-github-issue-sync@fix_call
+        env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          sonar_project: my-org_my-project
-        secrets:
-          sonar_token: ${{ secrets.SONAR_TOKEN }}
+          sonar_project: Gorton218_puppetfile-depgraph
