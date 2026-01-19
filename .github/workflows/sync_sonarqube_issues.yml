@@ -1,0 +1,21 @@
+name: SonarCloud Sync (reusable)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sonarcloud_sync:
+    uses: Gorton218/sonarqube-to-github-issue-sync/.github/workflows/sonarcloud-sync.yml@main
+    permissions:
+      contents: read
+      issues: write
+      metadata: read
+    with:
+      sonar_project: my-org_my-project           # required
+      issue_types: BUG,VULNERABILITY,CODE_SMELL  # optional
+      dry_run: false                             # optional
+      log_level: INFO                            # optional
+      debug: false                               # optional
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # can be the repo’s Actions token if it has issues:write
