@@ -10,7 +10,7 @@ jobs:
       contents: read
       issues: write
     with:
-      sonar_project: my-org_my-project           # required
+      sonar_project: Gorton218_puppetfile-depgraph
       issue_types: BUG,VULNERABILITY,CODE_SMELL  # optional
       dry_run: false                             # optional
       log_level: INFO                            # optional
