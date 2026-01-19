@@ -8,6 +8,9 @@ on:
 jobs:
   sonarcloud_sync:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write      # Required to create and close issues
+      contents: read     # Required to checkout code
     steps:
       - name: Sync SonarCloud Issues
         uses: Gorton218/sonarqube-to-github-issue-sync@fix_call
