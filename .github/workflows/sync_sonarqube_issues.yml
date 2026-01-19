@@ -7,16 +7,8 @@ on:
 
 jobs:
   sonarcloud_sync:
-    uses: Gorton218/sonarqube-to-github-issue-sync/.github/workflows/sonarcloud-sync.yml@fix_call
-    permissions:
-      contents: read
-      issues: write
+    uses: Gorton218/sonarqube-to-github-issue-sync@main
     with:
-      sonar_project: Gorton218_puppetfile-depgraph
-      issue_types: BUG,VULNERABILITY,CODE_SMELL  # optional
-      dry_run: false                             # optional
-      log_level: INFO                            # optional
-      debug: false                               # optional
+        sonar_project: my-org_my-project
     secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # can be the repo’s Actions token if it has issues:write
+        sonar_token: ${{ secrets.SONAR_TOKEN }}
