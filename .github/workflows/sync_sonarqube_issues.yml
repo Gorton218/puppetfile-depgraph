@@ -2,8 +2,8 @@ name: SonarCloud Issues Sync
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
 
 jobs:
   sonarcloud_sync:
