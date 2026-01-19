@@ -7,7 +7,7 @@ on:
 
 jobs:
   sonarcloud_sync:
-    uses: Gorton218/sonarqube-to-github-issue-sync@main
+    uses: Gorton218/sonarqube-to-github-issue-sync@fix_call
     with:
         sonar_project: my-org_my-project
     secrets:
