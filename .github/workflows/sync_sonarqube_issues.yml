@@ -1,0 +1,23 @@
+name: SonarCloud Issues Sync
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Test"]
+    branches: [main, master]
+    types:
+      - completed
+
+jobs:
+  sonarcloud_sync:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write      # Required to create and close issues
+      contents: read     # Required to checkout code
+    steps:
+      - name: Sync SonarCloud Issues
+        uses: Gorton218/sonarqube-to-github-issue-sync@main
+        with:
+            sonar_project: Gorton218_puppetfile-depgraph
+            sonar_token: ${{ secrets.SONAR_TOKEN }}
