@@ -115,8 +115,7 @@ export class ConflictAnalyzer {
       const [group1, group2] = groups;
       
       // Analyze which group has more restrictive constraints
-      const parsed1 = VersionParser.parse(group1[0].constraint);
-      const parsed2 = VersionParser.parse(group2[0].constraint);
+      const parsed = VersionParser.parse(group2[0].constraint);
       
       // Check if updating modules in one group might resolve the conflict
       for (const req of group1) {
