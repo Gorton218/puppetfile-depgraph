@@ -617,8 +617,8 @@ export class UpgradeDiffProvider {
                 } else {
                     // Use workspace edit to modify the document
                     const lineIndex = targetLineNumber - 1;
-                    const line = puppetfileDocument.lineAt(lineIndex);
-                    const lineText = line.text;
+                    const lineText = lines[lineIndex];
+                    const range = new vscode.Range(lineIndex, 0, lineIndex, lineText.length);
                     
                     // Replace the version in the line
                     let updatedLine: string;
@@ -638,7 +638,7 @@ export class UpgradeDiffProvider {
                     
                     // Apply the edit using workspace API
                     const edit = new vscode.WorkspaceEdit();
-                    edit.replace(puppetfileDocument.uri, line.range, updatedLine);
+                    edit.replace(puppetfileDocument.uri, range, updatedLine);
                     await vscode.workspace.applyEdit(edit);
                     
                     // Save the document
