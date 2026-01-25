@@ -41,9 +41,9 @@ export class UpgradeDiffProvider {
             const disposable = vscode.workspace.registerTextDocumentContentProvider('puppetfile-diff', provider);
             
             // Store upgrade plan, options, and content provider for later use
-            (global as any).__currentUpgradePlan = upgradePlan;
-            (global as any).__currentUpgradeOptions = options;
-            (global as any).__currentContentProvider = provider;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradeOptions = options;
+            (globalThis as any).__currentContentProvider = provider;
             
             // Open the diff editor
             await vscode.commands.executeCommand(
@@ -71,9 +71,9 @@ export class UpgradeDiffProvider {
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
                 disposable.dispose();
-                if ((global as any).__currentContentProvider) {
-                    (global as any).__currentContentProvider.dispose();
-                    (global as any).__currentContentProvider = null;
+                if ((globalThis as any).__currentContentProvider) {
+                    (globalThis as any).__currentContentProvider.dispose();
+                    (globalThis as any).__currentContentProvider = null;
                 }
             }, 10000); // Longer delay to account for decorations
             
@@ -343,8 +343,8 @@ export class UpgradeDiffProvider {
         }
         
         // Store the upgrade plan for the commands to use
-        (global as any).__currentUpgradePlan = upgradePlan;
-        (global as any).__currentUpgradeOptions = options;
+        (globalThis as any).__currentUpgradePlan = upgradePlan;
+        (globalThis as any).__currentUpgradeOptions = options;
         
         // Show notification with action buttons
         const message = `Found ${upgradeableCount} module${upgradeableCount > 1 ? 's' : ''} with safe upgrades available`;
@@ -366,7 +366,7 @@ export class UpgradeDiffProvider {
      * Apply all upgrades from the current upgrade plan
      */
     public static async applyAllUpgrades(): Promise<void> {
-        const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+        const upgradePlan: UpgradePlan = (globalThis as any).__currentUpgradePlan;
         if (!upgradePlan) {
             vscode.window.showErrorMessage('No upgrade plan available. Please run the upgrade planner first.');
             return;
@@ -432,7 +432,7 @@ export class UpgradeDiffProvider {
      * Apply selected upgrades from the current upgrade plan
      */
     public static async applySelectedUpgrades(): Promise<void> {
-        const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+        const upgradePlan: UpgradePlan = (globalThis as any).__currentUpgradePlan;
         if (!upgradePlan) {
             vscode.window.showErrorMessage('No upgrade plan available. Please run the upgrade planner first.');
             return;
@@ -695,8 +695,8 @@ export class UpgradeDiffProvider {
     private static async refreshDiffView(): Promise<void> {
         try {
             // Check if we have a stored upgrade plan to refresh
-            const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
-            const upgradeOptions: DiffOptions = (global as any).__currentUpgradeOptions;
+            const upgradePlan: UpgradePlan = (globalThis as any).__currentUpgradePlan;
+            const upgradeOptions: DiffOptions = (globalThis as any).__currentUpgradeOptions;
             
             if (!upgradePlan) {
                 return;
@@ -727,15 +727,15 @@ export class UpgradeDiffProvider {
             const updatedUpgradePlan = await UpgradePlannerService.createUpgradePlan(parseResult.modules);
             
             // Update the global upgrade plan
-            (global as any).__currentUpgradePlan = updatedUpgradePlan;
+            (globalThis as any).__currentUpgradePlan = updatedUpgradePlan;
             
             // Update the content provider with new content instead of opening a new diff
             const originalContent = puppetfileDoc.getText();
             const proposedContent = this.createProposedContent(originalContent, updatedUpgradePlan, { ...upgradeOptions, showInlineActions: true });
             
             // Update the global content provider reference if it exists
-            if ((global as any).__currentContentProvider) {
-                (global as any).__currentContentProvider.updateContent(originalContent, proposedContent);
+            if ((globalThis as any).__currentContentProvider) {
+                (globalThis as any).__currentContentProvider.updateContent(originalContent, proposedContent);
             }
             
             // Refresh the CodeLens provider with the updated plan

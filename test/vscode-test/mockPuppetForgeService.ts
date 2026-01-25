@@ -24,18 +24,18 @@ declare global {
 
 export class MockPuppetForgeService {
   private static get mockData(): Map<string, any> {
-    if (!global.__mockPuppetForgeData) {
-      global.__mockPuppetForgeData = new Map();
+    if (!globalThis.__mockPuppetForgeData) {
+      globalThis.__mockPuppetForgeData = new Map();
     }
-    return global.__mockPuppetForgeData;
+    return globalThis.__mockPuppetForgeData;
   }
 
   private static get initialized(): boolean {
-    return global.__mockPuppetForgeInitialized || false;
+    return globalThis.__mockPuppetForgeInitialized || false;
   }
 
   private static set initialized(value: boolean) {
-    global.__mockPuppetForgeInitialized = value;
+    globalThis.__mockPuppetForgeInitialized = value;
   }
 
   static initialize() {

@@ -281,8 +281,8 @@ suite('Performance: Cache Tests', () => {
     PuppetForgeService.clearCache();
     
     // Force garbage collection if available
-    if (global.gc) {
-      global.gc();
+    if (globalThis.gc) {
+      globalThis.gc();
     }
     
     const afterClearMemory = process.memoryUsage().heapUsed;

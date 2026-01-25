@@ -104,9 +104,9 @@ describe('UpgradeDiffProvider', () => {
         (mockVscode as any)._mockApplyEdit.mockClear();
         
         // Clear global state
-        (global as any).__currentUpgradePlan = undefined;
-        (global as any).__currentUpgradeOptions = undefined;
-        (global as any).__currentContentProvider = undefined;
+        (globalThis as any).__currentUpgradePlan = undefined;
+        (globalThis as any).__currentUpgradeOptions = undefined;
+        (globalThis as any).__currentContentProvider = undefined;
         
         // Reset mocks
         mockUpgradePlannerService.applyUpgradesToContent = jest.fn().mockReturnValue('mocked content');
@@ -480,7 +480,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
             
             await UpgradeDiffProvider.applyAllUpgrades();
             
@@ -504,7 +504,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
             
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -545,7 +545,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
             
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -585,7 +585,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
             
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -614,7 +614,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
             
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -643,7 +643,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
             
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -1060,13 +1060,13 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 gitModules: []
             };
             
-            (global as any).__currentUpgradePlan = upgradePlan;
-            (global as any).__currentUpgradeOptions = {};
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradeOptions = {};
             
             const mockContentProvider = {
                 updateContent: jest.fn()
             };
-            (global as any).__currentContentProvider = mockContentProvider;
+            (globalThis as any).__currentContentProvider = mockContentProvider;
             
             const mockDocument = {
                 languageId: 'puppetfile',
@@ -1107,7 +1107,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
         
         test('should handle refresh errors gracefully', async () => {
             // Set up global state with no upgrade plan
-            (global as any).__currentUpgradePlan = null;
+            (globalThis as any).__currentUpgradePlan = null;
             
             const upgradeInfo = {
                 moduleName: 'puppetlabs/stdlib',
@@ -1400,7 +1400,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = plan;
+            (globalThis as any).__currentUpgradePlan = plan;
 
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -1429,7 +1429,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = plan;
+            (globalThis as any).__currentUpgradePlan = plan;
 
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
@@ -1461,7 +1461,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
                 hasConflicts: false,
                 gitModules: []
             };
-            (global as any).__currentUpgradePlan = plan;
+            (globalThis as any).__currentUpgradePlan = plan;
 
             const mockEditor = {
                 document: { languageId: 'puppetfile' }
