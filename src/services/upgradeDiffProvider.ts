@@ -618,7 +618,10 @@ export class UpgradeDiffProvider {
                     // Use workspace edit to modify the document
                     const lineIndex = targetLineNumber - 1;
                     const lineText = lines[lineIndex];
-                    const range = new vscode.Range(lineIndex, 0, lineIndex, lineText.length);
+                    const range = new vscode.Range(
+                        new vscode.Position(lineIndex, 0),
+                        new vscode.Position(lineIndex, lineText.length)
+                    );
                     
                     // Replace the version in the line
                     let updatedLine: string;
