@@ -294,11 +294,13 @@ export class UpgradeDiffProvider {
         ];
         
         for (const candidate of blockedCandidates) {
-            lines.push(`## ${candidate.module.name}`);
-            lines.push(`**Current Version:** ${candidate.currentVersion}`);
-            lines.push(`**Latest Available:** ${candidate.availableVersions[0] || 'unknown'}`);
-            lines.push(`**Blocked By:** ${candidate.blockedBy?.join(', ')}`);
-            lines.push('');
+            lines.push(
+                `## ${candidate.module.name}`,
+                `**Current Version:** ${candidate.currentVersion}`,
+                `**Latest Available:** ${candidate.availableVersions[0] || 'unknown'}`,
+                `**Blocked By:** ${candidate.blockedBy?.join(', ')}`,
+                ''
+            );
             
             if (candidate.conflicts) {
                 lines.push('**Conflicts:**');
@@ -308,13 +310,15 @@ export class UpgradeDiffProvider {
                 lines.push('');
             }
             
-            lines.push('**Possible Solutions:**');
-            lines.push('- Update the blocking modules to versions that allow newer dependencies');
-            lines.push('- Wait for newer versions of the blocking modules to be released');
-            lines.push('- Consider alternative modules that don\'t have these constraints');
-            lines.push('');
-            lines.push('---');
-            lines.push('');
+            lines.push(
+                '**Possible Solutions:**',
+                '- Update the blocking modules to versions that allow newer dependencies',
+                '- Wait for newer versions of the blocking modules to be released',
+                '- Consider alternative modules that don\'t have these constraints',
+                '',
+                '---',
+                ''
+            );
         }
         
         const doc = await vscode.workspace.openTextDocument({
