@@ -419,7 +419,13 @@ export class PuppetForgeService {
                 feedback_score: 0 // Not available from releases API
             });
         } catch (error) {
-            return null; // Return null for any error when fetching module
+            // Return null for known not-found scenarios, otherwise surface the error with context
+            if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400)) {
+                return null;
+            }
+
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            throw new Error(`Failed to fetch module ${moduleName}: ${message}`);
         }
     }
 
