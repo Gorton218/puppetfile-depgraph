@@ -411,7 +411,8 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         // Add tags if available
         if (metadata.tags && metadata.tags.length > 0) {
-            markdown.appendMarkdown(`\n**Tags:** ${metadata.tags.map(tag => `\`${tag}\``).join(', ')}\n`);
+            const formattedTags = metadata.tags.map(tag => `\`${tag}\``).join(', ');
+            markdown.appendMarkdown(`\n**Tags:** ${formattedTags}\n`);
         }
 
         // Add dependencies if available
@@ -648,16 +649,18 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 const compatibility = versionCompatibilities.get(rel.version);
                 const indicator = compatibility?.isCompatible ? '🟢' : '🟡';
                 const args = JSON.stringify([{ line: module.line, version: rel.version }]);
+                const versionDisplay = `\`${rel.version}\``;
+                const commandUrl = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)}`;
+                let tooltip = `Update to ${rel.version}`;
                 
                 if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
                     // Add conflict details to tooltip
                     const conflictDetails = compatibility.conflicts
                         .map(c => `${c.moduleName} requires ${c.requirement}`)
                         .join(', ');
-                    return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version} - Conflicts: ${conflictDetails}")`;
-                } else {
-                    return `${indicator} [\`${rel.version}\`](command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)} "Update to ${rel.version}")`;
+                    tooltip = `${tooltip} - Conflicts: ${conflictDetails}`;
                 }
+                return `${indicator} [${versionDisplay}](${commandUrl} "${tooltip}")`;
             });
             
             markdown.appendMarkdown(versionLinks.join('  ') + '\n');
@@ -665,4 +668,3 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         markdown.appendMarkdown('\n');
     }
 }
-
