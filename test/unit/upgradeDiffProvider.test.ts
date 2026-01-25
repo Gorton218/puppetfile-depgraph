@@ -433,10 +433,6 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
     describe('PuppetfileDiffContentProvider', () => {
         test('should provide correct content for current and proposed URIs', () => {
             const originalContent = 'original content';
-            const proposedContent = 'proposed content';
-
-            // Access the provider class through the module
-            const UpgradeDiffProviderModule = require('../../src/services/upgradeDiffProvider');
             
             // Since the class is not exported, we'll test the functionality through the main methods
             // This test verifies that the diff functionality works end-to-end
@@ -1877,7 +1873,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             await UpgradeDiffProvider.applySingleUpgradeFromDiff([upgradeInfo]);
 
             expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining('Could not find Puppetfile')
+                expect.stringContaining('Could not find the original Puppetfile')
             );
         });
 
@@ -1986,7 +1982,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             await UpgradeDiffProvider.applySingleUpgradeFromDiff([upgradeInfo]);
 
             expect(mockVscode.window.showErrorMessage).toHaveBeenCalledWith(
-                expect.stringContaining('Could not find Puppetfile')
+                expect.stringContaining('Could not find the original Puppetfile')
             );
         });
     });
