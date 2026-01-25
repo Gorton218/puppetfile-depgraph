@@ -651,18 +651,16 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
                 const args = JSON.stringify([{ line: module.line, version: rel.version }]);
                 const versionDisplay = `\`${rel.version}\``;
                 const commandUrl = `command:puppetfile-depgraph.updateModuleVersion?${encodeURIComponent(args)}`;
+                let tooltip = `Update to ${rel.version}`;
                 
                 if (compatibility && !compatibility.isCompatible && compatibility.conflicts) {
                     // Add conflict details to tooltip
                     const conflictDetails = compatibility.conflicts
                         .map(c => `${c.moduleName} requires ${c.requirement}`)
                         .join(', ');
-                    const tooltip = `Update to ${rel.version} - Conflicts: ${conflictDetails}`;
-                    return `${indicator} [${versionDisplay}](${commandUrl} "${tooltip}")`;
-                } else {
-                    const tooltip = `Update to ${rel.version}`;
-                    return `${indicator} [${versionDisplay}](${commandUrl} "${tooltip}")`;
+                    tooltip = `${tooltip} - Conflicts: ${conflictDetails}`;
                 }
+                return `${indicator} [${versionDisplay}](${commandUrl} "${tooltip}")`;
             });
             
             markdown.appendMarkdown(versionLinks.join('  ') + '\n');
@@ -670,4 +668,3 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         markdown.appendMarkdown('\n');
     }
 }
-
