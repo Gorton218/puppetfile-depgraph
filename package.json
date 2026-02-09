@@ -145,7 +145,7 @@
   },
   "dependencies": {
     "axios": "^1.13.2",
-    "glob": "^13.0.0",
+    "glob": "^13.0.1",
     "https-proxy-agent": "^7.0.6"
   },
   "repository": {
