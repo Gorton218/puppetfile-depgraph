@@ -144,7 +144,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "axios": "^1.13.2",
+    "axios": "^1.13.5",
     "glob": "^13.0.0",
     "https-proxy-agent": "^7.0.6"
   },
