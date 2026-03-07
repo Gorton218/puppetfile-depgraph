@@ -495,12 +495,12 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         } else {
             // Handle old format "puppetlabs-stdlib" by converting to "puppetlabs/stdlib"
             const dashIndex = module.name.indexOf('-');
-            if (dashIndex !== -1) {
+            if (dashIndex === -1) {
+                base = `https://forge.puppet.com/modules/${module.name}`;
+            } else {
                 const owner = module.name.substring(0, dashIndex);
                 const modName = module.name.substring(dashIndex + 1);
                 base = `https://forge.puppet.com/modules/${owner}/${modName}`;
-            } else {
-                base = `https://forge.puppet.com/modules/${module.name}`;
             }
         }
 
