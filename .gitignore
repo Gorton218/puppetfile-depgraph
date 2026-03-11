@@ -75,7 +75,8 @@ Thumbs.db
 
 # Claude AI development files
 claude-temp/
-.claude/
+.claude/*
+!.claude/skills/
 claude-notes.*
 claude-debug.*
 claude-test.*
