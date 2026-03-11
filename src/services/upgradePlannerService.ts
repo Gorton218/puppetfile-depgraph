@@ -252,10 +252,12 @@ export class UpgradePlannerService {
             ''
         ];
 
-        lines.push(...this.generateGitModulesSection(plan));
-        lines.push(...this.generateUpgradeableSection(plan.candidates));
-        lines.push(...this.generateBlockedSection(plan.candidates));
-        lines.push(...this.generateUpToDateSection(plan.candidates));
+        lines.push(
+            ...this.generateGitModulesSection(plan),
+            ...this.generateUpgradeableSection(plan.candidates),
+            ...this.generateBlockedSection(plan.candidates),
+            ...this.generateUpToDateSection(plan.candidates)
+        );
 
         return lines.join('\n');
     }
@@ -265,23 +267,22 @@ export class UpgradePlannerService {
             return [];
         }
 
-        const lines: string[] = [
+        const moduleLines = plan.gitModules.map(gitModule => {
+            const ref = gitModule.gitRef ?? gitModule.gitTag;
+            const refStr = ref ? ` @ ${ref}` : '';
+            return `- **${gitModule.name}**${refStr} (${gitModule.gitUrl ?? 'git'})`;
+        });
+
+        return [
             `## 📎 Git Modules (${plan.totalGitModules})`,
             '',
             'The following modules are sourced from Git repositories and cannot be automatically upgraded:',
-            ''
-        ];
-        for (const gitModule of plan.gitModules) {
-            const ref = gitModule.gitRef ?? gitModule.gitTag;
-            const refStr = ref ? ` @ ${ref}` : '';
-            lines.push(`- **${gitModule.name}**${refStr} (${gitModule.gitUrl ?? 'git'})`);
-        }
-        lines.push(
+            '',
+            ...moduleLines,
             '',
             '💡 **Note:** Git modules must be manually updated by modifying their ref/tag/branch in the Puppetfile.',
             ''
-        );
-        return lines;
+        ];
     }
 
     private static generateUpgradeableSection(candidates: UpgradeCandidate[]): string[] {
@@ -290,15 +291,12 @@ export class UpgradePlannerService {
             return [];
         }
 
-        const lines: string[] = [
+        return [
             `## ✅ Upgradeable Modules (${upgradeable.length})`,
+            '',
+            ...upgradeable.map(c => `- **${c.module.name}**: ${c.currentVersion} → ${c.maxSafeVersion}`),
             ''
         ];
-        for (const candidate of upgradeable) {
-            lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion} → ${candidate.maxSafeVersion}`);
-        }
-        lines.push('');
-        return lines;
     }
 
     private static generateBlockedSection(candidates: UpgradeCandidate[]): string[] {
@@ -307,20 +305,20 @@ export class UpgradePlannerService {
             return [];
         }
 
-        const lines: string[] = [
+        const moduleLines = blocked.flatMap(candidate => {
+            const header = `- **${candidate.module.name}**: ${candidate.currentVersion} (blocked by: ${candidate.blockedBy?.join(', ')})`;
+            const conflictLines = (candidate.conflicts ?? []).map(
+                conflict => `  - ${conflict.moduleName} requires ${conflict.requirement}, but has ${conflict.currentVersion}`
+            );
+            return [header, ...conflictLines];
+        });
+
+        return [
             `## ⚠️ Blocked Modules (${blocked.length})`,
+            '',
+            ...moduleLines,
             ''
         ];
-        for (const candidate of blocked) {
-            lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion} (blocked by: ${candidate.blockedBy?.join(', ')})`);
-            if (candidate.conflicts) {
-                for (const conflict of candidate.conflicts) {
-                    lines.push(`  - ${conflict.moduleName} requires ${conflict.requirement}, but has ${conflict.currentVersion}`);
-                }
-            }
-        }
-        lines.push('');
-        return lines;
     }
 
     private static generateUpToDateSection(candidates: UpgradeCandidate[]): string[] {
@@ -329,15 +327,12 @@ export class UpgradePlannerService {
             return [];
         }
 
-        const lines: string[] = [
+        return [
             `## ✨ Up-to-Date Modules (${upToDate.length})`,
+            '',
+            ...upToDate.map(c => `- **${c.module.name}**: ${c.currentVersion}`),
             ''
         ];
-        for (const candidate of upToDate) {
-            lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion}`);
-        }
-        lines.push('');
-        return lines;
     }
     
     /**
