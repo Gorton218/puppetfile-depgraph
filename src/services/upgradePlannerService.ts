@@ -241,9 +241,7 @@ export class UpgradePlannerService {
      * @returns Formatted string summary
      */
     public static generateUpgradeSummary(plan: UpgradePlan): string {
-        const lines: string[] = [];
-        
-        lines.push(
+        const lines: string[] = [
             `# Upgrade Plan Summary`,
             '',
             `**Total Forge Modules:** ${plan.totalModules}`,
@@ -252,73 +250,89 @@ export class UpgradePlannerService {
             `**Git Modules:** ${plan.totalGitModules}`,
             `**Has Conflicts:** ${plan.hasConflicts ? 'Yes' : 'No'}`,
             ''
+        ];
+
+        lines.push(
+            ...this.generateGitModulesSection(plan),
+            ...this.generateUpgradeableSection(plan.candidates),
+            ...this.generateBlockedSection(plan.candidates),
+            ...this.generateUpToDateSection(plan.candidates)
         );
-        
-        // Git modules section
-        if (plan.totalGitModules > 0) {
-            lines.push(
-                `## 📎 Git Modules (${plan.totalGitModules})`,
-                '',
-                'The following modules are sourced from Git repositories and cannot be automatically upgraded:',
-                ''
-            );
-            for (const gitModule of plan.gitModules) {
-                const ref = gitModule.gitRef ?? gitModule.gitTag;
-                const refStr = ref ? ` @ ${ref}` : '';
-                lines.push(`- **${gitModule.name}**${refStr} (${gitModule.gitUrl ?? 'git'})`);
-            }
-            lines.push(
-                '',
-                '💡 **Note:** Git modules must be manually updated by modifying their ref/tag/branch in the Puppetfile.',
-                ''
-            );
-        }
-        
-        // Upgradeable modules
-        const upgradeableCandidates = plan.candidates.filter(c => c.isUpgradeable);
-        if (upgradeableCandidates.length > 0) {
-            lines.push(
-                `## ✅ Upgradeable Modules (${upgradeableCandidates.length})`,
-                ''
-            );
-            for (const candidate of upgradeableCandidates) {
-                lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion} → ${candidate.maxSafeVersion}`);
-            }
-            lines.push('');
-        }
-        
-        // Blocked modules
-        const blockedCandidates = plan.candidates.filter(c => !c.isUpgradeable && c.blockedBy);
-        if (blockedCandidates.length > 0) {
-            lines.push(
-                `## ⚠️ Blocked Modules (${blockedCandidates.length})`,
-                ''
-            );
-            for (const candidate of blockedCandidates) {
-                lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion} (blocked by: ${candidate.blockedBy?.join(', ')})`);
-                if (candidate.conflicts) {
-                    for (const conflict of candidate.conflicts) {
-                        lines.push(`  - ${conflict.moduleName} requires ${conflict.requirement}, but has ${conflict.currentVersion}`);
-                    }
-                }
-            }
-            lines.push('');
-        }
-        
-        // Up-to-date modules
-        const upToDateCandidates = plan.candidates.filter(c => !c.isUpgradeable && !c.blockedBy);
-        if (upToDateCandidates.length > 0) {
-            lines.push(
-                `## ✨ Up-to-Date Modules (${upToDateCandidates.length})`,
-                ''
-            );
-            for (const candidate of upToDateCandidates) {
-                lines.push(`- **${candidate.module.name}**: ${candidate.currentVersion}`);
-            }
-            lines.push('');
-        }
-        
+
         return lines.join('\n');
+    }
+
+    private static generateGitModulesSection(plan: UpgradePlan): string[] {
+        if (plan.totalGitModules === 0) {
+            return [];
+        }
+
+        const moduleLines = plan.gitModules.map(gitModule => {
+            const ref = gitModule.gitRef ?? gitModule.gitTag;
+            const refStr = ref ? ` @ ${ref}` : '';
+            return `- **${gitModule.name}**${refStr} (${gitModule.gitUrl ?? 'git'})`;
+        });
+
+        return [
+            `## 📎 Git Modules (${plan.totalGitModules})`,
+            '',
+            'The following modules are sourced from Git repositories and cannot be automatically upgraded:',
+            '',
+            ...moduleLines,
+            '',
+            '💡 **Note:** Git modules must be manually updated by modifying their ref/tag/branch in the Puppetfile.',
+            ''
+        ];
+    }
+
+    private static generateUpgradeableSection(candidates: UpgradeCandidate[]): string[] {
+        const upgradeable = candidates.filter(c => c.isUpgradeable);
+        if (upgradeable.length === 0) {
+            return [];
+        }
+
+        return [
+            `## ✅ Upgradeable Modules (${upgradeable.length})`,
+            '',
+            ...upgradeable.map(c => `- **${c.module.name}**: ${c.currentVersion} → ${c.maxSafeVersion}`),
+            ''
+        ];
+    }
+
+    private static generateBlockedSection(candidates: UpgradeCandidate[]): string[] {
+        const blocked = candidates.filter(c => !c.isUpgradeable && c.blockedBy);
+        if (blocked.length === 0) {
+            return [];
+        }
+
+        const moduleLines = blocked.flatMap(candidate => {
+            const header = `- **${candidate.module.name}**: ${candidate.currentVersion} (blocked by: ${candidate.blockedBy?.join(', ')})`;
+            const conflictLines = (candidate.conflicts ?? []).map(
+                conflict => `  - ${conflict.moduleName} requires ${conflict.requirement}, but has ${conflict.currentVersion}`
+            );
+            return [header, ...conflictLines];
+        });
+
+        return [
+            `## ⚠️ Blocked Modules (${blocked.length})`,
+            '',
+            ...moduleLines,
+            ''
+        ];
+    }
+
+    private static generateUpToDateSection(candidates: UpgradeCandidate[]): string[] {
+        const upToDate = candidates.filter(c => !c.isUpgradeable && !c.blockedBy);
+        if (upToDate.length === 0) {
+            return [];
+        }
+
+        return [
+            `## ✨ Up-to-Date Modules (${upToDate.length})`,
+            '',
+            ...upToDate.map(c => `- **${c.module.name}**: ${c.currentVersion}`),
+            ''
+        ];
     }
     
     /**

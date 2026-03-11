@@ -428,6 +428,13 @@ test('Hover shows expected information', async () => {
 - Do not update the `CHANGELOG.md` file unless explicitly instructed
 - Always use LF (Line Feed) line endings for all files
 
+### SonarCloud-Aware Patterns
+When writing or refactoring code, follow these patterns to avoid common SonarCloud findings:
+- **Array building**: Prefer declarative array construction (`map`, `flatMap`, spread in array literals) over sequential `push()` calls. Use a single `push()` with multiple spread arguments instead of multiple `push()` calls.
+- **Cognitive complexity**: Keep functions under 15 cognitive complexity. Extract helper methods for distinct logical sections (especially in functions that build output from multiple categories).
+- **Optional chaining**: Use `obj?.prop` instead of `obj && obj.prop`.
+- **String methods**: Use `replaceAll()` instead of `replace()` with global regex.
+
 ### Code Quality Priorities
 When evaluating code improvements, prioritize in this order:
 1. **Maintainability** - Code should be easy to understand and modify
