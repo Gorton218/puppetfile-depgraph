@@ -207,7 +207,7 @@ export class VersionParser {
     
     const parts: string[] = [];
     
-    if (range.min && range.max && range.min.version === range.max.version && range.min.inclusive && range.max.inclusive) {
+    if (range.min?.version === range.max?.version && range.min?.inclusive && range.max?.inclusive) {
       return `= ${range.min.version}`;
     }
     
