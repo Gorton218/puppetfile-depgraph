@@ -528,6 +528,77 @@ describe('Extension', () => {
             }));
         });
 
+        it('should handle cacheDirectModules callback when total is 0 (no NaN)', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(false);
+            (CacheService.isCachingInProgress as jest.Mock).mockReturnValue(false);
+
+            const reportSpy = jest.fn();
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, { isCancellationRequested: false });
+            });
+
+            (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockImplementation(
+                async (modules: any, token: any, callback: any) => {
+                    // Simulate (0, 0) callback - no uncached modules after internal filtering
+                    callback(0, 0);
+                }
+            );
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockResolvedValue([]);
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Ensure no NaN increments were reported
+            for (const call of reportSpy.mock.calls) {
+                const arg = call[0];
+                if (arg.increment !== undefined) {
+                    expect(isNaN(arg.increment)).toBe(false);
+                }
+            }
+        });
+
+        it('should handle phase 3 conflicts callback when totalModules is 0 (no NaN)', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true);
+            (CacheService.isCachingInProgress as jest.Mock).mockReturnValue(false);
+
+            const reportSpy = jest.fn();
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, { isCancellationRequested: false });
+            });
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(
+                (modules: any, callback: any) => {
+                    // Simulate conflicts phase with totalModules = 0 (empty graph)
+                    callback('Conflict analysis complete', 'conflicts', 0, 0);
+                    return Promise.resolve([]);
+                }
+            );
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Ensure no NaN increments were reported
+            for (const call of reportSpy.mock.calls) {
+                const arg = call[0];
+                if (arg.increment !== undefined) {
+                    expect(isNaN(arg.increment)).toBe(false);
+                }
+            }
+        });
+
         it('should handle error during showDependencyTree', async () => {
             (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
             (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({ 
