@@ -14,7 +14,7 @@ import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from './services/upgradeDiffCodeLensProvider';
 
 // Track if extension has been activated
-export let extensionActivated = false;
+let extensionActivated = false;
 
 export function __test_only_reset_extension_activated() {
   extensionActivated = false;

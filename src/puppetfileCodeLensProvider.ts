@@ -9,9 +9,9 @@ import { showTemporaryMessage } from './extension';
  * CodeLens provider for showing inline upgrade actions in Puppetfile
  */
 export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
-    private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    private readonly _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
-    private documentChangeListener: vscode.Disposable;
+    private readonly documentChangeListener: vscode.Disposable;
     public isSaving = false;
 
     constructor() {
@@ -132,7 +132,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
                         }
                     }
                 } catch (error) {
-                    // Skip modules that fail to check - don't show CodeLens for them
+                    console.debug(`Skipping CodeLens for module that failed update check:`, error);
                     continue;
                 }
             }
@@ -140,7 +140,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
             return codeLenses;
 
         } catch (error) {
-            // If parsing fails, don't show any CodeLenses
+            console.debug('CodeLens parsing failed:', error);
             return [];
         }
     }

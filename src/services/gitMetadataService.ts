@@ -1,5 +1,4 @@
 import axios from 'axios';
-import * as vscode from 'vscode';
 import { createGitCacheKey } from '../utils/versionUtils';
 
 /**

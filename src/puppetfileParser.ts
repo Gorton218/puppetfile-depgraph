@@ -151,14 +151,14 @@ export class PuppetfileParser {
         }
 
         // Clean up the accumulated line - remove extra whitespace
-        accumulatedLine = accumulatedLine.replace(/\s+/g, ' ').trim();
+        accumulatedLine = accumulatedLine.replaceAll(/\s+/g, ' ').trim();
 
         try {
             // Parse the complete multi-line module definition
             const module = this.parseModuleLine(accumulatedLine, startLineNumber);
             return { module, lastLine: currentIndex - 1 };
         } catch (error) {
-            // If parsing fails, return null and let the regular parsing handle it line by line
+            console.debug('Multi-line module parse failed, falling back to line-by-line:', error);
             return { module: null, lastLine: startIndex };
         }
     }
@@ -194,7 +194,7 @@ export class PuppetfileParser {
             new RegExp(`${PATTERNS.MOD_START}.*${PATTERNS.GIT_URL}.*${PATTERNS.GIT_REF}`, 's'),
             new RegExp(`${PATTERNS.MOD_START}.*${PATTERNS.GIT_URL}`, 's'),
             // Forge modules
-            new RegExp(`${PATTERNS.MOD_START}\\s*${PATTERNS.VERSION}\\s*$`),
+            new RegExp(String.raw`${PATTERNS.MOD_START}\s*${PATTERNS.VERSION}\s*$`),
             new RegExp(`${PATTERNS.MOD_START}$`)
         ];
         

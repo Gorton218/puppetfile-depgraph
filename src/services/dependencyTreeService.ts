@@ -1,6 +1,6 @@
 import { PuppetModule } from '../puppetfileParser';
 import { PuppetForgeService } from './puppetForgeService';
-import { GitMetadataService, GitModuleMetadata } from './gitMetadataService';
+import { GitMetadataService } from './gitMetadataService';
 import { DependencyGraph, Requirement, DependencyConflict } from '../types/dependencyTypes';
 import { ConflictAnalyzer } from './conflictAnalyzer';
 import { VersionParser } from '../utils/versionParser';
@@ -461,7 +461,6 @@ export class DependencyTreeService {
 
     /**
      * Normalize module names to ensure consistency between Puppetfile format and Forge API format
-     * @deprecated Use ModuleNameUtils.toCanonicalFormat() directly
      */
     private static normalizeModuleName(moduleName: string): string {
         return ModuleNameUtils.toCanonicalFormat(moduleName);
@@ -656,10 +655,10 @@ export class DependencyTreeService {
             }
             
             // Sort versions and return the highest one that satisfies the constraint
-            return satisfyingVersions.sort((a, b) => {
+            satisfyingVersions.sort((a, b) => {
                 const aParts = a.split('.').map(Number);
                 const bParts = b.split('.').map(Number);
-                
+
                 for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
                     const aPart = aParts[i] ?? 0;
                     const bPart = bParts[i] ?? 0;
@@ -668,7 +667,8 @@ export class DependencyTreeService {
                     }
                 }
                 return 0;
-            })[0];
+            });
+            return satisfyingVersions[0];
         } catch (error) {
             console.warn(`Could not parse constraint "${constraint}":`, error);
             return null;
