@@ -76,65 +76,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
                 if (token.isCancellationRequested) {
                     break;
                 }
-
-                try {
-                    // Check for updates (safe versions only)
-                    const updateInfo = await PuppetForgeService.checkForUpdate(
-                        module.name,
-                        module.version,
-                        true // safeOnly
-                    );
-
-                    if (updateInfo.hasUpdate && updateInfo.latestVersion) {
-                        const lineIndex = module.line - 1;
-                        const line = document.lineAt(lineIndex);
-                        const range = new vscode.Range(lineIndex, 0, lineIndex, line.text.length);
-
-                        // Create CodeLens for safe upgrade
-                        const safeUpgradeCodeLens = new vscode.CodeLens(range, {
-                            title: `$(arrow-up) Update to ${updateInfo.latestVersion}`,
-                            tooltip: `Update ${module.name} from ${getVersionDisplay(module.version)} to ${updateInfo.latestVersion} (safe upgrade)`,
-                            command: 'puppetfile-depgraph.applySingleUpgrade',
-                            arguments: [{
-                                line: module.line,
-                                moduleName: module.name,
-                                currentVersion: module.version,
-                                newVersion: updateInfo.latestVersion
-                            }]
-                        });
-
-                        codeLenses.push(safeUpgradeCodeLens);
-
-                        // Also check for latest version if different from safe
-                        const latestUpdateInfo = await PuppetForgeService.checkForUpdate(
-                            module.name,
-                            module.version,
-                            false // include pre-releases
-                        );
-
-                        if (latestUpdateInfo.hasUpdate && 
-                            latestUpdateInfo.latestVersion && 
-                            latestUpdateInfo.latestVersion !== updateInfo.latestVersion) {
-                            
-                            const latestUpgradeCodeLens = new vscode.CodeLens(range, {
-                                title: `$(versions) Update to ${latestUpdateInfo.latestVersion} (latest)`,
-                                tooltip: `Update ${module.name} to latest version ${latestUpdateInfo.latestVersion} (may include pre-releases)`,
-                                command: 'puppetfile-depgraph.applySingleUpgrade',
-                                arguments: [{
-                                    line: module.line,
-                                    moduleName: module.name,
-                                    currentVersion: module.version,
-                                    newVersion: latestUpdateInfo.latestVersion
-                                }]
-                            });
-
-                            codeLenses.push(latestUpgradeCodeLens);
-                        }
-                    }
-                } catch (error) {
-                    console.debug(`Skipping CodeLens for module that failed update check:`, error);
-                    continue;
-                }
+                await this.addModuleCodeLenses(document, module, codeLenses);
             }
 
             return codeLenses;
@@ -142,6 +84,46 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
         } catch (error) {
             console.debug('CodeLens parsing failed:', error);
             return [];
+        }
+    }
+
+    /**
+     * Check a single module for updates and add CodeLenses if updates are available
+     */
+    private async addModuleCodeLenses(
+        document: vscode.TextDocument,
+        module: any,
+        codeLenses: vscode.CodeLens[]
+    ): Promise<void> {
+        try {
+            const updateInfo = await PuppetForgeService.checkForUpdate(module.name, module.version, true);
+            if (!updateInfo.hasUpdate || !updateInfo.latestVersion) {
+                return;
+            }
+
+            const lineIndex = module.line - 1;
+            const line = document.lineAt(lineIndex);
+            const range = new vscode.Range(lineIndex, 0, lineIndex, line.text.length);
+
+            codeLenses.push(new vscode.CodeLens(range, {
+                title: `$(arrow-up) Update to ${updateInfo.latestVersion}`,
+                tooltip: `Update ${module.name} from ${getVersionDisplay(module.version)} to ${updateInfo.latestVersion} (safe upgrade)`,
+                command: 'puppetfile-depgraph.applySingleUpgrade',
+                arguments: [{ line: module.line, moduleName: module.name, currentVersion: module.version, newVersion: updateInfo.latestVersion }]
+            }));
+
+            // Also check for latest version if different from safe
+            const latestUpdateInfo = await PuppetForgeService.checkForUpdate(module.name, module.version, false);
+            if (latestUpdateInfo.hasUpdate && latestUpdateInfo.latestVersion && latestUpdateInfo.latestVersion !== updateInfo.latestVersion) {
+                codeLenses.push(new vscode.CodeLens(range, {
+                    title: `$(versions) Update to ${latestUpdateInfo.latestVersion} (latest)`,
+                    tooltip: `Update ${module.name} to latest version ${latestUpdateInfo.latestVersion} (may include pre-releases)`,
+                    command: 'puppetfile-depgraph.applySingleUpgrade',
+                    arguments: [{ line: module.line, moduleName: module.name, currentVersion: module.version, newVersion: latestUpdateInfo.latestVersion }]
+                }));
+            }
+        } catch (error) {
+            console.debug(`Skipping CodeLens for module that failed update check:`, error);
         }
     }
 
