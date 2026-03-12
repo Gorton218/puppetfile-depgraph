@@ -7,7 +7,7 @@ import { UpgradeDiffCodeLensProvider } from './upgradeDiffCodeLensProvider';
 import { formatVersionTransition } from '../utils/versionUtils';
 
 export interface DiffOptions {
-    showUpgradeableLonly?: boolean;
+    showUpgradeableOnly?: boolean;
     includeComments?: boolean;
     showInlineActions?: boolean;
 }
@@ -106,7 +106,7 @@ export class UpgradeDiffProvider {
     ): string {
         let proposedContent: string;
 
-        if (options.showUpgradeableLonly) {
+        if (options.showUpgradeableOnly) {
             // Only apply upgradeable changes
             const upgradeableOnly = {
                 ...upgradePlan,
