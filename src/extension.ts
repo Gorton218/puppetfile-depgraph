@@ -43,6 +43,7 @@ async function cacheDirectModules(
 		token,
 		(completed: number, total: number) => {
 			if (token.isCancellationRequested) { return; }
+			if (total === 0) { return; }
 			const targetProgress = Math.round((completed / total) * 30);
 			const incrementAmount = targetProgress - lastPhase1Progress;
 			if (incrementAmount > 0) {
@@ -111,6 +112,18 @@ function createTreeProgressCallback(
 			if (progressTo70 > 0) {
 				progress.report({ increment: progressTo70, message: "Phase 3: Starting conflict analysis..." });
 				state.currentTotalProgress = 70;
+			}
+			// Handle case where there are no modules to analyze to avoid NaN progress.
+			if (totalModules === 0) {
+				const targetPhase3Progress = 100;
+				const phase3Increment = targetPhase3Progress - state.currentTotalProgress;
+				if (phase3Increment > 0) {
+					progress.report({ increment: phase3Increment, message: `Phase 3: ${message}` });
+					state.currentTotalProgress = targetPhase3Progress;
+				} else {
+					progress.report({ increment: 0, message: `Phase 3: ${message}` });
+				}
+				return;
 			}
 			const targetPhase3Progress = 70 + Math.round((moduleCount / totalModules) * 30);
 			const phase3Increment = targetPhase3Progress - state.currentTotalProgress;
@@ -330,7 +343,7 @@ export function activate(context: vscode.ExtensionContext) {
 				progress.report({ increment: finalIncrement, message: "Generating view..." });
 
 				const content = generateDependencyContent(viewOption.value, dependencyTree);
-				progress.report({ increment: 100, message: "Complete!" });
+				progress.report({ message: "Complete!" });
 
 				const doc = await vscode.workspace.openTextDocument({ content, language: 'markdown' });
 				await vscode.window.showTextDocument(doc);
