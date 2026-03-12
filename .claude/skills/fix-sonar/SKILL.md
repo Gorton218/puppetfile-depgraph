@@ -118,24 +118,20 @@ npm test
 
 This runs linting and all unit tests. The fix is only considered successful if tests pass.
 
-- **Tests pass** → proceed to close the issue
-- **Tests fail** → report the failure to the user, do NOT close the issue, and ask if they want to attempt a different fix or skip this issue
+- **Tests pass** → proceed to commit the fix
+- **Tests fail** → report the failure to the user, do NOT commit, and ask if they want to attempt a different fix or skip this issue
 
-### Step 5: Close the issue and commit
+### Step 5: Commit
 
-If tests pass:
+If tests pass, stage the changed files and commit with a message that references the issue:
 
-1. Close the GitHub issue with a comment describing what was fixed:
-   ```bash
-   gh issue close <number> --comment "Fixed: <brief description of what changed>"
-   ```
-
-2. Stage the changed files and commit with a message that references the issue:
-   ```bash
-   git commit -m "fix: <lowercase description> (closes #<number>)"
-   ```
+```bash
+git commit -m "fix: <lowercase description> (closes #<number>)"
+```
 
 When fixing multiple issues, commit each fix individually so the git history stays clean and each commit references its issue.
+
+**Do NOT manually close GitHub issues.** The GitHub issues are auto-closed by a pipeline once SonarCloud confirms the issue is resolved. Only commit the code fix.
 
 ### Step 6: Summary
 
@@ -149,7 +145,8 @@ Skipped: 0 issues
 
 ## Important guardrails
 
-- Never close an issue if tests fail — the fix isn't verified
+- Never commit if tests fail — the fix isn't verified
+- Do not manually close GitHub issues — they are auto-closed by a pipeline when SonarCloud confirms the fix
 - Never modify test files to make tests pass — fix the source code correctly
 - For complex refactors (like reducing cognitive complexity), read the surrounding code to understand the full context before changing anything
 - If an issue seems risky or ambiguous, ask the user before applying the fix
