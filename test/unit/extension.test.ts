@@ -528,6 +528,77 @@ describe('Extension', () => {
             }));
         });
 
+        it('should handle cacheDirectModules callback when total is 0 (no NaN)', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(false);
+            (CacheService.isCachingInProgress as jest.Mock).mockReturnValue(false);
+
+            const reportSpy = jest.fn();
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, { isCancellationRequested: false });
+            });
+
+            (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockImplementation(
+                async (modules: any, token: any, callback: any) => {
+                    // Simulate (0, 0) callback - no uncached modules after internal filtering
+                    callback(0, 0);
+                }
+            );
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockResolvedValue([]);
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Ensure no NaN increments were reported
+            for (const call of reportSpy.mock.calls) {
+                const arg = call[0];
+                if (arg.increment !== undefined) {
+                    expect(isNaN(arg.increment)).toBe(false);
+                }
+            }
+        });
+
+        it('should handle phase 3 conflicts callback when totalModules is 0 (no NaN)', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true);
+            (CacheService.isCachingInProgress as jest.Mock).mockReturnValue(false);
+
+            const reportSpy = jest.fn();
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, { isCancellationRequested: false });
+            });
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(
+                (modules: any, callback: any) => {
+                    // Simulate conflicts phase with totalModules = 0 (empty graph)
+                    callback('Conflict analysis complete', 'conflicts', 0, 0);
+                    return Promise.resolve([]);
+                }
+            );
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Ensure no NaN increments were reported
+            for (const call of reportSpy.mock.calls) {
+                const arg = call[0];
+                if (arg.increment !== undefined) {
+                    expect(isNaN(arg.increment)).toBe(false);
+                }
+            }
+        });
+
         it('should handle error during showDependencyTree', async () => {
             (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
             (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({ 
@@ -574,6 +645,176 @@ describe('Extension', () => {
             await command?.();
             
             expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Failed to build dependency tree: Unknown error');
+        });
+
+        it('should exercise phase 2 animation ticks during dependency tree building', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true);
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            const reportSpy = jest.fn();
+            const token = { isCancellationRequested: false };
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(
+                async (modules: any, callback: any) => {
+                    // Wait enough time for animation ticks (200ms each) to fire
+                    // The 500ms lastMessageUpdate threshold needs to pass first
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    return [];
+                }
+            );
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, token);
+            });
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Animation should have reported incremental progress updates
+            const phase2Reports = reportSpy.mock.calls.filter(
+                (call: any[]) => typeof call[0]?.message === 'string' && call[0].message.includes('Phase 2')
+            );
+            expect(phase2Reports.length).toBeGreaterThan(0);
+        });
+
+        it('should handle animation cleanup when cancellation occurs during animation', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true);
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            const reportSpy = jest.fn();
+            const token = { isCancellationRequested: false };
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(
+                async () => {
+                    // Wait for animation to start, then trigger cancellation
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    token.isCancellationRequested = true;
+                    // Wait for next tick to pick up cancellation
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    return [];
+                }
+            );
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, token);
+            });
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Should not show the document because cancellation happened
+            expect(vscode.workspace.openTextDocument).not.toHaveBeenCalled();
+        });
+
+        it('should handle phase 3 progress callback with zero increment', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(true);
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            const reportSpy = jest.fn();
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, { isCancellationRequested: false });
+            });
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockImplementation(
+                async (modules: any, callback: any) => {
+                    // First conflict call moves to 70% + some progress
+                    callback('Analyzing module 5/10...', 'conflicts', 5, 10);
+                    // Second call with same or earlier progress triggers the else branch (increment <= 0)
+                    callback('Analyzing module 3/10...', 'conflicts', 3, 10);
+                    return [];
+                }
+            );
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Should have reported Phase 3 messages including the zero-increment path
+            const phase3Reports = reportSpy.mock.calls.filter(
+                (call: any[]) => typeof call[0]?.message === 'string' && call[0].message.includes('Phase 3')
+            );
+            expect(phase3Reports.length).toBeGreaterThanOrEqual(2);
+            // The second call should have increment 0 (the else branch)
+            const zeroIncrementCall = phase3Reports.find((call: any[]) => call[0].increment === 0);
+            expect(zeroIncrementCall).toBeDefined();
+        });
+
+        it('should handle cacheDirectModules when caching completes exactly at 30%', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(false);
+            (DependencyTreeService.findConflicts as jest.Mock).mockReturnValue([]);
+
+            const reportSpy = jest.fn();
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, { isCancellationRequested: false });
+            });
+
+            (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockImplementation(
+                async (modules: any, token: any, callback: any) => {
+                    // Report progress that totals exactly 30%
+                    callback(1, 1);
+                }
+            );
+
+            (DependencyTreeService.buildDependencyTree as jest.Mock).mockResolvedValue([]);
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Should have reported Phase 1 caching progress
+            expect(reportSpy).toHaveBeenCalledWith(expect.objectContaining({
+                message: expect.stringContaining('Phase 1')
+            }));
+        });
+
+        it('should handle cancellation during cacheDirectModules callback', async () => {
+            (vscode.window.showQuickPick as jest.Mock).mockResolvedValue({ value: 'tree' });
+            (PuppetfileParser.parseActiveEditor as jest.Mock).mockReturnValue({
+                modules: [{ source: 'forge', name: 'puppetlabs/stdlib' }],
+                errors: []
+            });
+            (PuppetForgeService.hasModuleCached as jest.Mock).mockReturnValue(false);
+
+            const reportSpy = jest.fn();
+            const token = { isCancellationRequested: false };
+
+            (vscode.window.withProgress as jest.Mock).mockImplementation(async (options, task) => {
+                await task({ report: reportSpy }, token);
+            });
+
+            (CacheService.cacheUncachedModulesWithProgressiveUpdates as jest.Mock).mockImplementation(
+                async (modules: any, tkn: any, callback: any) => {
+                    // Simulate cancellation during caching
+                    token.isCancellationRequested = true;
+                    callback(1, 2);
+                }
+            );
+
+            const command = commands.get('puppetfile-depgraph.showDependencyTree');
+            await command?.();
+
+            // Should return early due to cancellation
+            expect(DependencyTreeService.buildDependencyTree).not.toHaveBeenCalled();
         });
 
         it('should handle registration errors for specific commands', () => {
