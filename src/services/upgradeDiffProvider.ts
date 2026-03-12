@@ -59,10 +59,7 @@ export class UpgradeDiffProvider {
             
             // Refresh CodeLens after a short delay to ensure diff is loaded
             setTimeout(() => {
-                const diffCodeLensProvider = UpgradeDiffCodeLensProvider.getInstance();
-                if (diffCodeLensProvider) {
-                    diffCodeLensProvider.refresh();
-                }
+                UpgradeDiffCodeLensProvider.getInstance()?.refresh();
             }, 1000);
             
             // Show action buttons for applying changes
@@ -81,10 +78,7 @@ export class UpgradeDiffProvider {
         
         // Refresh CodeLenses to show inline upgrade buttons
         try {
-            const codeLensProvider = PuppetfileCodeLensProvider.getInstance();
-            if (codeLensProvider) {
-                codeLensProvider.refresh();
-            }
+            PuppetfileCodeLensProvider.getInstance()?.refresh();
         } catch (error) {
             console.debug('CodeLens provider not available:', error);
         }
@@ -457,9 +451,9 @@ export class UpgradeDiffProvider {
             const items = upgradeableCandidates.map(candidate => ({
                 label: `$(package) ${candidate.module.name}`,
                 description: formatVersionTransition(candidate.currentVersion, candidate.maxSafeVersion),
-                detail: candidate.availableVersions[0] !== candidate.maxSafeVersion 
-                    ? `Latest: ${candidate.availableVersions[0]} (using safe version)`
-                    : undefined,
+                detail: candidate.availableVersions[0] === candidate.maxSafeVersion
+                    ? undefined
+                    : `Latest: ${candidate.availableVersions[0]} (using safe version)`,
                 candidate: candidate,
                 picked: true // Default to selected
             }));
@@ -738,10 +732,7 @@ export class UpgradeDiffProvider {
             
             // Refresh the CodeLens provider with the updated plan
             UpgradeDiffCodeLensProvider.setUpgradePlan(updatedUpgradePlan);
-            const diffCodeLensProvider = UpgradeDiffCodeLensProvider.getInstance();
-            if (diffCodeLensProvider) {
-                diffCodeLensProvider.refresh();
-            }
+            UpgradeDiffCodeLensProvider.getInstance()?.refresh();
             
         } catch (error) {
             // Silently fail refresh - user can manually refresh if needed
