@@ -14,7 +14,7 @@ import { PuppetfileCodeLensProvider } from './puppetfileCodeLensProvider';
 import { UpgradeDiffCodeLensProvider } from './services/upgradeDiffCodeLensProvider';
 
 // Track if extension has been activated
-export let extensionActivated = false;
+let extensionActivated = false;
 
 /** Phase 2 animation state for dependency tree progress */
 interface Phase2State {

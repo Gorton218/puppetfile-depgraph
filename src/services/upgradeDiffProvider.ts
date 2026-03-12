@@ -7,7 +7,7 @@ import { UpgradeDiffCodeLensProvider } from './upgradeDiffCodeLensProvider';
 import { formatVersionTransition } from '../utils/versionUtils';
 
 export interface DiffOptions {
-    showUpgradeableLonly?: boolean;
+    showUpgradeableOnly?: boolean;
     includeComments?: boolean;
     showInlineActions?: boolean;
 }
@@ -41,9 +41,9 @@ export class UpgradeDiffProvider {
             const disposable = vscode.workspace.registerTextDocumentContentProvider('puppetfile-diff', provider);
             
             // Store upgrade plan, options, and content provider for later use
-            (global as any).__currentUpgradePlan = upgradePlan;
-            (global as any).__currentUpgradeOptions = options;
-            (global as any).__currentContentProvider = provider;
+            (globalThis as any).__currentUpgradePlan = upgradePlan;
+            (globalThis as any).__currentUpgradeOptions = options;
+            (globalThis as any).__currentContentProvider = provider;
             
             // Open the diff editor
             await vscode.commands.executeCommand(
@@ -71,9 +71,9 @@ export class UpgradeDiffProvider {
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
                 disposable.dispose();
-                if ((global as any).__currentContentProvider) {
-                    (global as any).__currentContentProvider.dispose();
-                    (global as any).__currentContentProvider = null;
+                if ((globalThis as any).__currentContentProvider) {
+                    (globalThis as any).__currentContentProvider.dispose();
+                    (globalThis as any).__currentContentProvider = null;
                 }
             }, 10000); // Longer delay to account for decorations
             
@@ -88,7 +88,7 @@ export class UpgradeDiffProvider {
                 codeLensProvider.refresh();
             }
         } catch (error) {
-            // CodeLens provider not available, continue without it
+            console.debug('CodeLens provider not available:', error);
         }
     }
     
@@ -104,9 +104,9 @@ export class UpgradeDiffProvider {
         upgradePlan: UpgradePlan,
         options: DiffOptions
     ): string {
-        let proposedContent = originalContent;
-        
-        if (options.showUpgradeableLonly) {
+        let proposedContent: string;
+
+        if (options.showUpgradeableOnly) {
             // Only apply upgradeable changes
             const upgradeableOnly = {
                 ...upgradePlan,
@@ -147,7 +147,8 @@ export class UpgradeDiffProvider {
         const upgradeableCandidates = upgradePlan.candidates.filter(c => c.isUpgradeable);
         
         // Process candidates in reverse line order to preserve line numbers when inserting
-        const sortedCandidates = upgradeableCandidates.sort((a, b) => b.module.line - a.module.line);
+        upgradeableCandidates.sort((a, b) => b.module.line - a.module.line);
+        const sortedCandidates = upgradeableCandidates;
         
         for (const candidate of sortedCandidates) {
             const currentVersion = candidate.currentVersion === 'unversioned' ? 'unversioned' : candidate.currentVersion;
@@ -343,8 +344,8 @@ export class UpgradeDiffProvider {
         }
         
         // Store the upgrade plan for the commands to use
-        (global as any).__currentUpgradePlan = upgradePlan;
-        (global as any).__currentUpgradeOptions = options;
+        (globalThis as any).__currentUpgradePlan = upgradePlan;
+        (globalThis as any).__currentUpgradeOptions = options;
         
         // Show notification with action buttons
         const message = `Found ${upgradeableCount} module${upgradeableCount > 1 ? 's' : ''} with safe upgrades available`;
@@ -366,7 +367,7 @@ export class UpgradeDiffProvider {
      * Apply all upgrades from the current upgrade plan
      */
     public static async applyAllUpgrades(): Promise<void> {
-        const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+        const upgradePlan: UpgradePlan = (globalThis as any).__currentUpgradePlan;
         if (!upgradePlan) {
             vscode.window.showErrorMessage('No upgrade plan available. Please run the upgrade planner first.');
             return;
@@ -398,7 +399,7 @@ export class UpgradeDiffProvider {
                 const updates: UpdateResult[] = upgradeableCandidates.map(candidate => ({
                     moduleName: candidate.module.name,
                     currentVersion: candidate.currentVersion,
-                    newVersion: candidate.maxSafeVersion!,
+                    newVersion: candidate.maxSafeVersion,
                     success: true,
                     line: candidate.module.line
                 }));
@@ -432,7 +433,7 @@ export class UpgradeDiffProvider {
      * Apply selected upgrades from the current upgrade plan
      */
     public static async applySelectedUpgrades(): Promise<void> {
-        const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
+        const upgradePlan: UpgradePlan = (globalThis as any).__currentUpgradePlan;
         if (!upgradePlan) {
             vscode.window.showErrorMessage('No upgrade plan available. Please run the upgrade planner first.');
             return;
@@ -486,7 +487,7 @@ export class UpgradeDiffProvider {
                 const updates: UpdateResult[] = selected.map(item => ({
                     moduleName: item.candidate.module.name,
                     currentVersion: item.candidate.currentVersion,
-                    newVersion: item.candidate.maxSafeVersion!,
+                    newVersion: item.candidate.maxSafeVersion,
                     success: true,
                     line: item.candidate.module.line
                 }));
@@ -554,7 +555,7 @@ export class UpgradeDiffProvider {
                          doc.languageId === 'plaintext') &&
                         // Check filename
                         (doc.uri.path.endsWith('/Puppetfile') || 
-                         doc.uri.path.endsWith('\\Puppetfile') ||
+                         doc.uri.path.endsWith(String.raw`\Puppetfile`) ||
                          doc.fileName === 'Puppetfile') &&
                         // Not a diff view
                         doc.uri.scheme !== 'puppetfile-diff'
@@ -695,8 +696,8 @@ export class UpgradeDiffProvider {
     private static async refreshDiffView(): Promise<void> {
         try {
             // Check if we have a stored upgrade plan to refresh
-            const upgradePlan: UpgradePlan = (global as any).__currentUpgradePlan;
-            const upgradeOptions: DiffOptions = (global as any).__currentUpgradeOptions;
+            const upgradePlan: UpgradePlan = (globalThis as any).__currentUpgradePlan;
+            const upgradeOptions: DiffOptions = (globalThis as any).__currentUpgradeOptions;
             
             if (!upgradePlan) {
                 return;
@@ -708,7 +709,7 @@ export class UpgradeDiffProvider {
                  doc.languageId === 'ruby' || 
                  doc.languageId === 'plaintext') &&
                 (doc.uri.path.endsWith('/Puppetfile') || 
-                 doc.uri.path.endsWith('\\Puppetfile') ||
+                 doc.uri.path.endsWith(String.raw`\Puppetfile`) ||
                  doc.fileName === 'Puppetfile') &&
                 !doc.uri.scheme.includes('puppetfile-diff')
             );
@@ -727,15 +728,15 @@ export class UpgradeDiffProvider {
             const updatedUpgradePlan = await UpgradePlannerService.createUpgradePlan(parseResult.modules);
             
             // Update the global upgrade plan
-            (global as any).__currentUpgradePlan = updatedUpgradePlan;
+            (globalThis as any).__currentUpgradePlan = updatedUpgradePlan;
             
             // Update the content provider with new content instead of opening a new diff
             const originalContent = puppetfileDoc.getText();
             const proposedContent = this.createProposedContent(originalContent, updatedUpgradePlan, { ...upgradeOptions, showInlineActions: true });
             
             // Update the global content provider reference if it exists
-            if ((global as any).__currentContentProvider) {
-                (global as any).__currentContentProvider.updateContent(originalContent, proposedContent);
+            if ((globalThis as any).__currentContentProvider) {
+                (globalThis as any).__currentContentProvider.updateContent(originalContent, proposedContent);
             }
             
             // Refresh the CodeLens provider with the updated plan
@@ -780,7 +781,7 @@ class PuppetfileDiffContentProvider implements vscode.TextDocumentContentProvide
     private originalContent: string;
     private proposedContent: string;
     
-    private _onDidChange = new vscode.EventEmitter<vscode.Uri>();
+    private readonly _onDidChange = new vscode.EventEmitter<vscode.Uri>();
     readonly onDidChange = this._onDidChange.event;
     
     constructor(originalContent: string, proposedContent: string) {

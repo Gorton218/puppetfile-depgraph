@@ -53,7 +53,7 @@ export class VersionParser {
     
     // Handle compound constraints (>= 1.0.0 < 2.0.0)
     const operators = ['>=', '>', '<=', '<', '='];
-    const pattern = new RegExp(`(${operators.join('|')})\\s*([\\d\\.]+(?:-[\\w\\.]+)?)`, 'g');
+    const pattern = new RegExp(String.raw`(${operators.join('|')})\s*([\d\.]+(?:-[\w\.]+)?)`, 'g');
     let match;
     
     while ((match = pattern.exec(constraint)) !== null) {

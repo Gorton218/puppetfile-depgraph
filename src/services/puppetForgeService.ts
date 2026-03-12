@@ -278,7 +278,6 @@ export class ForgeModule {
 
 /**
  * Legacy interface for backward compatibility
- * @deprecated Use ForgeModule class instead
  */
 export interface LegacyForgeModule {
     name: string;
@@ -358,7 +357,6 @@ export class PuppetForgeService {
     /**
      * Normalize module name for consistent cache keys
      * Uses centralized ModuleNameUtils for consistency across the codebase
-     * @deprecated Use ModuleNameUtils.toCanonicalFormat() directly
      */
     private static normalizeCacheKey(moduleName: string): string {
         return ModuleNameUtils.toCanonicalFormat(moduleName);
@@ -502,7 +500,8 @@ export class PuppetForgeService {
                             return releases;
                         }
                     } catch (variantError) {
-                        // Continue to next variant
+                        // Expected: variant name not found, try next
+                        console.debug(`Variant lookup failed for ${variant}:`, variantError);
                         continue;
                     }
                 }
@@ -593,8 +592,8 @@ export class PuppetForgeService {
         const parseVersion = (version: string) => {
             const [mainVersion, preRelease] = version.split('-', 2);
             const parts = mainVersion.split('.').map(part => {
-                const num = parseInt(part, 10);
-                return isNaN(num) ? 0 : num;
+                const num = Number.parseInt(part, 10);
+                return Number.isNaN(num) ? 0 : num;
             });
             return { parts, preRelease: preRelease ?? '' };
         };

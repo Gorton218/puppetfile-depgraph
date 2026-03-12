@@ -5,7 +5,7 @@ import { UpgradePlan } from './upgradePlannerService';
  * CodeLens provider specifically for diff views to show upgrade actions
  */
 export class UpgradeDiffCodeLensProvider implements vscode.CodeLensProvider {
-    private _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
+    private readonly _onDidChangeCodeLenses: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
     
     private static currentUpgradePlan: UpgradePlan | null = null;

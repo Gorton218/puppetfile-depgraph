@@ -1,5 +1,5 @@
-import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
-import { PuppetfileParser, PuppetModule } from '../puppetfileParser';
+import { PuppetForgeService } from './puppetForgeService';
+import { PuppetModule } from '../puppetfileParser';
 import { VersionParser } from '../utils/versionParser';
 import { GitMetadataService } from './gitMetadataService';
 import { ModuleNameUtils } from '../utils/moduleNameUtils';
@@ -41,7 +41,7 @@ export class VersionCompatibilityService {
                 m.source === 'forge' && ModuleNameUtils.toSlashFormat(m.name) === ModuleNameUtils.toSlashFormat(dep.name)
             );
             
-            if (dependentModule && dependentModule.version) {
+            if (dependentModule?.version) {
                 // Parse the version requirement
                 const requirements = VersionParser.parse(dep.version_requirement);
                 
@@ -78,7 +78,7 @@ export class VersionCompatibilityService {
                 }
             } else if (module.source === 'git' && module.gitUrl) {
                 // Get dependencies from git module metadata
-                const ref = module.gitTag || module.gitRef;
+                const ref = module.gitTag ?? module.gitRef;
                 const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
                 dependencies = gitMetadata?.dependencies;
             }
@@ -116,7 +116,6 @@ export class VersionCompatibilityService {
     
     /**
      * Normalize module names to handle different formats
-     * @deprecated Use ModuleNameUtils.toSlashFormat() directly
      */
     private static normalizeModuleName(name: string): string {
         return ModuleNameUtils.toSlashFormat(name);

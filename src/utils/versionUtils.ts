@@ -43,7 +43,7 @@ export function getArrayValueOrZero(arr: (string | number | undefined)[], index:
         return value;
     }
     if (typeof value === 'string') {
-        return parseInt(value, 10) || 0;
+        return Number.parseInt(value, 10) || 0;
     }
     return 0;
 }
