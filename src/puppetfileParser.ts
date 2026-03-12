@@ -55,52 +55,81 @@ export class PuppetfileParser {
         const errors: string[] = [];
         const lines = content.split('\n');
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            const lineNumber = i + 1;
-
-            // Skip empty lines and comments
-            if (!line || line.startsWith('#')) {
-                continue;
-            }
-
-            try {
-                // Check if this is the start of a module definition
-                if (line.startsWith('mod ')) {
-                    // First, strip any inline comment from the line
-                    const cleanLine = this.stripInlineComment(line);
-                    
-                    // Check if this might be a multi-line module definition
-                    // A multi-line module definition typically:
-                    // 1. Ends with a comma, OR
-                    // 2. Is just a module name (no version or git options) and the next line has git options as continuation
-                    const isJustModuleName = /^mod\s*['"][^'"]+['"]\s*$/.test(cleanLine);
-                    const nextLineHasGitOptions = i + 1 < lines.length && 
-                        /^\s*:git\s*=>/.exec(lines[i + 1].trim()) !== null; // Must start with :git, not just contain it
-                    
-                    
-                    if ((cleanLine.endsWith(',') && !cleanLine.includes(';')) || 
-                        (isJustModuleName && nextLineHasGitOptions)) {
-                        // This might be a multi-line module definition
-                        const multiLineModule = this.parseMultiLineModule(lines, i);
-                        if (multiLineModule.module !== null) {
-                            modules.push(multiLineModule.module);
-                            i = multiLineModule.lastLine; // Skip the lines we've already processed
-                            continue;
-                        }
-                    }
-                }
-                
-                const module = this.parseModuleLine(line, lineNumber);
-                if (module) {
-                    modules.push(module);
-                }
-            } catch (error) {
-                errors.push(`Line ${lineNumber}: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
-            }
+        let i = 0;
+        while (i < lines.length) {
+            const nextIndex = this.processContentLine(lines, i, modules, errors);
+            i = nextIndex + 1;
         }
 
         return { modules, errors };
+    }
+
+    /**
+     * Process a single line (or multi-line block) from the Puppetfile content
+     * @returns The last line index that was processed
+     */
+    private static processContentLine(
+        lines: string[],
+        index: number,
+        modules: PuppetModule[],
+        errors: string[]
+    ): number {
+        const line = lines[index].trim();
+        const lineNumber = index + 1;
+
+        // Skip empty lines and comments
+        if (!line || line.startsWith('#')) {
+            return index;
+        }
+
+        try {
+            if (line.startsWith('mod ')) {
+                const multiLineResult = this.tryParseMultiLine(lines, index);
+                if (multiLineResult) {
+                    modules.push(multiLineResult.module);
+                    return multiLineResult.lastLine;
+                }
+            }
+
+            const module = this.parseModuleLine(line, lineNumber);
+            if (module) {
+                modules.push(module);
+            }
+        } catch (error) {
+            errors.push(`Line ${lineNumber}: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
+        }
+
+        return index;
+    }
+
+    /**
+     * Try to parse a multi-line module definition starting at the given index
+     * @returns The parsed module and last line index, or null if not a multi-line definition
+     */
+    private static tryParseMultiLine(
+        lines: string[],
+        index: number
+    ): { module: PuppetModule; lastLine: number } | null {
+        const line = lines[index].trim();
+        const cleanLine = this.stripInlineComment(line);
+
+        const isJustModuleName = /^mod\s*['"][^'"]+['"]\s*$/.test(cleanLine);
+        const nextLineHasGitOptions = index + 1 < lines.length &&
+            /^\s*:git\s*=>/.exec(lines[index + 1].trim()) !== null;
+
+        const isMultiLine = (cleanLine.endsWith(',') && !cleanLine.includes(';')) ||
+            (isJustModuleName && nextLineHasGitOptions);
+
+        if (!isMultiLine) {
+            return null;
+        }
+
+        const multiLineModule = this.parseMultiLineModule(lines, index);
+        if (multiLineModule.module !== null) {
+            return { module: multiLineModule.module, lastLine: multiLineModule.lastLine };
+        }
+
+        return null;
     }
 
     /**
