@@ -819,7 +819,7 @@ mod 'puppetlabs/stdlib', '8.0.0'`;
             
             // Test with different options
             await UpgradeDiffProvider.showUpgradeDiff(originalContent, upgradePlan, { 
-                showUpgradeableLonly: true, 
+                showUpgradeableOnly: true, 
                 includeComments: true 
             });
             
