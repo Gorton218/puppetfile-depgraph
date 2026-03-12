@@ -23,7 +23,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         }
 
         // Check cache first
-        const cacheKey = `${document.uri.toString()}:${module.name}:${module.version}`;
+        const cacheKey = `${document.uri.toString()}:${module.name}:${module.version ?? ''}:${module.gitUrl ?? ''}:${module.gitRef ?? ''}:${module.gitTag ?? ''}`;
         const cached = this.hoverCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
             return cached.hover;
