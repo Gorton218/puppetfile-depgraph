@@ -1,7 +1,6 @@
 import { PuppetModule } from '../puppetfileParser';
-import { PuppetForgeService, ForgeVersion } from './puppetForgeService';
+import { PuppetForgeService } from './puppetForgeService';
 import { VersionCompatibilityService, VersionCompatibility } from './versionCompatibilityService';
-import { VersionParser } from '../utils/versionParser';
 import { CacheService } from './cacheService';
 import { getVersionDisplay } from '../utils/versionUtils';
 
@@ -99,7 +98,7 @@ export class UpgradePlannerService {
             const maxSafeVersion = await this.findMaxSafeVersion(module, allModules, availableVersions);
             
             // For unversioned modules, any compatible version is an upgrade
-            const isUpgradeable = !module.version ? true : this.isVersionNewer(maxSafeVersion, module.version);
+            const isUpgradeable = module.version ? this.isVersionNewer(maxSafeVersion, module.version) : true;
             
             // If not upgradeable, check what's blocking it
             let blockedBy: string[] | undefined;
@@ -342,7 +341,6 @@ export class UpgradePlannerService {
      * @returns Modified Puppetfile content
      */
     public static applyUpgradesToContent(originalContent: string, plan: UpgradePlan): string {
-        let modifiedContent = originalContent;
         const lines = originalContent.split('\n');
         
         // Apply upgrades in reverse line order to preserve line numbers

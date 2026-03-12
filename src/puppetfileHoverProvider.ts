@@ -9,7 +9,7 @@ import { CacheService } from './services/cacheService';
  * Provides hover information for Puppetfile modules
  */
 export class PuppetfileHoverProvider implements vscode.HoverProvider {
-    private hoverCache = new Map<string, { hover: vscode.Hover, timestamp: number }>();
+    private readonly hoverCache = new Map<string, { hover: vscode.Hover, timestamp: number }>();
     private readonly CACHE_TTL = 5000; // Cache for 5 seconds
 
     async provideHover(
