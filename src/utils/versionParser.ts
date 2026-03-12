@@ -4,70 +4,88 @@ export class VersionParser {
   private static readonly versionRegex = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/;
   
   static parse(constraint: string): VersionRequirement[] {
-    const requirements: VersionRequirement[] = [];
-    
     // Handle pessimistic constraint (~>)
     if (constraint.includes('~>')) {
-      const match = /~>\s*(.+)/.exec(constraint);
-      if (match) {
-        const version = match[1].trim();
-        const parts = version.split('.');
-        if (parts.length >= 2) {
-          requirements.push({ operator: '>=', version });
-          
-          // Calculate upper bound
-          const major = Number.parseInt(parts[0], 10);
-          const minor = Number.parseInt(parts[1], 10);
-          const upperBound = `${major}.${minor + 1}.0`;
-          requirements.push({ operator: '<', version: upperBound });
-        }
-      }
-      return requirements;
+      return this.parsePessimistic(constraint);
     }
-    
+
     // Handle wildcards (1.x, 1.x.x)
     if (constraint.includes('x')) {
-      const parts = constraint.split('.');
-      const nonWildcardParts: string[] = [];
-      
-      for (const part of parts) {
-        if (part === 'x') {break;}
-        nonWildcardParts.push(part);
-      }
-      
-      if (nonWildcardParts.length > 0) {
-        const baseVersion = nonWildcardParts.join('.');
-        requirements.push({ operator: '>=', version: baseVersion + '.0'.repeat(3 - nonWildcardParts.length) });
-        
-        if (nonWildcardParts.length === 1) {
-          const major = Number.parseInt(nonWildcardParts[0], 10);
-          requirements.push({ operator: '<', version: `${major + 1}.0.0` });
-        } else if (nonWildcardParts.length === 2) {
-          const major = Number.parseInt(nonWildcardParts[0], 10);
-          const minor = Number.parseInt(nonWildcardParts[1], 10);
-          requirements.push({ operator: '<', version: `${major}.${minor + 1}.0` });
-        }
-      }
-      return requirements;
+      return this.parseWildcard(constraint);
     }
-    
+
     // Handle compound constraints (>= 1.0.0 < 2.0.0)
+    return this.parseCompound(constraint);
+  }
+
+  private static parsePessimistic(constraint: string): VersionRequirement[] {
+    const match = /~>\s*(.+)/.exec(constraint);
+    if (!match) {
+      return [];
+    }
+
+    const version = match[1].trim();
+    const parts = version.split('.');
+    if (parts.length < 2) {
+      return [];
+    }
+
+    const major = Number.parseInt(parts[0], 10);
+    const minor = Number.parseInt(parts[1], 10);
+    return [
+      { operator: '>=', version },
+      { operator: '<', version: `${major}.${minor + 1}.0` }
+    ];
+  }
+
+  private static parseWildcard(constraint: string): VersionRequirement[] {
+    const parts = constraint.split('.');
+    const nonWildcardParts: string[] = [];
+
+    for (const part of parts) {
+      if (part === 'x') {break;}
+      nonWildcardParts.push(part);
+    }
+
+    if (nonWildcardParts.length === 0) {
+      return [];
+    }
+
+    const baseVersion = nonWildcardParts.join('.');
+    const requirements: VersionRequirement[] = [
+      { operator: '>=', version: baseVersion + '.0'.repeat(3 - nonWildcardParts.length) }
+    ];
+
+    if (nonWildcardParts.length === 1) {
+      const major = Number.parseInt(nonWildcardParts[0], 10);
+      requirements.push({ operator: '<', version: `${major + 1}.0.0` });
+    } else if (nonWildcardParts.length === 2) {
+      const major = Number.parseInt(nonWildcardParts[0], 10);
+      const minor = Number.parseInt(nonWildcardParts[1], 10);
+      requirements.push({ operator: '<', version: `${major}.${minor + 1}.0` });
+    }
+
+    return requirements;
+  }
+
+  private static parseCompound(constraint: string): VersionRequirement[] {
     const operators = ['>=', '>', '<=', '<', '='];
     const pattern = new RegExp(String.raw`(${operators.join('|')})\s*([\d\.]+(?:-[\w\.]+)?)`, 'g');
+    const requirements: VersionRequirement[] = [];
     let match;
-    
+
     while ((match = pattern.exec(constraint)) !== null) {
       requirements.push({
         operator: match[1] as VersionRequirement['operator'],
         version: match[2]
       });
     }
-    
+
     // If no operators found, assume exact version
     if (requirements.length === 0 && /^\d+\.\d+\.\d+/.test(constraint.trim())) {
       requirements.push({ operator: '=', version: constraint.trim() });
     }
-    
+
     return requirements;
   }
   
@@ -94,60 +112,70 @@ export class VersionParser {
   
   static intersect(requirements: VersionRequirement[]): VersionRange | null {
     if (requirements.length === 0) {return null;}
-    
+
     let range: VersionRange = {};
-    
+
     for (const req of requirements) {
-      switch (req.operator) {
-        case '>=':
-          if (!range.min || this.compareVersions(req.version, range.min.version) > 0) {
-            range.min = { version: req.version, inclusive: true };
-          }
-          break;
-        case '>':
-          if (!range.min || this.compareVersions(req.version, range.min.version) >= 0) {
-            range.min = { version: req.version, inclusive: false };
-          }
-          break;
-        case '<=':
-          if (!range.max || this.compareVersions(req.version, range.max.version) < 0) {
-            range.max = { version: req.version, inclusive: true };
-          }
-          break;
-        case '<':
-          if (!range.max || this.compareVersions(req.version, range.max.version) <= 0) {
-            range.max = { version: req.version, inclusive: false };
-          }
-          break;
-        case '=':
-          // Exact version must be within existing range constraints
-          // First check if the exact version violates existing constraints
-          if (range.min) {
-            const minCmp = this.compareVersions(req.version, range.min.version);
-            if (minCmp < 0 || (minCmp === 0 && !range.min.inclusive)) {
-              return null; // Exact version violates minimum constraint
-            }
-          }
-          if (range.max) {
-            const maxCmp = this.compareVersions(req.version, range.max.version);
-            if (maxCmp > 0 || (maxCmp === 0 && !range.max.inclusive)) {
-              return null; // Exact version violates maximum constraint
-            }
-          }
-          // If we get here, the exact version is valid - set it as the only acceptable version
-          range.min = { version: req.version, inclusive: true };
-          range.max = { version: req.version, inclusive: true };
-          break;
+      const result = this.applyRequirementToRange(req, range);
+      if (result === null) {
+        return null;
       }
+      range = result;
     }
-    
+
     // Check if range is valid
     if (range.min && range.max) {
       const cmp = this.compareVersions(range.min.version, range.max.version);
-      if (cmp > 0) {return null;} // No intersection
-      if (cmp === 0 && (!range.min.inclusive || !range.max.inclusive)) {return null;} // No intersection
+      if (cmp > 0) {return null;}
+      if (cmp === 0 && (!range.min.inclusive || !range.max.inclusive)) {return null;}
     }
-    
+
+    return range;
+  }
+
+  private static applyRequirementToRange(req: VersionRequirement, range: VersionRange): VersionRange | null {
+    switch (req.operator) {
+      case '>=':
+        if (!range.min || this.compareVersions(req.version, range.min.version) > 0) {
+          range.min = { version: req.version, inclusive: true };
+        }
+        break;
+      case '>':
+        if (!range.min || this.compareVersions(req.version, range.min.version) >= 0) {
+          range.min = { version: req.version, inclusive: false };
+        }
+        break;
+      case '<=':
+        if (!range.max || this.compareVersions(req.version, range.max.version) < 0) {
+          range.max = { version: req.version, inclusive: true };
+        }
+        break;
+      case '<':
+        if (!range.max || this.compareVersions(req.version, range.max.version) <= 0) {
+          range.max = { version: req.version, inclusive: false };
+        }
+        break;
+      case '=':
+        return this.applyExactVersion(req.version, range);
+    }
+    return range;
+  }
+
+  private static applyExactVersion(version: string, range: VersionRange): VersionRange | null {
+    if (range.min) {
+      const minCmp = this.compareVersions(version, range.min.version);
+      if (minCmp < 0 || (minCmp === 0 && !range.min.inclusive)) {
+        return null;
+      }
+    }
+    if (range.max) {
+      const maxCmp = this.compareVersions(version, range.max.version);
+      if (maxCmp > 0 || (maxCmp === 0 && !range.max.inclusive)) {
+        return null;
+      }
+    }
+    range.min = { version, inclusive: true };
+    range.max = { version, inclusive: true };
     return range;
   }
   

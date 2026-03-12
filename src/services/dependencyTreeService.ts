@@ -118,65 +118,81 @@ export class DependencyTreeService {
      * @returns Promise with the dependency node
      */
     private static async buildNodeTree(
-        module: PuppetModule, 
-        depth: number, 
+        module: PuppetModule,
+        depth: number,
         isDirectDependency: boolean,
         imposedBy?: string,
         versionRequirement?: string,
         progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
         cancellationToken?: { isCancellationRequested: boolean }
     ): Promise<DependencyNode | null> {
-        // Check for cancellation at the start
         if (cancellationToken?.isCancellationRequested) {
             return null;
         }
 
-        // Add current module to path
         this.currentPath.push(module.name);
 
-        // Check for circular dependencies
         const circularConflict = ConflictAnalyzer.checkForCircularDependencies(
-            module.name, 
+            module.name,
             this.currentPath.slice(0, -1)
         );
 
         // Prevent infinite recursion and circular dependencies
         if (depth >= this.MAX_DEPTH || this.visitedModules.has(module.name)) {
             this.currentPath.pop();
-            return {
-                name: module.name,
-                version: module.version,
-                source: module.source,
-                children: [],
-                depth,
-                isDirectDependency,
-                gitUrl: module.gitUrl,
-                gitRef: module.gitRef,
-                gitTag: module.gitTag,
-                versionRequirement,
-                conflict: circularConflict || undefined
-            };
+            return this.createLeafNode(module, depth, isDirectDependency, versionRequirement, circularConflict);
         }
 
         this.visitedModules.add(module.name);
+        this.recordRequirement(module, imposedBy, versionRequirement, isDirectDependency);
 
-        // Collect requirement information
-        if (imposedBy && versionRequirement) {
-            const normalizedName = ModuleNameUtils.toCanonicalFormat(module.name);
-            this.addRequirement(normalizedName, {
-                constraint: versionRequirement,
-                imposedBy,
-                path: [...this.currentPath],
-                isDirectDependency
-            });
-        }
+        const node = this.createFullNode(module, depth, isDirectDependency, versionRequirement, circularConflict);
 
-        // Determine how to display this dependency
+        // Fetch and attach child dependencies
+        await this.fetchAndAttachDependencies(module, node, depth, versionRequirement, progressCallback, cancellationToken);
+
+        this.visitedModules.delete(module.name);
+        this.currentPath.pop();
+        return node;
+    }
+
+    /**
+     * Create a leaf node (for circular/depth-limited dependencies)
+     */
+    private static createLeafNode(
+        module: PuppetModule,
+        depth: number,
+        isDirectDependency: boolean,
+        versionRequirement?: string,
+        circularConflict?: DependencyConflict | null
+    ): DependencyNode {
+        return {
+            name: module.name,
+            version: module.version,
+            source: module.source,
+            children: [],
+            depth,
+            isDirectDependency,
+            gitUrl: module.gitUrl,
+            gitRef: module.gitRef,
+            gitTag: module.gitTag,
+            versionRequirement,
+            conflict: circularConflict || undefined
+        };
+    }
+
+    /**
+     * Create a full dependency node with display version and constraint info
+     */
+    private static createFullNode(
+        module: PuppetModule,
+        depth: number,
+        isDirectDependency: boolean,
+        versionRequirement?: string,
+        circularConflict?: DependencyConflict | null
+    ): DependencyNode {
         const resolvedVersion = this.getResolvedVersion(ModuleNameUtils.toCanonicalFormat(module.name));
-        const displayVersion = this.determineDisplayVersion(module, versionRequirement, resolvedVersion, isDirectDependency);
-        const isConstraintViolated = this.checkConstraintViolation(resolvedVersion, versionRequirement);
-        
-        const node: DependencyNode = {
+        return {
             name: module.name,
             version: module.version ?? resolvedVersion,
             source: module.source,
@@ -188,77 +204,126 @@ export class DependencyTreeService {
             gitTag: module.gitTag,
             versionRequirement,
             conflict: circularConflict || undefined,
-            displayVersion,
-            isConstraintViolated
+            displayVersion: this.determineDisplayVersion(module, versionRequirement, resolvedVersion, isDirectDependency),
+            isConstraintViolated: this.checkConstraintViolation(resolvedVersion, versionRequirement)
         };
+    }
 
-        // Fetch dependencies based on module source
+    /**
+     * Record a version requirement in the dependency graph
+     */
+    private static recordRequirement(
+        module: PuppetModule,
+        imposedBy?: string,
+        versionRequirement?: string,
+        isDirectDependency?: boolean
+    ): void {
+        if (imposedBy && versionRequirement) {
+            const normalizedName = ModuleNameUtils.toCanonicalFormat(module.name);
+            this.addRequirement(normalizedName, {
+                constraint: versionRequirement,
+                imposedBy,
+                path: [...this.currentPath],
+                isDirectDependency: isDirectDependency ?? false
+            });
+        }
+    }
+
+    /**
+     * Fetch dependencies from Forge or Git and attach as children
+     */
+    private static async fetchAndAttachDependencies(
+        module: PuppetModule,
+        node: DependencyNode,
+        depth: number,
+        versionRequirement?: string,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
+    ): Promise<void> {
         if (module.source === 'forge') {
-            try {
-                if (depth > 0) {
-                    progressCallback?.(`  ↳ Fetching dependencies for ${module.name}...`, 'tree');
-                }
-                const forgeModule = await PuppetForgeService.getModule(module.name);
-                let releaseToUse = forgeModule?.current_release;
-                
-                // Determine which release to use for fetching dependencies
-                if (module.version && forgeModule?.releases) {
-                    // For direct dependencies with a specific version, use that version's metadata
-                    const specificRelease = forgeModule.releases.find(r => r.version === module.version);
-                    if (specificRelease) {
-                        releaseToUse = specificRelease;
-                    }
-                } else if (versionRequirement && forgeModule?.releases) {
-                    // For transitive dependencies with version constraints, find the best matching release
-                    const resolvedVersion = this.findBestMatchingVersion(versionRequirement, forgeModule.releases.map(r => r.version));
-                    if (resolvedVersion) {
-                        const specificRelease = forgeModule.releases.find(r => r.version === resolvedVersion);
-                        if (specificRelease) {
-                            releaseToUse = specificRelease;
-                        }
-                    }
-                }
-                
-                if (releaseToUse?.metadata?.dependencies) {
-                    await this.processDependencies(
-                        releaseToUse.metadata.dependencies,
-                        module.name,
-                        node,
-                        depth,
-                        progressCallback,
-                        cancellationToken
-                    );
-                }
-            } catch (error) {
-                console.warn(`Could not fetch dependencies for ${module.name}:`, error);
-            }
+            await this.fetchForgeDependencies(module, node, depth, versionRequirement, progressCallback, cancellationToken);
         } else if (module.source === 'git' && module.gitUrl) {
-            // Fetch dependencies for Git modules
-            try {
-                if (depth > 0) {
-                    progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`, 'tree');
+            await this.fetchGitDependencies(module, node, depth, progressCallback, cancellationToken);
+        }
+    }
+
+    /**
+     * Fetch dependencies from Puppet Forge
+     */
+    private static async fetchForgeDependencies(
+        module: PuppetModule,
+        node: DependencyNode,
+        depth: number,
+        versionRequirement?: string,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
+    ): Promise<void> {
+        try {
+            if (depth > 0) {
+                progressCallback?.(`  ↳ Fetching dependencies for ${module.name}...`, 'tree');
+            }
+            const forgeModule = await PuppetForgeService.getModule(module.name);
+            const releaseToUse = this.resolveRelease(forgeModule, module.version, versionRequirement);
+
+            if (releaseToUse?.metadata?.dependencies) {
+                await this.processDependencies(releaseToUse.metadata.dependencies, module.name, node, depth, progressCallback, cancellationToken);
+            }
+        } catch (error) {
+            console.warn(`Could not fetch dependencies for ${module.name}:`, error);
+        }
+    }
+
+    /**
+     * Fetch dependencies from a Git repository
+     */
+    private static async fetchGitDependencies(
+        module: PuppetModule,
+        node: DependencyNode,
+        depth: number,
+        progressCallback?: (message: string, phase?: 'tree' | 'conflicts', moduleCount?: number, totalModules?: number) => void,
+        cancellationToken?: { isCancellationRequested: boolean }
+    ): Promise<void> {
+        try {
+            if (depth > 0) {
+                progressCallback?.(`  ↳ Fetching Git metadata for ${module.name}...`, 'tree');
+            }
+            const ref = module.gitTag ?? module.gitRef;
+            const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl!, ref);
+
+            if (gitMetadata?.dependencies) {
+                await this.processDependencies(gitMetadata.dependencies, module.name, node, depth, progressCallback, cancellationToken);
+            }
+        } catch (error) {
+            console.warn(`Could not fetch Git metadata for ${module.name}:`, error);
+        }
+    }
+
+    /**
+     * Determine which release to use for fetching dependencies
+     */
+    private static resolveRelease(
+        forgeModule: import('./puppetForgeService').ForgeModule | null,
+        moduleVersion?: string,
+        versionRequirement?: string
+    ): { metadata: { dependencies?: Array<{name: string; version_requirement: string}> } } | undefined {
+        let releaseToUse = forgeModule?.current_release;
+
+        if (moduleVersion && forgeModule?.releases) {
+            const specificRelease = forgeModule.releases.find(r => r.version === moduleVersion);
+            if (specificRelease) {
+                releaseToUse = specificRelease;
+            }
+        } else if (versionRequirement && forgeModule?.releases) {
+            const resolved = this.findBestMatchingVersion(versionRequirement, forgeModule.releases.map(r => r.version));
+            if (resolved) {
+                const specificRelease = forgeModule.releases.find(r => r.version === resolved);
+                if (specificRelease) {
+                    releaseToUse = specificRelease;
                 }
-                const ref = module.gitTag ?? module.gitRef;
-                const gitMetadata = await GitMetadataService.getModuleMetadataWithFallback(module.gitUrl, ref);
-                
-                if (gitMetadata?.dependencies) {
-                    await this.processDependencies(
-                        gitMetadata.dependencies,
-                        module.name,
-                        node,
-                        depth,
-                        progressCallback,
-                        cancellationToken
-                    );
-                }
-            } catch (error) {
-                console.warn(`Could not fetch Git metadata for ${module.name}:`, error);
             }
         }
 
-        this.visitedModules.delete(module.name);
-        this.currentPath.pop();
-        return node;
+        return releaseToUse;
     }
 
     /**

@@ -71,10 +71,8 @@ export class UpgradeDiffProvider {
             // Clean up after a delay (VS Code will have loaded the content by then)
             setTimeout(() => {
                 disposable.dispose();
-                if ((globalThis as any).__currentContentProvider) {
-                    (globalThis as any).__currentContentProvider.dispose();
-                    (globalThis as any).__currentContentProvider = null;
-                }
+                (globalThis as any).__currentContentProvider?.dispose();
+                (globalThis as any).__currentContentProvider = null;
             }, 10000); // Longer delay to account for decorations
             
         } catch (error) {
@@ -118,8 +116,8 @@ export class UpgradeDiffProvider {
             proposedContent = UpgradePlannerService.applyUpgradesToContent(originalContent, upgradePlan);
         }
         
-        // Add inline action comments for each upgrade if enabled
-        if (options.showInlineActions !== false) { // Default to true
+        // Add inline action comments for each upgrade if enabled (default to true)
+        if (options.showInlineActions ?? true) {
             proposedContent = this.addInlineActionComments(proposedContent, upgradePlan, options);
         }
         
@@ -222,10 +220,11 @@ export class UpgradeDiffProvider {
                 action: 'all'
             });
         }
-        
+
+        const gitSuffix = gitCount > 0 ? `, ${gitCount} Git` : '';
         options.push({
             label: `$(info) Show Upgrade Summary`,
-            description: `View detailed analysis (${upgradePlan.totalModules} Forge${gitCount > 0 ? `, ${gitCount} Git` : ''})`,
+            description: `View detailed analysis (${upgradePlan.totalModules} Forge${gitSuffix})`,
             action: 'summary'
         });
         
@@ -735,9 +734,7 @@ export class UpgradeDiffProvider {
             const proposedContent = this.createProposedContent(originalContent, updatedUpgradePlan, { ...upgradeOptions, showInlineActions: true });
             
             // Update the global content provider reference if it exists
-            if ((globalThis as any).__currentContentProvider) {
-                (globalThis as any).__currentContentProvider.updateContent(originalContent, proposedContent);
-            }
+            (globalThis as any).__currentContentProvider?.updateContent(originalContent, proposedContent);
             
             // Refresh the CodeLens provider with the updated plan
             UpgradeDiffCodeLensProvider.setUpgradePlan(updatedUpgradePlan);

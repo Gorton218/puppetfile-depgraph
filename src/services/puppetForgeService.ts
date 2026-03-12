@@ -437,77 +437,71 @@ export class PuppetForgeService {
         const normalizedKey = this.normalizeCacheKey(moduleName);
         const moduleCache = this.moduleVersionCache.get(normalizedKey);
         if (moduleCache && moduleCache.size > 0) {
-            // Return all cached versions as an array, sorted by version descending
-            return Array.from(moduleCache.values()).sort((a, b) => 
+            return Array.from(moduleCache.values()).sort((a, b) =>
                 this.compareVersions(b.version, a.version)
             );
         }
 
         try {
-            // Use the releases API endpoint that accepts module parameter
-            const response = await axios.get(
-                `${this.BASE_URL}/${this.API_VERSION}/releases`,
-                {
-                    ...this.getAxiosOptions(),
-                    params: {
-                        module: ModuleNameUtils.toDashFormat(moduleName), // API expects puppetlabs-stdlib format
-                        limit: 100,
-                        sort_by: 'version',
-                        order: 'desc'
-                    }
-                }
-            );
-            
-            const releases: ForgeVersion[] = response.data.results ?? [];
-            
-            // Populate the two-level cache
-            if (releases.length > 0) {
-                const versionMap = new Map<string, ForgeVersion>();
-                for (const release of releases) {
-                    versionMap.set(release.version, release);
-                }
-                this.moduleVersionCache.set(normalizedKey, versionMap);
-            }
-            
-            return releases;
+            return await this.fetchAndCacheReleases(moduleName, normalizedKey);
         } catch (error) {
             if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400)) {
-                // Try alternative module name formats before giving up
-                const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
-                for (const variant of variants) {
-                    try {
-                        const response = await axios.get(
-                            `${this.BASE_URL}/${this.API_VERSION}/releases`,
-                            {
-                                ...this.getAxiosOptions(),
-                                params: {
-                                    module: ModuleNameUtils.toDashFormat(variant),
-                                    limit: 100,
-                                    sort_by: 'version',
-                                    order: 'desc'
-                                }
-                            }
-                        );
-                        
-                        const releases: ForgeVersion[] = response.data.results ?? [];
-                        if (releases.length > 0) {
-                            // Cache under the normalized key for the original module name
-                            const versionMap = new Map<string, ForgeVersion>();
-                            for (const release of releases) {
-                                versionMap.set(release.version, release);
-                            }
-                            this.moduleVersionCache.set(normalizedKey, versionMap);
-                            return releases;
-                        }
-                    } catch (variantError) {
-                        // Expected: variant name not found, try next
-                        console.debug(`Variant lookup failed for ${variant}:`, variantError);
-                        continue;
-                    }
-                }
-                return []; // Module not found or invalid module name
+                return await this.fetchReleasesWithVariants(moduleName, normalizedKey);
             }
             throw new Error(`Failed to fetch releases for ${moduleName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    /**
+     * Fetch releases from the Forge API and cache them
+     */
+    private static async fetchAndCacheReleases(moduleName: string, cacheKey: string): Promise<ForgeVersion[]> {
+        const response = await axios.get(
+            `${this.BASE_URL}/${this.API_VERSION}/releases`,
+            {
+                ...this.getAxiosOptions(),
+                params: {
+                    module: ModuleNameUtils.toDashFormat(moduleName),
+                    limit: 100,
+                    sort_by: 'version',
+                    order: 'desc'
+                }
+            }
+        );
+
+        const releases: ForgeVersion[] = response.data.results ?? [];
+        this.cacheReleases(cacheKey, releases);
+        return releases;
+    }
+
+    /**
+     * Try alternative module name formats to find releases
+     */
+    private static async fetchReleasesWithVariants(moduleName: string, cacheKey: string): Promise<ForgeVersion[]> {
+        const variants = ModuleNameUtils.getModuleNameVariants(moduleName);
+        for (const variant of variants) {
+            try {
+                const releases = await this.fetchAndCacheReleases(variant, cacheKey);
+                if (releases.length > 0) {
+                    return releases;
+                }
+            } catch (variantError) {
+                console.debug(`Variant lookup failed for ${variant}:`, variantError);
+            }
+        }
+        return [];
+    }
+
+    /**
+     * Cache releases in the two-level version cache
+     */
+    private static cacheReleases(cacheKey: string, releases: ForgeVersion[]): void {
+        if (releases.length > 0) {
+            const versionMap = new Map<string, ForgeVersion>();
+            for (const release of releases) {
+                versionMap.set(release.version, release);
+            }
+            this.moduleVersionCache.set(cacheKey, versionMap);
         }
     }
 

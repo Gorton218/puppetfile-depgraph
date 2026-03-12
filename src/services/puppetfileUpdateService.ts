@@ -186,14 +186,14 @@ export class PuppetfileUpdateService {
      */
     private static updateVersionInLine(line: string, newVersion: string): string {
         // Pattern to match version in various module declaration formats
-        // Updated to handle optional inline comments (#...)
+        // Trailing content (whitespace, inline comments) captured by (.*$)
         const patterns = [
-            // mod 'module_name', 'version' [optional comment]
-            /(mod\s*['"][^'"]+['"],\s*)['"][^'"]*['"](\s*(?:#.*)?$)/,
-            // mod 'module_name', :git => 'url', :tag => 'version' [optional comment]
-            /(mod\s*['"][^'"]+['"],\s*:git\s*=>\s*['"][^'"]+['"],\s*:tag\s*=>\s*)['"][^'"]*['"](\s*(?:#.*)?$)/,
-            // mod 'module_name', :git => 'url', :ref => 'version' [optional comment]
-            /(mod\s*['"][^'"]+['"],\s*:git\s*=>\s*['"][^'"]+['"],\s*:ref\s*=>\s*)['"][^'"]*['"](\s*(?:#.*)?$)/
+            // mod 'module_name', 'version' [optional trailing content]
+            /(mod\s*['"][^'"]+['"],\s*)['"][^'"]*['"](.*$)/,
+            // mod 'module_name', :git => 'url', :tag => 'version' [optional trailing content]
+            /(mod\s*['"][^'"]+['"],\s*:git\s*=>\s*['"][^'"]+['"],\s*:tag\s*=>\s*)['"][^'"]*['"](.*$)/,
+            // mod 'module_name', :git => 'url', :ref => 'version' [optional trailing content]
+            /(mod\s*['"][^'"]+['"],\s*:git\s*=>\s*['"][^'"]+['"],\s*:ref\s*=>\s*)['"][^'"]*['"](.*$)/
         ];
 
         for (const pattern of patterns) {
@@ -203,8 +203,7 @@ export class PuppetfileUpdateService {
         }
 
         // If no version found, add one for forge modules
-        // Updated to handle optional inline comments
-        const forgeModulePattern = /^(\s*mod\s*['"][^'"]+['"])(\s*(?:#.*)?)$/;
+        const forgeModulePattern = /^(\s*mod\s*['"][^'"]+['"])(.*$)/;
         if (forgeModulePattern.test(line)) {
             return line.replace(forgeModulePattern, `$1, '${newVersion}'$2`);
         }
