@@ -17,21 +17,7 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
         position: vscode.Position,
         token: vscode.CancellationToken
     ): Promise<vscode.Hover | null> {
-        // Check if this is a Puppetfile
-        if (!this.isPuppetfile(document)) {
-            return null;
-        }
-
-        // Get the word at the current position
-        const wordRange = document.getWordRangeAtPosition(position);
-        if (!wordRange) {
-            return null;
-        }
-
-        const line = document.lineAt(position).text;
-
-        // Try to parse the module from this line (including multi-line modules)
-        const module = this.parseModuleFromPosition(document, position);
+        const module = this.resolveModuleAtPosition(document, position);
         if (!module) {
             return null;
         }
@@ -43,8 +29,33 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             return cached.hover;
         }
 
+        return this.fetchModuleHover(module, cacheKey);
+    }
+
+    /**
+     * Validate document and position, returning the module if the cursor is over a module name
+     */
+    private resolveModuleAtPosition(
+        document: vscode.TextDocument,
+        position: vscode.Position
+    ): PuppetModule | null {
+        if (!this.isPuppetfile(document)) {
+            return null;
+        }
+
+        const wordRange = document.getWordRangeAtPosition(position);
+        if (!wordRange) {
+            return null;
+        }
+
+        const module = this.parseModuleFromPosition(document, position);
+        if (!module) {
+            return null;
+        }
+
         // Check if the cursor is over the module name
-        const moduleNamePattern = /mod\s*['"]([^'"]+)['"]/ ;
+        const line = document.lineAt(position).text;
+        const moduleNamePattern = /mod\s*['"]([^'"]+)['"]/;
         const moduleNameMatch = moduleNamePattern.exec(line);
         if (!moduleNameMatch) {
             return null;
@@ -52,35 +63,39 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
 
         const moduleNameStart = line.indexOf(moduleNameMatch[1]);
         const moduleNameEnd = moduleNameStart + moduleNameMatch[1].length;
-        const cursorChar = position.character;
-
-        // Check if cursor is within the module name
-        if (cursorChar < moduleNameStart || cursorChar > moduleNameEnd) {
+        if (position.character < moduleNameStart || position.character > moduleNameEnd) {
             return null;
         }
 
+        return module;
+    }
+
+    /**
+     * Fetch module hover information with timeout and error handling
+     */
+    private async fetchModuleHover(
+        module: PuppetModule,
+        cacheKey: string
+    ): Promise<vscode.Hover | null> {
         try {
-            // Get module information from Puppet Forge (with timeout)
             const moduleInfo = await Promise.race([
                 this.getModuleInfo(module),
-                new Promise<vscode.MarkdownString | null>((_, reject) => 
+                new Promise<vscode.MarkdownString | null>((_, reject) =>
                     setTimeout(() => reject(new Error('Timeout')), 5000)
                 )
             ]);
 
             if (moduleInfo) {
                 const hover = new vscode.Hover(moduleInfo);
-                this.hoverCache.set(cacheKey, { hover: hover, timestamp: Date.now() });
+                this.hoverCache.set(cacheKey, { hover, timestamp: Date.now() });
                 return hover;
             }
         } catch (error) {
             console.warn(`Error in hover provider for ${module.name}:`, error);
-            // If there's an error fetching module info, show basic info
             try {
                 return new vscode.Hover(this.getBasicModuleInfo(module));
             } catch (basicError) {
                 console.error(`Error creating basic module info for ${module.name}:`, basicError);
-                // Return null to prevent cascade failures
                 return null;
             }
         }
@@ -361,12 +376,10 @@ export class PuppetfileHoverProvider implements vscode.HoverProvider {
             // Always use the Puppetfile declared name for consistency, but show metadata name if different
             const displayName = module.name;
             const metadataName = metadata.name;
-            
+
+            markdown.appendMarkdown(`## 📦 ${displayName} [Git]\n\n`);
             if (metadataName && metadataName !== module.name) {
-                markdown.appendMarkdown(`## 📦 ${displayName} [Git]\n\n`);
                 markdown.appendMarkdown(`*Repository name: \`${metadataName}\`*\n\n`);
-            } else {
-                markdown.appendMarkdown(`## 📦 ${displayName} [Git]\n\n`);
             }
 
         if (metadata.summary) {
