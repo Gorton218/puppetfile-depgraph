@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { PuppetfileParser } from './puppetfileParser';
+import { PuppetfileParser, PuppetModule } from './puppetfileParser';
 import { PuppetForgeService } from './services/puppetForgeService';
 import { getVersionDisplay, formatVersionTransition } from './utils/versionUtils';
 import { PuppetfileUpdateService } from './services/puppetfileUpdateService';
@@ -69,7 +69,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
             }
 
             const codeLenses: vscode.CodeLens[] = [];
-            const forgeModules = parseResult.modules.filter((m: any) => m.source === 'forge');
+            const forgeModules = parseResult.modules.filter((m: PuppetModule) => m.source === 'forge');
 
             // Check each module for available upgrades
             for (const module of forgeModules) {
@@ -92,7 +92,7 @@ export class PuppetfileCodeLensProvider implements vscode.CodeLensProvider {
      */
     private async addModuleCodeLenses(
         document: vscode.TextDocument,
-        module: any,
+        module: PuppetModule,
         codeLenses: vscode.CodeLens[]
     ): Promise<void> {
         try {
