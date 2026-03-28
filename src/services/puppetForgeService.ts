@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig } from 'axios';
+import type { Agent } from 'http';
 import pkg from '../../package.json';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ModuleNameUtils } from '../utils/moduleNameUtils';
 
 /**
@@ -311,10 +311,10 @@ export class PuppetForgeService {
     // Two-level cache: module name -> (version -> version data)
     private static readonly moduleVersionCache: Map<string, Map<string, ForgeVersion>> = new Map();
     
-    // Keep a single agent instance for reuse
-    private static proxyAgent: HttpsProxyAgent<string> | null = null;
+    // Keep a single agent instance for reuse (holds an HttpsProxyAgent at runtime)
+    private static proxyAgent: Agent | null = null;
 
-    private static getAxiosOptions(): AxiosRequestConfig {
+    private static async getAxiosOptions(): Promise<AxiosRequestConfig> {
         const options: AxiosRequestConfig = {
             timeout: 10000,
             headers: {
@@ -325,6 +325,7 @@ export class PuppetForgeService {
 
         const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
         if (proxyUrl && !this.proxyAgent) {
+            const { HttpsProxyAgent } = await import('https-proxy-agent');
             this.proxyAgent = new HttpsProxyAgent(proxyUrl);
         }
         
@@ -459,7 +460,7 @@ export class PuppetForgeService {
         const response = await axios.get(
             `${this.BASE_URL}/${this.API_VERSION}/releases`,
             {
-                ...this.getAxiosOptions(),
+                ...await this.getAxiosOptions(),
                 params: {
                     module: ModuleNameUtils.toDashFormat(moduleName),
                     limit: 100,
