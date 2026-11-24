@@ -27,7 +27,7 @@ Node >= 24 (`.nvmrc`). Build output goes to `out/` via `tsconfig.build.json`.
 - `npm run test:coverage`: unit tests with coverage.
 - `npm run test:vscode`: VS Code integration tests (Mocha, `test/vscode-test/`).
 - `npm run test:e2e`: E2E tests (Mocha, `test/e2e/`).
-- `npm run test:performance`: Jest over `test/e2e/performance/`.
+- Performance tests in `test/e2e/performance/` are Mocha suites and run as part of `test:e2e`.
 - `npm run test:api-integration`: **real** Puppet Forge calls (`test/api/`). Not part of `test:all`.
 - `npm run test:all`: coverage, then vscode, then e2e. This is what CI runs (`.github/workflows/test.yml`, which also runs a SonarCloud scan).
 - `npm run package`: build a `.vsix` with vsce.

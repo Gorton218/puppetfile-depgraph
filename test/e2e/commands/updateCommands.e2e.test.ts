@@ -233,21 +233,17 @@ mod 'puppetlabs-stdlib', '8.5.0'
       largePuppetfile += `mod '${module.name}', '${module.version}'\n`;
     }
     
-    fs.writeFileSync(puppetfilePath, largePuppetfile);
-    
-    const puppetfileUri = vscode.Uri.file(puppetfilePath);
-    const doc = await vscode.workspace.openTextDocument(puppetfileUri);
+    // Use an untitled document instead of the on-disk file. A file-backed document
+    // may still be held (stale) by the editor from a previous test, and VS Code
+    // then rejects the update edit with "has changed in the meantime".
+    const doc = await TestHelper.createTestDocument(largePuppetfile);
     await vscode.window.showTextDocument(doc);
-    
-    // Execute the update command without waiting for it to complete
-    // The command opens a new document which can cause the test to hang
-    const updatePromise = vscode.commands.executeCommand('puppetfile-depgraph.updateAllToSafe');
-    
-    // Wait a bit for the updates to be applied to the Puppetfile
-    await TestHelper.wait(2000);
-    
-    // Save the document to ensure changes are persisted
-    await doc.save();
+
+    // Wait for the command to finish rather than sleeping for a fixed time
+    await vscode.commands.executeCommand('puppetfile-depgraph.updateAllToSafe');
+
+    // The edit is applied before the command resolves; poll to stay robust on slow runners
+    await TestHelper.waitForCondition(() => doc.getText() !== largePuppetfile, 10000);
     
     // Get the updated content
     const finalContent = doc.getText();

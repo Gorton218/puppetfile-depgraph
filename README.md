@@ -190,7 +190,7 @@ Run tests with:
 - `npm run test:unit` - Unit tests only
 - `npm run test:vscode` - VS Code integration tests (supports headless mode for CI)
 - `npm run test:e2e` - End-to-end workflow tests (supports headless mode for CI)
-- `npm run test:performance` - Performance benchmarks
+- Performance tests (`test/e2e/performance/`) run as part of `npm run test:e2e`
 - `npm run test:api-integration` - Real API tests (requires internet)
 
 ## API Integration
