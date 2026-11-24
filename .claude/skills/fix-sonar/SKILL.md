@@ -11,7 +11,7 @@ user_invocable: true
 # Fix SonarCloud Issues
 
 This skill fetches SonarCloud issues synced to GitHub Issues, applies fixes to the source code,
-verifies the fixes pass tests, and closes the resolved issues.
+verifies the fixes pass tests, and commits them. A sync pipeline closes the issues once SonarCloud confirms the fix.
 
 ## How it works
 
@@ -27,7 +27,9 @@ This skill parses that metadata, reads the affected code, applies the fix, and v
 
 ## Workflow
 
-### Step 0: Create a descriptive branch
+### Step 0: Check the issue, then create a descriptive branch
+
+If a specific issue number was given, first check that it is still open (`gh issue view <number> --json state`). If it is closed, or the flagged code is already fixed, tell the user and stop: no edits, no branch, no commit.
 
 Before making any changes, create a branch with a meaningful name that reflects the fix:
 
