@@ -457,18 +457,16 @@ export class PuppetForgeService {
      * Fetch releases from the Forge API and cache them
      */
     private static async fetchAndCacheReleases(moduleName: string, cacheKey: string): Promise<ForgeVersion[]> {
-        const response = await axios.get(
-            `${this.BASE_URL}/${this.API_VERSION}/releases`,
-            {
-                ...await this.getAxiosOptions(),
-                params: {
-                    module: ModuleNameUtils.toDashFormat(moduleName),
-                    limit: 100,
-                    sort_by: 'version',
-                    order: 'desc'
-                }
+        const config: AxiosRequestConfig = {
+            ...await this.getAxiosOptions(),
+            params: {
+                module: ModuleNameUtils.toDashFormat(moduleName),
+                limit: 100,
+                sort_by: 'version',
+                order: 'desc'
             }
-        );
+        };
+        const response = await axios.get(`${this.BASE_URL}/${this.API_VERSION}/releases`, config);
 
         const releases: ForgeVersion[] = response.data.results ?? [];
         this.cacheReleases(cacheKey, releases);
