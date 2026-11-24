@@ -4,19 +4,19 @@
     {
       "id": 1,
       "prompt": "/fix-sonar 350",
-      "expected_output": "Reads issue #350 (optional chain in versionParser.ts), applies the optional chain fix, runs npm test, and if tests pass commits with a message referencing #350 without closing the issue manually (the sync pipeline closes it).",
+      "expected_output": "Sees that #350 is already closed (the optional-chain fix is already in src/utils/versionParser.ts), reports that there is nothing to fix, and makes no edits, no branch and no commit.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "/fix-sonar 288",
-      "expected_output": "Reads issue #288 (cognitive complexity in upgradePlannerService.ts), refactors the function to bring cognitive complexity from 23 down to 15 or below, runs npm test, and if tests pass commits with a message referencing #288 without closing the issue manually (the sync pipeline closes it).",
+      "prompt": "/fix-sonar 385",
+      "expected_output": "Reads open issue #385 (MINOR, src/services/puppetForgeService.ts), changes the `http` import to `node:http` and makes no other changes, runs npm test, and if tests pass commits on a fix/sonar-385-* branch with a message referencing #385, without closing the issue manually (the sync pipeline closes it). If #385 is closed by the time this runs, the expected output is the same no-op as eval 1.",
       "files": []
     },
     {
       "id": 3,
       "prompt": "/fix-sonar --severity MAJOR",
-      "expected_output": "Fetches all open sonarcloud issues, filters to CRITICAL and MAJOR severity, displays a prioritized table, then fixes each one individually — running tests after each fix and committing each passing fix separately, without closing issues manually (the sync pipeline closes them).",
+      "expected_output": "Fetches open sonarcloud issues and keeps only CRITICAL and MAJOR ones. If none are left (for example, only MINOR issues are open), says so and makes no changes. Otherwise it shows a prioritized table and fixes each issue individually, running tests after each fix and committing each passing fix separately, without closing issues manually.",
       "files": []
     }
   ]
