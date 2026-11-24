@@ -32,8 +32,9 @@ suite('Performance: Cache Tests', () => {
       
       // Extract module name from URL or params
       let moduleName = '';
-      if (config?.params?.module) {
-        moduleName = ModuleNameUtils.toSlashFormat(config.params.module);
+      const params = config?.params as { module?: string } | undefined;
+      if (params?.module) {
+        moduleName = ModuleNameUtils.toSlashFormat(params.module);
       } else if (typeof url === 'string' && url.includes('/modules/')) {
         // Extract from URL like /modules/puppetlabs-stdlib
         const match = /\/modules\/([^\/]+)/.exec(url);
