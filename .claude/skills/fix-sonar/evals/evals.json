@@ -1,0 +1,23 @@
+{
+  "skill_name": "fix-sonar",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/fix-sonar 350",
+      "expected_output": "Reads issue #350 (optional chain in versionParser.ts), applies the optional chain fix, runs npm test, and if tests pass commits with a message referencing #350 without closing the issue manually (the sync pipeline closes it).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/fix-sonar 288",
+      "expected_output": "Reads issue #288 (cognitive complexity in upgradePlannerService.ts), refactors the function to bring cognitive complexity from 23 down to 15 or below, runs npm test, and if tests pass commits with a message referencing #288 without closing the issue manually (the sync pipeline closes it).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/fix-sonar --severity MAJOR",
+      "expected_output": "Fetches all open sonarcloud issues, filters to CRITICAL and MAJOR severity, displays a prioritized table, then fixes each one individually — running tests after each fix and committing each passing fix separately, without closing issues manually (the sync pipeline closes them).",
+      "files": []
+    }
+  ]
+}

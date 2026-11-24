@@ -77,6 +77,8 @@ Thumbs.db
 claude-temp/
 .claude/*
 !.claude/skills/
+!.claude/agents/
+.claude/skills/fix-sonar-workspace/
 claude-notes.*
 claude-debug.*
 claude-test.*
